@@ -1,0 +1,15 @@
+{
+  "name": "club-beasts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix club-beasts-api\" \"npm run dev --prefix club-beasts-web\"",
+    "dev:api": "npm run dev --prefix club-beasts-api",
+    "dev:web": "npm run dev --prefix club-beasts-web",
+    "build": "npm run build --prefix club-beasts-api && npm run build --prefix club-beasts-web",
+    "test": "npm run test:run --prefix club-beasts-api && npm run test:run --prefix club-beasts-web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

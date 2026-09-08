@@ -1,0 +1,34 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "agent": {
+    "backend-developer": {
+      "mode": "subagent",
+      "description": "Backend API development with Fastify, Prisma, TypeScript. Routes, services, plugins, business logic."
+    },
+    "frontend-developer": {
+      "mode": "subagent",
+      "description": "Frontend development with Next.js, React, Tailwind CSS. Pages, components, UI/UX."
+    },
+    "database-admin": {
+      "mode": "subagent",
+      "description": "Database management with Prisma. Schema design, migrations, seed data, data modeling."
+    },
+    "test-engineer": {
+      "mode": "subagent",
+      "description": "Testing with Vitest, Playwright. Unit tests, integration tests, e2e tests, TDD/ATDD."
+    },
+    "devops-engineer": {
+      "mode": "subagent",
+      "description": "DevOps, deployment, CI/CD. Vercel, Railway, Neon, infrastructure."
+    },
+    "code-reviewer": {
+      "mode": "subagent",
+      "description": "Code review, quality assurance, security review, best practices."
+    },
+    "acceptance-criteria-analyst": {
+      "mode": "subagent",
+      "description": "Análisis de historias de usuario con técnicas ISTQB. Genera criterios de aceptación, Gherkin scenarios y schemas zod de validación. Modos: CREAR (nuevos criterios), REFACTORIZAR (auditar código vs criterios), AVANZAR (verificar avance)."
+    }
+  }
+}

@@ -1,0 +1,66 @@
+@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+@theme {
+  /* Colors - Royal Blue + Black Theme */
+  --color-royal: #4169E1;
+  --color-royal-dark: #3457C7;
+  --color-royal-light: #6B8CFF;
+  --color-black: #000000;
+  --color-near-black: #0A0F1A;
+  --color-dark-surface: #111827;
+  --color-white: #FFFFFF;
+  --color-off-white: #F8FAFC;
+  --color-gray-50: #F9FAFB;
+  --color-gray-100: #F3F4F6;
+  --color-gray-200: #E5E7EB;
+  --color-gray-300: #D1D5DB;
+  --color-gray-400: #9CA3AF;
+  --color-gray-500: #6B7280;
+  --color-gray-600: #4B5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1F2937;
+  --color-gray-900: #111827;
+
+  /* Typography */
+  --font-display: "Oswald", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Border Radius */
+  --radius-pill: 9999px;
+  --radius-card: 14px;
+  --radius-button: 9999px;
+  --radius-tag: 6px;
+
+  /* Layout */
+  --page-max-width: 1200px;
+  --section-gap: 64px;
+  --card-padding: 20px;
+}
+
+/* Base styles */
+html {
+  font-family: var(--font-body);
+}
+
+body {
+  font-family: var(--font-body);
+}
+
+/* Utility for poster-style display text */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* Poster headline utility */
+.text-poster {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 0.85;
+  letter-spacing: 0.02em;
+}

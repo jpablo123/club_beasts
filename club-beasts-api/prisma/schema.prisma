@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Sede {
+  id        String    @id @default(cuid())
+  nombre    String
+  direccion String?
+  clientes  Cliente[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  contrasena  String
+  nombre      String
+  rol         String   // DUENO | RECEPCIONISTA
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Cliente {
+  id            String     @id @default(cuid())
+  cedula        String     @unique
+  nombres       String
+  apellidos     String
+  telefono      String
+  email         String?
+  sedeId        String
+  sede          Sede       @relation(fields: [sedeId], references: [id])
+  pin           String
+  estado        String     @default("NUEVO") // NUEVO | ACTIVO | SUSPENDIDO | RETIRADO | INACTIVO
+  observaciones String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
