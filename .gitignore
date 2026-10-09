@@ -26,6 +26,11 @@ Thumbs.db
 # Test coverage
 coverage/
 
+# Test artifacts
+club-beasts-web/playwright-report/
+club-beasts-web/test-results/
+*.tsbuildinfo
+
 # Logs
 *.log
 npm-debug.log*
