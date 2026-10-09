@@ -245,6 +245,18 @@ describe("DEC-022 validaciones de rango en el cliente", () => {
   });
 });
 
+describe("INC02-R05 a11y: el error de congelacion se anuncia con role=alert", () => {
+  it("el mensaje de error expone role='alert' para lectores de pantalla", async () => {
+    await abrirCongelar();
+
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar congelación" }));
+
+    const alerta = await screen.findByRole("alert");
+    expect(alerta.textContent).toBe("El motivo es obligatorio.");
+    expect(mockCongelar).not.toHaveBeenCalled();
+  });
+});
+
 describe("flujo de congelar (HU15-C04 / DEC-024)", () => {
   it("prefechta el rango valido y envia version, motivo y las dos fechas", async () => {
     await abrirCongelar();

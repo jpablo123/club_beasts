@@ -178,6 +178,10 @@ test.describe("Clientes - lista con filtros y paginación (INC00-CLI-05)", () =>
     const paginas = Number((primeraPagina.match(/Página (\d+) de (\d+)/) ?? [])[2]);
     expect(paginas, `no debe leerse el total de páginas en "${primeraPagina}"`).toBeGreaterThanOrEqual(2);
 
+    // R-10: la tabla se reemplaza por "Cargando clientes..." mientras la lista
+    // hidrata (page.tsx: loading -> <p>Cargando clientes...</p>); nunca se lee
+    // la tabla con el refetch aun en curso (mismo patron que congelacion.spec.ts).
+    await expect(page.getByText(/Cargando clientes/i)).toHaveCount(0);
     const cedulasPagina1 = await page.locator("tbody td:first-child").allTextContents();
     expect(cedulasPagina1.length).toBeGreaterThan(0);
     expect(cedulasPagina1.length).toBeLessThanOrEqual(20);
@@ -190,6 +194,24 @@ test.describe("Clientes - lista con filtros y paginación (INC00-CLI-05)", () =>
     await expect(page.getByText(/^Página 2 de \d+$/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Anterior" })).toBeEnabled();
 
+    // R-10: tras "Siguiente" el footer ya muestra la pagina 2 (estado de React)
+    // pero la tabla aun no refetchea. El guard de carga cierra la ventana "en
+    // curso"; el poll cierra la ventana previa al loading (tabla aun de la
+    // pagina 1, sin "Cargando" en el DOM): se espera hasta que la tabla tenga
+    // filas que NO son de la pagina 1 (el fixture garantiza paginas disjuntas
+    // con total >= 21), condicion que una vez cumplida ya no cambia.
+    await expect(page.getByText(/Cargando clientes/i)).toHaveCount(0);
+    await expect
+      .poll(
+        async () => {
+          const actuales = await page.locator("tbody td:first-child").allTextContents();
+          return (
+            actuales.length > 0 && actuales.some((c) => !cedulasPagina1.includes(c))
+          );
+        },
+        { message: "la tabla debe terminar el refetch y mostrar la pagina 2" }
+      )
+      .toBe(true);
     const cedulasPagina2 = await page.locator("tbody td:first-child").allTextContents();
     expect(cedulasPagina2.length).toBeGreaterThan(0);
     const repetidas = cedulasPagina2.filter((c) => cedulasPagina1.includes(c));

@@ -245,7 +245,11 @@ export default function CongelacionForm({
         />
       </div>
 
-      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      {error && (
+        <p role="alert" className="text-red-400 text-sm mb-4">
+          {error}
+        </p>
+      )}
 
       <div className="flex gap-3">
         <Button size="sm" onClick={guardar} loading={saving}>
