@@ -23,13 +23,40 @@ export async function loginClient(cedula: string, pin: string) {
     cedula: cliente.cedula,
     nombres: cliente.nombres,
     apellidos: cliente.apellidos,
+    debeCambiarPin: cliente.debeCambiarPin,
   };
 }
 
-export async function resetPin(clienteId: string, newPin: string) {
+export async function resetPin(clienteId: string, newPin: string, actorId: string) {
+  const hashed = await bcrypt.hash(newPin, 10);
+  // Una unica operacion atomica: PIN nuevo + trazabilidad del actor (INC00-SEC-04).
+  await prisma.cliente.update({
+    where: { id: clienteId },
+    data: {
+      pin: hashed,
+      debeCambiarPin: false,
+      pinResetPorId: actorId,
+      pinResetAt: new Date(),
+    },
+  });
+}
+
+export async function changePin(
+  clienteId: string,
+  currentPin: string,
+  newPin: string
+) {
+  const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } });
+  if (!cliente) throw new Error("NOT_FOUND");
+
+  const valid = await bcrypt.compare(currentPin, cliente.pin);
+  if (!valid) throw new Error("INVALID_CURRENT_PIN");
+
   const hashed = await bcrypt.hash(newPin, 10);
   await prisma.cliente.update({
     where: { id: clienteId },
-    data: { pin: hashed },
+    data: { pin: hashed, debeCambiarPin: false },
   });
+
+  return { message: "PIN actualizado correctamente" };
 }

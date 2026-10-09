@@ -1,63 +1,201 @@
 import { test, expect } from "@playwright/test";
+import {
+  API_URL,
+  cambiarEstadoCliente,
+  crearClienteApi,
+  tokenApi,
+} from "./e2e-helpers";
+
+async function loginAsAdmin(page: import("@playwright/test").Page) {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("admin@clubbeasts.com");
+  await page.getByLabel("Contrasena").fill("admin123");
+  await page.getByRole("button", { name: "Ingresar" }).click();
+  await expect(page).toHaveURL(/.*clientes/);
+}
 
 test.describe("Clientes", () => {
   test.beforeEach(async ({ page }) => {
-    // Login primero
-    await page.goto("/login");
-    await page.fill('input[type="email"]', "admin@clubbeasts.com");
-    await page.fill('input[type="password"]', "admin123");
-    await page.click('button[type="submit"]');
-    await expect(page).toHaveURL(/.*clientes/);
+    await loginAsAdmin(page);
   });
 
   test("muestra lista de clientes", async ({ page }) => {
     await expect(page.locator("h1")).toContainText("Clientes");
     await expect(page.locator("table")).toBeVisible();
+    await expect(page.getByRole("cell", { name: "1234567890" })).toBeVisible();
   });
 
   test("puede buscar clientes", async ({ page }) => {
-    await page.fill('input[placeholder*="Buscar"]', "Juan");
-    await page.waitForTimeout(500);
-    // Verificar que el filtro funciona
-    const rows = page.locator("tbody tr");
-    const count = await rows.count();
-    expect(count).toBeGreaterThanOrEqual(0);
+    await page.getByPlaceholder("Buscar por cedula o nombre...").fill("Carlos");
+    await expect(page.getByRole("cell", { name: /Carlos Rodriguez/ })).toBeVisible();
   });
 
   test("puede crear un cliente nuevo", async ({ page }) => {
-    await page.click('a[href="/clientes/nuevo"]');
+    const uniqueCedula = `99${Date.now().toString().slice(-8)}`;
+
+    await page.getByRole("link", { name: /Nuevo Cliente/ }).click();
     await expect(page).toHaveURL(/.*clientes\/nuevo/);
 
-    await page.fill('input[required]:nth-of-type(1)', "9999999999");
-    await page.fill('input[required]:nth-of-type(2)', "María");
-    await page.fill('input[required]:nth-of-type(3)', "García");
-    await page.fill('input[required]:nth-of-type(4)', "3009999999");
+    await page.getByLabel("Cedula *").fill(uniqueCedula);
+    await page.getByLabel("Nombres *").fill("Maria");
+    await page.getByLabel("Apellidos *").fill("Garcia");
+    await page.getByLabel("Telefono *").fill("3009999999");
 
-    await page.click('button[type="submit"]');
-    await expect(page).toHaveURL(/.*clientes/);
+    await page.getByRole("button", { name: "Crear Cliente" }).click();
+    await expect(page).toHaveURL(/.*\/clientes$/);
+    await page.getByPlaceholder("Buscar por cedula o nombre...").fill(uniqueCedula);
+    await expect(page.getByRole("cell", { name: uniqueCedula })).toBeVisible();
   });
 
   test("puede ver ficha de cliente", async ({ page }) => {
-    // Buscar y hacer click en un cliente de la lista
-    const firstRow = page.locator("tbody tr").first();
-    if (await firstRow.isVisible()) {
-      await firstRow.click();
-      // Verificar que muestra detalles del cliente
-      await expect(page.locator("h1, h2").first()).toBeVisible();
-    }
+    await page.getByRole("link", { name: "Ver ficha" }).first().click();
+    await expect(page).toHaveURL(/.*clientes\/.+/);
+    await expect(page.getByRole("heading", { name: "Ficha del Cliente" })).toBeVisible();
   });
 
   test("puede editar un cliente existente", async ({ page }) => {
-    // Ir a la lista y buscar un cliente
-    const firstRow = page.locator("tbody tr").first();
-    if (await firstRow.isVisible()) {
-      // Buscar botón o enlace de editar
-      const editBtn = page.locator("text=Editar").or(page.locator('[data-testid="edit-button"]'));
-      if (await editBtn.first().isVisible()) {
-        await editBtn.first().click();
-        // Verificar que estamos en la página de edición
-        await expect(page.locator('button[type="submit"]')).toBeVisible();
-      }
+    await page.getByRole("link", { name: "Ver ficha" }).first().click();
+    await page.getByRole("button", { name: "Editar" }).click();
+    await expect(page.getByRole("button", { name: "Guardar" })).toBeVisible();
+  });
+});
+
+/**
+ * INC00-CLI-05: filtros de estado/sede y paginación de la lista, con fixtures
+ * que garantizan siempre un resultado esperado y un resultado excluido
+ * (INC00-QA-03). Este bloque va al final del archivo: su fixture de paginación
+ * supera el tamaño de página (20) y empuja al cliente del seed a la última
+ * página, por lo que debe ejecutarse después de los tests que lo necesitan en
+ * la primera página.
+ */
+test.describe("Clientes - lista con filtros y paginación (INC00-CLI-05)", () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAsAdmin(page);
+  });
+
+  test("filtra por estado con un resultado esperado y un resultado excluido", async ({
+    page,
+    request,
+  }) => {
+    const suspendido = await crearClienteApi(request, { sedeId: "sede-1" });
+    await cambiarEstadoCliente(request, suspendido.id, "SUSPENDIDO");
+    await page.reload();
+
+    // Esperado: el cliente suspendido. Excluido: el seed ACTIVO.
+    await page.getByLabel("Filtrar por estado").selectOption("SUSPENDIDO");
+    await expect(
+      page.getByRole("cell", { name: suspendido.cedula, exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: "1234567890", exact: true })
+    ).toHaveCount(0);
+
+    // Invertido: esperado el seed ACTIVO, excluido el suspendido.
+    await page.getByLabel("Filtrar por estado").selectOption("ACTIVO");
+    await expect(
+      page.getByRole("cell", { name: "1234567890", exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: suspendido.cedula, exact: true })
+    ).toHaveCount(0);
+
+    // Quitar el filtro vuelve a mostrar ambos.
+    await page.getByLabel("Filtrar por estado").selectOption("");
+    await expect(
+      page.getByRole("cell", { name: suspendido.cedula, exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: "1234567890", exact: true })
+    ).toBeVisible();
+  });
+
+  test("filtra por sede con un resultado esperado y un resultado excluido", async ({
+    page,
+    request,
+  }) => {
+    const clienteSede1 = await crearClienteApi(request, { sedeId: "sede-1" });
+    const clienteSede2 = await crearClienteApi(request, { sedeId: "sede-2" });
+    await page.reload();
+
+    // Esperado: cliente de la sede 2. Excluido: cliente de la sede 1.
+    await page.getByLabel("Filtrar por sede").selectOption("sede-2");
+    await expect(
+      page.getByRole("cell", { name: clienteSede2.cedula, exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: clienteSede1.cedula, exact: true })
+    ).toHaveCount(0);
+
+    // Invertido: esperado el de la sede 1, excluido el de la sede 2.
+    await page.getByLabel("Filtrar por sede").selectOption("sede-1");
+    await expect(
+      page.getByRole("cell", { name: clienteSede1.cedula, exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: clienteSede2.cedula, exact: true })
+    ).toHaveCount(0);
+
+    await page.getByLabel("Filtrar por sede").selectOption("");
+    await expect(
+      page.getByRole("cell", { name: clienteSede1.cedula, exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: clienteSede2.cedula, exact: true })
+    ).toBeVisible();
+  });
+
+  test("pagina la lista cuando los resultados no caben en una página", async ({
+    page,
+    request,
+  }) => {
+    // Fixture determinista: suficientes clientes para dos páginas (20 por página).
+    const token = await tokenApi(request);
+    const listado = await request.get(`${API_URL}/clientes?page=1&limit=1`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(listado.ok(), `GET /clientes devolvio ${listado.status()}`).toBe(true);
+    const cuerpo = (await listado.json()) as { total: number };
+    const faltan = Math.max(0, 21 - cuerpo.total);
+    for (let i = 0; i < faltan; i++) {
+      await crearClienteApi(request, {
+        sedeId: "sede-2",
+        nombres: "Cliente",
+        apellidos: "Pagina",
+      });
     }
+
+    await page.reload();
+
+    const textoPagina1 = page.getByText(/^Página 1 de \d+$/);
+    await expect(textoPagina1).toBeVisible();
+
+    const resultados = page.getByText(/^\d+ resultados$/);
+    await expect(resultados).toBeVisible();
+    const totalLeido = Number(((await resultados.textContent()) ?? "").split(" ")[0]);
+    expect(totalLeido).toBeGreaterThanOrEqual(21);
+
+    const primeraPagina = (await textoPagina1.textContent()) ?? "";
+    const paginas = Number((primeraPagina.match(/Página (\d+) de (\d+)/) ?? [])[2]);
+    expect(paginas, `no debe leerse el total de páginas en "${primeraPagina}"`).toBeGreaterThanOrEqual(2);
+
+    const cedulasPagina1 = await page.locator("tbody td:first-child").allTextContents();
+    expect(cedulasPagina1.length).toBeGreaterThan(0);
+    expect(cedulasPagina1.length).toBeLessThanOrEqual(20);
+
+    await expect(page.getByRole("button", { name: "Anterior" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Siguiente" })).toBeEnabled();
+
+    await page.getByRole("button", { name: "Siguiente" }).click();
+
+    await expect(page.getByText(/^Página 2 de \d+$/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Anterior" })).toBeEnabled();
+
+    const cedulasPagina2 = await page.locator("tbody td:first-child").allTextContents();
+    expect(cedulasPagina2.length).toBeGreaterThan(0);
+    const repetidas = cedulasPagina2.filter((c) => cedulasPagina1.includes(c));
+    expect(
+      repetidas,
+      `las páginas deben mostrar clientes distintos, se repitieron: ${repetidas.join(", ")}`
+    ).toHaveLength(0);
   });
 });

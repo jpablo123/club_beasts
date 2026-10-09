@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import bcrypt from "bcryptjs";
 import Fastify from "fastify";
+import prisma from "../../src/lib/prisma";
 import prismaPlugin from "../../src/plugins/prisma";
 import authPlugin from "../../src/plugins/auth";
 import authRoutes from "../../src/routes/auth";
@@ -37,8 +39,21 @@ afterAll(async () => {
 
 describe("Feature: Autenticación", () => {
   describe("Scenario: Login exitoso del dueño", () => {
-    it("Given un usuario registrado con email y contraseña", () => {
-      expect(true).toBe(true);
+    it("Given un usuario registrado con email y contraseña", async () => {
+      // INC00-QA-01: aserción real contra la BD de pruebas, no un expect(true)
+      const admin = await prisma.user.findUnique({
+        where: { email: "admin@clubbeasts.com" },
+      });
+      expect(admin).not.toBeNull();
+      expect(admin?.rol).toBe("DUENO");
+      expect(admin?.contrasena).not.toBe("admin123");
+      const passwordOk = await bcrypt.compare(
+        "admin123",
+        admin?.contrasena ?? ""
+      );
+      expect(passwordOk).toBe(true);
+      // El login del beforeAll con esas credenciales produjo un token real
+      expect(token).toBeDefined();
     });
 
     it("When el usuario ingresa credenciales válidas", async () => {
@@ -156,7 +171,7 @@ describe("Feature: Gestión de Clientes", () => {
       expect(res.statusCode).toBe(201);
       const body = JSON.parse(res.body);
       expect(body.estado).toBe("NUEVO");
-      expect(body.pin).toBeDefined();
+      expect(body.pin).toBeUndefined();
     });
   });
 
@@ -228,41 +243,115 @@ describe("Feature: Gestión de Clientes", () => {
 
   describe("Scenario: Buscar clientes por nombre", () => {
     it("When busco clientes con término de búsqueda", async () => {
+      // INC00-QA-03: fixture con un cliente que SÍ coincide y uno que NO coincide
       const cedula = uniqueCedula();
+      const excludedCedula = uniqueCedula();
 
-      await app.inject({
+      const includedRes = await app.inject({
         method: "POST",
         url: "/clientes",
         headers: { authorization: `Bearer ${token}` },
         payload: {
           cedula,
           nombres: "Searchable",
-          apellidos: "Test",
+          apellidos: "Fixture",
           telefono: "3000000000",
           sedeId: "sede-1",
         },
       });
+      expect(includedRes.statusCode).toBe(201);
+      const includedId = JSON.parse(includedRes.body).id;
+
+      const excludedRes = await app.inject({
+        method: "POST",
+        url: "/clientes",
+        headers: { authorization: `Bearer ${token}` },
+        payload: {
+          cedula: excludedCedula,
+          nombres: "Notmatching",
+          apellidos: "Fixture",
+          telefono: "3000000001",
+          sedeId: "sede-1",
+        },
+      });
+      expect(excludedRes.statusCode).toBe(201);
+      const excludedId = JSON.parse(excludedRes.body).id;
+      expect(excludedId).not.toBe(includedId);
 
       const res = await app.inject({
         method: "GET",
-        url: "/clientes?search=Searchable",
+        url: "/clientes?search=Searchable&limit=100",
         headers: { authorization: `Bearer ${token}` },
       });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
+      const ids = body.clientes.map((c: any) => c.id);
+      expect(ids).toContain(includedId);
+      expect(ids).not.toContain(excludedId);
       expect(body.clientes.length).toBeGreaterThan(0);
+      expect(body.total).toBeGreaterThanOrEqual(1);
     });
   });
 
   describe("Scenario: Filtrar clientes por estado", () => {
     it("When filtro clientes por estado", async () => {
+      // INC00-QA-03: fixture con un cliente NUEVO (incluido) y uno ACTIVO (excluido)
+      const includedCedula = uniqueCedula();
+      const excludedCedula = uniqueCedula();
+
+      const includedRes = await app.inject({
+        method: "POST",
+        url: "/clientes",
+        headers: { authorization: `Bearer ${token}` },
+        payload: {
+          cedula: includedCedula,
+          nombres: "Filtroestado",
+          apellidos: "Fixture",
+          telefono: "3000000000",
+          sedeId: "sede-1",
+        },
+      });
+      expect(includedRes.statusCode).toBe(201);
+      const includedBody = JSON.parse(includedRes.body);
+      expect(includedBody.estado).toBe("NUEVO");
+      const includedId = includedBody.id;
+
+      const excludedRes = await app.inject({
+        method: "POST",
+        url: "/clientes",
+        headers: { authorization: `Bearer ${token}` },
+        payload: {
+          cedula: excludedCedula,
+          nombres: "Filtroestadoexcluido",
+          apellidos: "Fixture",
+          telefono: "3000000001",
+          sedeId: "sede-1",
+        },
+      });
+      expect(excludedRes.statusCode).toBe(201);
+      const excludedId = JSON.parse(excludedRes.body).id;
+      expect(excludedId).not.toBe(includedId);
+
+      const patchRes = await app.inject({
+        method: "PATCH",
+        url: `/clientes/${excludedId}`,
+        headers: { authorization: `Bearer ${token}` },
+        payload: { estado: "ACTIVO" },
+      });
+      expect(patchRes.statusCode).toBe(200);
+      expect(JSON.parse(patchRes.body).estado).toBe("ACTIVO");
+
       const res = await app.inject({
         method: "GET",
-        url: "/clientes?estado=NUEVO",
+        url: "/clientes?estado=NUEVO&limit=100",
         headers: { authorization: `Bearer ${token}` },
       });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
+      const ids = body.clientes.map((c: any) => c.id);
+      expect(ids).toContain(includedId);
+      expect(ids).not.toContain(excludedId);
+      expect(body.clientes.length).toBeGreaterThan(0);
       body.clientes.forEach((c: any) => {
         expect(c.estado).toBe("NUEVO");
       });

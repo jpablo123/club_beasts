@@ -13,7 +13,6 @@ export default function Home() {
 
       <HeroSection
         title="Alto Rendimiento"
-        subtitle="Club Beasts"
         description="Transforma tu potencial en resultados. Elite fitness, disciplina y excelencia."
       >
         <div className="flex flex-wrap gap-4">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { OPCIONES_SEDE } from "@/lib/sedes";
 import { Card, Button, Input, Select, Navbar, PageHeader } from "@/components";
 
 export default function NuevoClientePage() {
@@ -34,10 +35,8 @@ export default function NuevoClientePage() {
     }
   };
 
-  const sedeOptions = [
-    { value: "sede-1", label: "Sede Principal" },
-    { value: "sede-2", label: "Sede Secundaria" },
-  ];
+  // Mismo listado de sedes del seed que usa la lista y la ficha (sin endpoint).
+  const sedeOptions = OPCIONES_SEDE;
 
   const navLinks = [
     { label: "Clientes", href: "/clientes" },

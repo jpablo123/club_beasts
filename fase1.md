@@ -1,5 +1,7 @@
 # Fase 1 - Setup + Auth + Clientes (15% de la app)
 
+> Nota de control: este porcentaje es historico. Desde 2026-10-05 el avance aceptado del MVP se mide en `docs/producto/mvp.md` y `docs/producto/avance.md`. Las brechas de cierre de esta fase se gestionan en `docs/incrementos/INC-00-estabilizacion-fases-1-2/`.
+
 ## Objetivo
 Setup completo de ambos repos, autenticación para los 3 roles y gestión básica de clientes con ficha única.
 

@@ -1,3 +1,4 @@
+@inc00
 Feature: Gestión de Clientes
   Como dueño o recepcionista del gimnasio
   Quiero gestionar los clientes del gimnasio
@@ -115,7 +116,7 @@ Feature: Gestión de Clientes
   Scenario: Paginación funciona correctamente
     Given soy un usuario autenticado como DUENO
     And existen múltiples clientes registrados
-    When busco clientes con página 1 y límite 2
+    When busco clientes con página "1" y límite "2"
     Then el sistema retorna máximo 2 clientes
     And el sistema indica el total de registros
 
@@ -148,7 +149,7 @@ Feature: Gestión de Clientes
     Given soy un usuario autenticado como DUENO
     And existe un cliente con cédula "1122334455"
     When consulto la ficha del cliente
-    Then la ficha muestra datos personales, sede, estado, rutina activa y plan nutricional
+    Then la ficha muestra datos personales, sede y estado
 
   Scenario: Ficha de cliente inexistente retorna 404
     Given soy un usuario autenticado como DUENO

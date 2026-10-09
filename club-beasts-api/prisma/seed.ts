@@ -33,6 +33,40 @@ async function main() {
   });
 
   console.log("Admin creado:", { email: admin.email, rol: admin.rol });
+
+  // Crear recepcionista
+  const recepHashed = await bcrypt.hash("recep123", 10);
+  const recepcionista = await prisma.user.upsert({
+    where: { email: "recep@clubbeasts.com" },
+    update: {},
+    create: {
+      email: "recep@clubbeasts.com",
+      contrasena: recepHashed,
+      nombre: "María García",
+      rol: "RECEPCIONISTA",
+    },
+  });
+
+  console.log("Recepcionista creado:", { email: recepcionista.email, rol: recepcionista.rol });
+
+  // Crear cliente de prueba
+  const clienteHashed = await bcrypt.hash("1234", 10);
+  const cliente = await prisma.cliente.upsert({
+    where: { cedula: "1234567890" },
+    update: {},
+    create: {
+      cedula: "1234567890",
+      nombres: "Carlos",
+      apellidos: "Rodríguez",
+      telefono: "3001234567",
+      email: "carlos@test.com",
+      sedeId: "sede-1",
+      pin: clienteHashed,
+      estado: "ACTIVO",
+    },
+  });
+
+  console.log("Cliente creado:", { cedula: cliente.cedula, nombre: `${cliente.nombres} ${cliente.apellidos}` });
 }
 
 main()

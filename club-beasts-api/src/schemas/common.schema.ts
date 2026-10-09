@@ -28,6 +28,23 @@ export const namesSchema = z
   .max(100, "No puede exceder 100 caracteres")
   .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, "Solo puede contener letras y espacios");
 
+/**
+ * Fabrica el schema de nombres/apellidos distinguiendo el mensaje de error por campo
+ * (HU-04 / escenario Gherkin C05): "Nombres solo pueden contener letras y espacios" y
+ * "Apellidos solo pueden contener letras y espacios". Misma regex y mismos mensajes
+ * de requerido/longitud que `namesSchema`.
+ */
+export function namesSchemaFor(label: "Nombres" | "Apellidos") {
+  return z
+    .string()
+    .min(1, "Campo requerido")
+    .max(100, "No puede exceder 100 caracteres")
+    .regex(
+      /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/,
+      `${label} solo pueden contener letras y espacios`
+    );
+}
+
 export const clienteEstadoEnum = z.enum([
   "NUEVO",
   "ACTIVO",

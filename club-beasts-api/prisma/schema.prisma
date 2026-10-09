@@ -17,27 +17,84 @@ model Sede {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  contrasena  String
-  nombre      String
-  rol         String   // DUENO | RECEPCIONISTA
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                   String               @id @default(cuid())
+  email                String               @unique
+  contrasena           String
+  nombre               String
+  rol                  String               // DUENO | RECEPCIONISTA
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  membresiasCreadas    MembresiaGym[]       @relation("MembresiaCreadaPor")
+  membresiasActualizadas MembresiaGym[]     @relation("MembresiaActualizadaPor")
+  cambiosActor         MembresiaGymCambio[] @relation("MembresiaCambioActor")
+  clientesCreados      Cliente[]            @relation("ClienteCreadoPor")
+  clientesActualizados Cliente[]            @relation("ClienteActualizadoPor")
+  clientesPinReset     Cliente[]            @relation("ClientePinResetPor")
 }
 
 model Cliente {
-  id            String     @id @default(cuid())
-  cedula        String     @unique
-  nombres       String
-  apellidos     String
-  telefono      String
-  email         String?
-  sedeId        String
-  sede          Sede       @relation(fields: [sedeId], references: [id])
-  pin           String
-  estado        String     @default("NUEVO") // NUEVO | ACTIVO | SUSPENDIDO | RETIRADO | INACTIVO
-  observaciones String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id              String           @id @default(cuid())
+  cedula          String           @unique
+  nombres         String
+  apellidos       String
+  telefono        String
+  email           String?
+  sedeId          String
+  sede            Sede             @relation(fields: [sedeId], references: [id])
+  pin             String
+  debeCambiarPin  Boolean          @default(true)
+  estado          String           @default("NUEVO") // NUEVO | ACTIVO | SUSPENDIDO | RETIRADO | INACTIVO
+  observaciones   String?
+  creadoPorId     String?
+  creadoPor       User?            @relation("ClienteCreadoPor", fields: [creadoPorId], references: [id])
+  actualizadoPorId String?
+  actualizadoPor  User?            @relation("ClienteActualizadoPor", fields: [actualizadoPorId], references: [id])
+  pinResetPorId   String?
+  pinResetPor     User?            @relation("ClientePinResetPor", fields: [pinResetPorId], references: [id])
+  pinResetAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  membresias      MembresiaGym[]
+}
+
+model MembresiaGym {
+  id              String             @id @default(cuid())
+  clienteId       String
+  cliente         Cliente            @relation(fields: [clienteId], references: [id])
+  fechaInicio     String             // YYYY-MM-DD
+  fechaFin        String             // YYYY-MM-DD (inclusivo)
+  tipoServicio    String             @default("GYM") // GYM | PERSONALIZADO | NUTRICION (DEC-004)
+  creadoPorId     String
+  creadoPor       User               @relation("MembresiaCreadaPor", fields: [creadoPorId], references: [id])
+  actualizadoPorId String
+  actualizadoPor  User               @relation("MembresiaActualizadaPor", fields: [actualizadoPorId], references: [id])
+  version         Int                @default(1)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  cambios         MembresiaGymCambio[]
+
+  @@index([clienteId, fechaInicio])
+}
+
+model MembresiaGymCambio {
+  id                  String         @id @default(cuid())
+  membresiaId         String
+  membresia           MembresiaGym   @relation(fields: [membresiaId], references: [id])
+  actorId             String
+  actor               User           @relation("MembresiaCambioActor", fields: [actorId], references: [id])
+  accion              String         // CREACION | EDICION | CONGELACION | DESCONGELACION | EDICION_CONGELACION
+  motivo              String?        // CONGELACION y EDICION_CONGELACION: 1-500, requerido (HU-15 b2);
+                                     // DESCONGELACION: opcional, puede quedar null (DEC-024);
+                                     // CREACION | EDICION: null
+  congelacionInicio   String?        // YYYY-MM-DD, rango de la pausa: CONGELACION (creado),
+                                     // EDICION_CONGELACION (rango nuevo), DESCONGELACION (rango revertido)
+  congelacionFin      String?        // YYYY-MM-DD, idem congelacionInicio
+  version             Int
+  fechaInicioAnterior String?
+  fechaFinAnterior    String?
+  fechaInicioNueva    String
+  fechaFinNueva       String
+  createdAt           DateTime       @default(now())
+
+  @@unique([membresiaId, version])
 }

@@ -5,6 +5,8 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, Input, Button } from "@/components";
+import SessionExpiredBanner from "@/components/SessionExpiredBanner";
+import { resolvePostLoginPath } from "@/lib/redirect";
 
 export default function LoginClientePage() {
   const router = useRouter();
@@ -35,7 +37,8 @@ export default function LoginClientePage() {
       if (result?.error) {
         setError("Cedula o PIN invalido");
       } else {
-        router.push("/portal");
+        // INC00-AUTH-03: regresa a la pantalla original cuando aplica.
+        router.push(resolvePostLoginPath("/portal"));
         router.refresh();
       }
     } catch {
@@ -56,6 +59,9 @@ export default function LoginClientePage() {
         </div>
 
         <Card padding="lg">
+          {/* INC00-AUTH-02: mensaje aprobado tras una recuperación de sesión. */}
+          <SessionExpiredBanner />
+
           {error && (
             <div className="mb-6 p-3 bg-red-500/20 text-red-400 rounded-card text-sm">
               {error}

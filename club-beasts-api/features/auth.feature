@@ -1,3 +1,4 @@
+@inc00
 Feature: Autenticación
   Como dueño o recepcionista del gimnasio
   Quiero iniciar sesión con mis credenciales

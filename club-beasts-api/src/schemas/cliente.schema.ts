@@ -3,14 +3,14 @@ import {
   cedulaSchema,
   telefonoSchema,
   emailSchema,
-  namesSchema,
+  namesSchemaFor,
   clienteEstadoEnum,
 } from "./common.schema.js";
 
 export const createClienteSchema = z.object({
   cedula: cedulaSchema,
-  nombres: namesSchema.describe("Nombres son requeridos"),
-  apellidos: namesSchema.describe("Apellidos son requeridos"),
+  nombres: namesSchemaFor("Nombres").describe("Nombres son requeridos"),
+  apellidos: namesSchemaFor("Apellidos").describe("Apellidos son requeridos"),
   telefono: telefonoSchema,
   email: emailSchema,
   sedeId: z
@@ -24,25 +24,35 @@ export const createClienteSchema = z.object({
     .or(z.literal("")),
 });
 
+/**
+ * INC00-CLI-03: limpieza intencional de opcionales en la actualizacion.
+ * `""` y strings en blanco se convierten en `null` antes de validar.
+ */
+const blankToNull = (value: unknown): unknown =>
+  typeof value === "string" && value.trim() === "" ? null : value;
+
 export const updateClienteSchema = z.object({
-  nombres: namesSchema.optional(),
-  apellidos: namesSchema.optional(),
+  nombres: namesSchemaFor("Nombres").optional(),
+  apellidos: namesSchemaFor("Apellidos").optional(),
   telefono: z
     .string()
     .regex(/^3\d{9}$/, "Teléfono debe ser móvil colombiano (3XXXXXXXXX)")
     .optional(),
-  email: emailSchema.nullable(),
+  email: z.preprocess(blankToNull, emailSchema.nullable()),
   sedeId: z
     .string()
     .max(36, "sedeId excede longitud máxima")
     .optional(),
   estado: clienteEstadoEnum.optional(),
-  observaciones: z
-    .string()
-    .max(500, "Observaciones no pueden exceder 500 caracteres")
-    .optional()
-    .or(z.literal(""))
-    .nullable(),
+  observaciones: z.preprocess(
+    blankToNull,
+    z
+      .string()
+      .max(500, "Observaciones no pueden exceder 500 caracteres")
+      .optional()
+      .or(z.literal(""))
+      .nullable()
+  ),
 });
 
 export const searchClientesSchema = z.object({

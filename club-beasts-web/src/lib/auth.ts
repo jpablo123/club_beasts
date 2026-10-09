@@ -3,6 +3,11 @@ import Credentials from "next-auth/providers/credentials";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+const nextAuthSecret = process.env.NEXTAUTH_SECRET;
+if (!nextAuthSecret) {
+  throw new Error("NEXTAUTH_SECRET no está configurado. Define la variable de entorno antes de iniciar.");
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -20,7 +25,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const loginType = credentials.loginType as string;
 
         if (loginType === "cliente") {
-          // Login de cliente con cédula + PIN
           const cedula = credentials.cedula as string;
           const pin = credentials.pin as string;
 
@@ -42,12 +46,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               email: data.cliente.cedula,
               role: "CLIENTE",
               token: data.token,
+              tokenExpiresAt: data.tokenExpiresAt,
+              debeCambiarPin: data.cliente.debeCambiarPin,
             };
           } catch {
             return null;
           }
         } else {
-          // Login de dueño/recepcionista con email + contraseña
           const email = credentials.email as string;
           const password = credentials.password as string;
 
@@ -69,6 +74,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               email: data.user.email,
               role: data.user.rol,
               token: data.token,
+              tokenExpiresAt: data.tokenExpiresAt,
+              debeCambiarPin: false,
             };
           } catch {
             return null;
@@ -78,16 +85,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
-        token.role = (user as any).role;
-        token.apiToken = (user as any).token;
+        token.role = (user as { role: string }).role;
+        token.apiToken = (user as { token: string }).token;
+        token.apiTokenExpiresAt = (user as { tokenExpiresAt: number }).tokenExpiresAt;
+        token.debeCambiarPin = (user as { debeCambiarPin: boolean }).debeCambiarPin;
+      }
+      if (trigger === "update" && session?.user) {
+        const s = session.user as { debeCambiarPin?: boolean };
+        if (s.debeCambiarPin !== undefined) {
+          token.debeCambiarPin = s.debeCambiarPin;
+        }
       }
       return token;
     },
     async session({ session, token }) {
       session.user.role = token.role as string;
-      (session.user as any).apiToken = token.apiToken;
+      (session.user as { apiToken: string }).apiToken = token.apiToken as string;
+      (session.user as { apiTokenExpiresAt: number }).apiTokenExpiresAt = token.apiTokenExpiresAt as number;
+      (session.user as { debeCambiarPin: boolean }).debeCambiarPin = token.debeCambiarPin as boolean;
       return session;
     },
   },
@@ -97,5 +114,5 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET || "club-beasts-nextauth-secret",
+  secret: nextAuthSecret,
 });

@@ -1,18 +1,19 @@
 import { test, expect } from "@playwright/test";
 
+async function loginAsClient(page: import("@playwright/test").Page) {
+  await page.goto("/login-cliente");
+  await page.getByPlaceholder("Ingresa tu cedula").fill("1234567890");
+  await page.getByPlaceholder("****").fill("1234");
+  await page.getByRole("button", { name: "Ingresar" }).click();
+  await expect(page).toHaveURL(/.*portal/);
+}
+
 test.describe("Portal del Cliente", () => {
   test("muestra información del cliente autenticado", async ({ page }) => {
-    // Login como cliente (necesitamos un cliente de prueba)
-    await page.goto("/login-cliente");
-    await page.fill('input[placeholder="Ingrese su cédula"]', "1234567890");
-    await page.fill('input[placeholder="****"]', "1234");
-    await page.click('button[type="submit"]');
+    await loginAsClient(page);
 
-    // Verificar que redirige al portal
-    await expect(page).toHaveURL(/.*portal/);
-
-    // Verificar que muestra información del cliente
-    await expect(page.locator("h1, h2").first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Mi Portal" })).toBeVisible();
+    await expect(page.getByText("Carlos Rodriguez", { exact: true })).toBeVisible();
   });
 
   test("portal sin sesión redirige a login", async ({ page }) => {
@@ -21,13 +22,10 @@ test.describe("Portal del Cliente", () => {
   });
 
   test("portal muestra secciones de información", async ({ page }) => {
-    // Login primero
-    await page.goto("/login-cliente");
-    await page.fill('input[placeholder="Ingrese su cédula"]', "1234567890");
-    await page.fill('input[placeholder="****"]', "1234");
-    await page.click('button[type="submit"]');
+    await loginAsClient(page);
 
-    // Verificar secciones del portal
-    await expect(page.locator("text=Mi Perfil").or(page.locator("text=Datos Personales"))).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Mi Informacion" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Mi Rutina" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Plan Nutricional" })).toBeVisible();
   });
 });

@@ -83,14 +83,49 @@ describe("Clientes", () => {
     expect(body.estado).toBe("NUEVO");
   });
 
-  it("buscar clientes", async () => {
+  it("buscar clientes incluye el termino coincidente y excluye el no coincidente", async () => {
+    const termino = `Zqfilter${String(Date.now()).split("").map((d) => "abcdefghij"[Number(d)]).join("")}`;
+    const cedulaIncluida = uniqueCedula();
+    const cedulaExcluida = uniqueCedula();
+
+    const incluidoRes = await app.inject({
+      method: "POST",
+      url: "/clientes",
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        cedula: cedulaIncluida,
+        nombres: termino,
+        apellidos: "Incluido",
+        telefono: "3001234567",
+        sedeId: "sede-1",
+      },
+    });
+    expect(incluidoRes.statusCode).toBe(201);
+
+    const excluidoRes = await app.inject({
+      method: "POST",
+      url: "/clientes",
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        cedula: cedulaExcluida,
+        nombres: "Otro",
+        apellidos: "Excluido",
+        telefono: "3001234568",
+        sedeId: "sede-1",
+      },
+    });
+    expect(excluidoRes.statusCode).toBe(201);
+
     const res = await app.inject({
       method: "GET",
-      url: "/clientes",
+      url: `/clientes?search=${termino}&limit=100`,
       headers: { authorization: `Bearer ${token}` },
     });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
+    const ids = body.clientes.map((c: any) => c.id);
     expect(body.clientes.length).toBeGreaterThan(0);
+    expect(ids).toContain(JSON.parse(incluidoRes.body).id);
+    expect(ids).not.toContain(JSON.parse(excluidoRes.body).id);
   });
 });

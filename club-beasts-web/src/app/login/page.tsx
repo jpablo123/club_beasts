@@ -5,6 +5,8 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, Input, Button } from "@/components";
+import SessionExpiredBanner from "@/components/SessionExpiredBanner";
+import { resolvePostLoginPath } from "@/lib/redirect";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,7 +31,8 @@ export default function LoginPage() {
       if (result?.error) {
         setError("Credenciales invalidas");
       } else {
-        router.push("/clientes");
+        // INC00-AUTH-03: regresa a la pantalla original cuando aplica.
+        router.push(resolvePostLoginPath("/clientes"));
         router.refresh();
       }
     } catch {
@@ -50,6 +53,9 @@ export default function LoginPage() {
         </div>
 
         <Card padding="lg">
+          {/* INC00-AUTH-02: mensaje aprobado tras una recuperación de sesión. */}
+          <SessionExpiredBanner />
+
           {error && (
             <div className="mb-6 p-3 bg-red-500/20 text-red-400 rounded-card text-sm">
               {error}

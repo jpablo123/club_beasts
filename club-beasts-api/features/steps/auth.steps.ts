@@ -1,16 +1,18 @@
 import { Given, When, Then } from "@cucumber/cucumber";
 import { expect } from "vitest";
-import type { ApiWorld } from "../support/world.ts";
+import bcrypt from "bcryptjs";
+import type { ApiWorld } from "../support/world";
+import prisma from "../../src/lib/prisma";
 
 let app: any = null;
 
 async function getApp() {
   if (!app) {
     const Fastify = (await import("fastify")).default;
-    const { default: prismaPlugin } = await import("../../src/plugins/prisma.js");
-    const { default: authPlugin } = await import("../../src/plugins/auth.js");
-    const { default: authRoutes } = await import("../../src/routes/auth.js");
-    const { default: clienteRoutes } = await import("../../src/routes/clientes.js");
+    const { default: prismaPlugin } = await import("../../src/plugins/prisma");
+    const { default: authPlugin } = await import("../../src/plugins/auth");
+    const { default: authRoutes } = await import("../../src/routes/auth");
+    const { default: clienteRoutes } = await import("../../src/routes/clientes");
 
     app = Fastify();
     await app.register(prismaPlugin);
@@ -61,10 +63,6 @@ Then("el sistema muestra error {string}", function (this: ApiWorld, errorMsg: st
   expect(body.error).toContain(errorMsg);
 });
 
-Then("el sistema retorna estado {int}", function (this: ApiWorld, statusCode: number) {
-  expect(this.response.statusCode).toBe(statusCode);
-});
-
 // Client login steps
 Given(
   "un cliente registrado con cédula {string} y PIN {string}",
@@ -92,9 +90,30 @@ Then("el sistema retorna los datos del cliente", function (this: ApiWorld) {
   expect(body.cliente.cedula).toBeDefined();
 });
 
-// Reset PIN steps
+/**
+ * R7/A13 - el paso original solo guardaba el id, asi que `POST /auth/reset-pin`
+ * respondia 404 y el escenario fallaba aunque el runner arrancara. Ahora se
+ * crea el cliente real con ese id exacto (fixture deterministico DEC-013); los
+ * hooks `Before`/`After` de `world.ts` lo eliminan al terminar el escenario.
+ */
 Given("existe un cliente con id {string}", async function (this: ApiWorld, clienteId: string) {
   this.clienteId = clienteId;
+
+  const hashedPin = await bcrypt.hash("1234", 10);
+  await prisma.cliente.upsert({
+    where: { id: clienteId },
+    update: { pin: hashedPin, estado: "NUEVO" },
+    create: {
+      id: clienteId,
+      cedula: "9999999999",
+      nombres: "Cliente",
+      apellidos: "Reset",
+      telefono: "3001111111",
+      sedeId: "sede-1",
+      pin: hashedPin,
+      estado: "NUEVO",
+    },
+  });
 });
 
 When(

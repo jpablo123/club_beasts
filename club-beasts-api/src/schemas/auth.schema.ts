@@ -34,6 +34,18 @@ export const resetPinSchema = z.object({
     .regex(/^\d{4}$/, "PIN debe ser de 4 dígitos"),
 });
 
+export const changePinSchema = z.object({
+  currentPin: z
+    .string({ required_error: "PIN actual es requerido" })
+    .min(1, "PIN actual es requerido")
+    .regex(/^\d{4}$/, "PIN debe ser de 4 dígitos"),
+  newPin: z
+    .string({ required_error: "Nuevo PIN es requerido" })
+    .min(1, "Nuevo PIN es requerido")
+    .regex(/^\d{4}$/, "PIN debe ser de 4 dígitos"),
+});
+
 export type LoginUser = z.infer<typeof loginUserSchema>;
 export type LoginClient = z.infer<typeof loginClientSchema>;
 export type ResetPin = z.infer<typeof resetPinSchema>;
+export type ChangePin = z.infer<typeof changePinSchema>;

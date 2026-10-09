@@ -1,16 +1,16 @@
 import { Given, When, Then } from "@cucumber/cucumber";
 import { expect } from "vitest";
-import type { ApiWorld } from "../support/world.ts";
+import type { ApiWorld } from "../support/world";
 
 let app: any = null;
 
 async function getApp() {
   if (!app) {
     const Fastify = (await import("fastify")).default;
-    const { default: prismaPlugin } = await import("../../src/plugins/prisma.js");
-    const { default: authPlugin } = await import("../../src/plugins/auth.js");
-    const { default: authRoutes } = await import("../../src/routes/auth.js");
-    const { default: clienteRoutes } = await import("../../src/routes/clientes.js");
+    const { default: prismaPlugin } = await import("../../src/plugins/prisma");
+    const { default: authPlugin } = await import("../../src/plugins/auth");
+    const { default: authRoutes } = await import("../../src/routes/auth");
+    const { default: clienteRoutes } = await import("../../src/routes/clientes");
 
     app = Fastify();
     await app.register(prismaPlugin);
@@ -79,6 +79,9 @@ When(
     sedeId: string
   ) {
     const server = await getApp();
+    // R7/C01: el escenario "Crear un cliente nuevo" verifica despues el PIN por
+    // defecto con `this.cedula`; sin este asignacion el paso leia `undefined`.
+    this.cedula = cedula;
     this.response = await server.inject({
       method: "POST",
       url: "/clientes",
@@ -100,6 +103,7 @@ When(
     sedeId: string
   ) {
     const server = await getApp();
+    this.cedula = cedula;
     this.response = await server.inject({
       method: "POST",
       url: "/clientes",
@@ -206,9 +210,8 @@ When("intento editar un cliente con id {string}", async function (this: ApiWorld
   });
 });
 
-Then("el sistema retorna estado {int}", function (this: ApiWorld, statusCode: number) {
-  expect(this.response.statusCode).toBe(statusCode);
-});
+// R4: "el sistema retorna estado {int}" vive ahora solo en
+// features/steps/comunes.steps.ts (definicion unica, sin ambiguedad).
 
 Given("existen clientes registrados", async function (this: ApiWorld) {
   const server = await getApp();
@@ -391,7 +394,7 @@ When(
 );
 
 Then(
-  "la ficha muestra datos personales, sede, estado, rutina activa y plan nutricional",
+  "la ficha muestra datos personales, sede y estado",
   function (this: ApiWorld) {
     expect(this.response.statusCode).toBe(200);
     const body = JSON.parse(this.response.body);

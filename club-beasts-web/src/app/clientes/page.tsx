@@ -2,8 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { api, type ApiError } from "@/lib/api";
 import { Card, Button, Badge, Input, Select, Navbar, PageHeader } from "@/components";
+import {
+  TAMANO_PAGINA_CLIENTES,
+  construirParamsClientes,
+  puedeAvanzarPagina,
+  puedeRetrocederPagina,
+  textoPagina,
+  OPCIONES_SEDE_FILTRO,
+} from "@/lib/clientes-lista";
 
 interface Cliente {
   id: string;
@@ -28,22 +36,62 @@ export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [search, setSearch] = useState("");
   const [estado, setEstado] = useState("");
+  const [sedeId, setSedeId] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const fetchClientes = async () => {
     setLoading(true);
+    setError("");
     try {
-      const data = await api.clientes.list({ search, estado });
+      const data = (await api.clientes.list(
+        construirParamsClientes({
+          search,
+          estado,
+          sedeId,
+          page,
+          limit: TAMANO_PAGINA_CLIENTES,
+        })
+      )) as { clientes: Cliente[]; total?: number; pages?: number };
       setClientes(data.clientes);
+      setTotal(typeof data.total === "number" ? data.total : data.clientes.length);
+      setPages(typeof data.pages === "number" && data.pages > 0 ? data.pages : 1);
     } catch (err) {
-      console.error(err);
+      // INC00-AUTH-06: el error (p. ej. de red) se muestra en la UI y ofrece
+      // reintento; la sesión no se cierra por un fallo de red.
+      const apiErr = err as ApiError;
+      setClientes([]);
+      setError(
+        apiErr.message || "No se pudo conectar con el servidor. Intenta de nuevo."
+      );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
+  // INC00-CLI-05: cualquier cambio de filtro o de pagina vuelve a consultar.
   useEffect(() => {
     fetchClientes();
-  }, [search, estado]);
+  }, [search, estado, sedeId, page]);
+
+  // Los filtros siempre reinician la paginacion a la pagina 1.
+  const cambiarSearch = (valor: string) => {
+    setPage(1);
+    setSearch(valor);
+  };
+
+  const cambiarEstado = (valor: string) => {
+    setPage(1);
+    setEstado(valor);
+  };
+
+  const cambiarSede = (valor: string) => {
+    setPage(1);
+    setSedeId(valor);
+  };
 
   const estadoOptions = [
     { value: "", label: "Todos los estados" },
@@ -75,20 +123,46 @@ export default function ClientesPage() {
             }
           />
 
+          {error && (
+            <div
+              role="alert"
+              className="mb-6 p-3 bg-red-500/10 border border-red-500/30 rounded-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+            >
+              <p className="text-red-400 text-sm">{error}</p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => fetchClientes()}
+              >
+                Reintentar
+              </Button>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="flex-1">
               <Input
                 type="text"
                 placeholder="Buscar por cedula o nombre..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => cambiarSearch(e.target.value)}
               />
             </div>
             <div className="w-full sm:w-48">
               <Select
+                aria-label="Filtrar por estado"
                 value={estado}
-                onChange={(e) => setEstado(e.target.value)}
+                onChange={(e) => cambiarEstado(e.target.value)}
                 options={estadoOptions}
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <Select
+                aria-label="Filtrar por sede"
+                value={sedeId}
+                onChange={(e) => cambiarSede(e.target.value)}
+                options={OPCIONES_SEDE_FILTRO}
               />
             </div>
           </div>
@@ -97,7 +171,7 @@ export default function ClientesPage() {
             <div className="text-center py-12">
               <p className="text-gray-400">Cargando clientes...</p>
             </div>
-          ) : clientes.length === 0 ? (
+          ) : error ? null : clientes.length === 0 ? (
             <Card padding="lg">
               <p className="text-gray-400 text-center">No se encontraron clientes</p>
             </Card>
@@ -141,6 +215,36 @@ export default function ClientesPage() {
                 </table>
               </div>
             </Card>
+          )}
+
+          {/* INC00-CLI-05: paginacion real con page/limit/pages/total */}
+          {!loading && !error && pages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
+              <div className="flex items-center gap-3 text-sm text-gray-400">
+                <span>{textoPagina(page, pages)}</span>
+                <span>{total} resultados</span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={!puedeRetrocederPagina(page)}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={!puedeAvanzarPagina(page, pages)}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </div>

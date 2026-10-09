@@ -4,6 +4,7 @@ import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
 import authRoutes from "./routes/auth.js";
 import clienteRoutes from "./routes/clientes.js";
+import membresiaRoutes from "./routes/membresia.js";
 
 const server = Fastify({
   logger: true,
@@ -21,6 +22,7 @@ async function start() {
 
   await server.register(authRoutes);
   await server.register(clienteRoutes);
+  await server.register(membresiaRoutes);
 
   server.get("/health", async () => ({ status: "ok" }));
 
