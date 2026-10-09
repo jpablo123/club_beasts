@@ -36,9 +36,19 @@ Este registro evita que los agentes resuelvan la misma duda de formas distintas.
 
 Resueltas el 2026-10-08: PEND-002 -> DEC-017, PEND-004 -> DEC-018, PEND-005 -> DEC-019, PEND-006 -> DEC-020, ruta de PEND-003 -> DEC-021.
 
+Bloque nuevo el 2026-10-09: `INC03-PEND-01..08`, formuladas en `docs/incrementos/INC-03-vencimiento-recepcion-portal/spec.md` (seccion "Decisiones pendientes"). Dejan `INC-03` en `BLOQUEADO`; al resolverse, el spec pasa a `LISTO` sin reescritura estructural. Texto completo y contexto de cada una en el spec.
+
 | ID | Decision pendiente | Opciones | Responsable |
 |---|---|---|---|
 | PEND-003 | Campos exactos de anamnesis (ruta ya fijada en DEC-021; se resuelve al especificar el incremento de bloque 5) | Formulario minimo / formulario completo del gimnasio | Producto + Analista |
+| INC03-PEND-01 | HU-16: que se bloquea exactamente cuando una vigencia esta `VENCIDA` y en que punto (login, portal o ingreso) | (A) rechazar login con `VIGENCIA_VENCIDA`; (B) login ok, portal sin acceso y recepcion rechaza ingreso; (C) mixta | Producto + Orquestador |
+| INC03-PEND-02 | HU-16: cliente con GYM vencido y NUTRICION vigente puede autenticarse y usar el servicio vigente | (a) si, accede al vigente; (b) no, cualquier vencido bloquea; (c) regla por tipo de servicio | Producto |
+| INC03-PEND-03 | HU-29: que es una "alerta operativa no sensible" y de donde sale | (a) derivada de estados; (b) texto libre de recepcion (sumaria modelo+endpoint); (c) ambos | Producto (+Backend si (b)) |
+| INC03-PEND-04 | HU-29: se crea el campo `Cliente.foto` (URL) en INC-03 | (a) si, migracion; (b) no, `foto: null` siempre | Producto + database-admin |
+| INC03-PEND-05 | HU-30: cliente `SUSPENDIDO`/`RETIRADO` con membresia activa puede registrar ingreso | (a) si, solo cuenta la membresia (literal HU-30); (b) no, `403 INGRESO_NO_PERMITIDO` | Producto |
+| INC03-PEND-06 | HU-31: `sedeId` obligatorio en la creacion rapida o default de la sede del recepcionista | (a) obligatorio (minimo 5 campos); (b) default (minimo 4) | Producto + Backend |
+| INC03-PEND-07 | HU-31: la marca "perfil pendiente" es campo nuevo o derivacion de datos faltantes | (a) campo `Cliente.perfilPendiente`; (b) derivacion sin columna | Producto + database-admin |
+| INC03-PEND-08 | HU-31: que condicion limpia `perfilPendiente` | (a) cualquier PATCH del dueño; (b) tener email; (c) email + observaciones; (d) accion manual | Producto |
 
 ## Reglas de resolucion
 
