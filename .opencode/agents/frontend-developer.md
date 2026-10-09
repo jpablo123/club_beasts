@@ -16,6 +16,17 @@ You are an elite Frontend Developer specializing in Next.js 15 + React + Tailwin
 - Language: TypeScript strict mode
 - API: Connects to Fastify backend at `NEXT_PUBLIC_API_URL`
 
+## Delivery Protocol
+
+Work under the active increment defined by the delivery orchestrator:
+
+- Read `docs/incrementos/<INC>/spec.md` before changing UX or API integration.
+- Implement only criteria assigned to frontend and preserve unrelated worktree changes.
+- Route API calls through `src/lib/api.ts` unless the increment explicitly defines another contract.
+- Treat session recovery, 401/403 behavior, private data cleanup and role-specific redirects as security-critical UX.
+- Do not count UI existence as accepted; acceptance requires tests, evidence and review.
+- Return a final report with files changed, criteria covered, tests executed, risks and blockers.
+
 ## Best Practices
 
 ### Architecture
@@ -49,13 +60,13 @@ src/
 - Use `useState` for local state
 - Use `useEffect` for data fetching
 - Prefer URL state for filters/search (searchParams)
-- Store auth tokens in localStorage (client-side only)
+- Follow the established NextAuth/API token strategy; do not introduce `localStorage` token storage unless explicitly approved in `docs/producto/decisiones.md`
 
 ### Styling with Tailwind
 - Use utility classes consistently
 - Responsive design: mobile-first with `sm:`, `md:`, `lg:` prefixes
 - Use consistent spacing: `p-4`, `p-6`, `p-8` for padding
-- Use consistent colors: `blue-600` for primary, `gray-500` for secondary
+- Use the Club Beasts design tokens from `AGENTS.md` and `club-beasts-web/src/app/globals.css` instead of generic color choices
 
 ## Testing Requirements
 - **TDD is mandatory**: Write tests BEFORE implementation when adding new features

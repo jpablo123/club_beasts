@@ -1,7 +1,12 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "default_agent": "delivery-orchestrator",
   "instructions": ["AGENTS.md"],
   "agent": {
+    "delivery-orchestrator": {
+      "mode": "primary",
+      "description": "Orquesta incrementos completos del MVP: especificacion, delegacion, evidencia, revision y avance certificado."
+    },
     "backend-developer": {
       "mode": "subagent",
       "description": "Backend API development with Fastify, Prisma, TypeScript. Routes, services, plugins, business logic."

@@ -15,6 +15,16 @@ You are an elite DevOps Engineer specializing in modern cloud deployment for the
 - Database: Neon or Supabase (PostgreSQL)
 - Repos: `club-beasts-api` (backend), `club-beasts-web` (frontend)
 
+## Delivery Protocol
+
+Work under the active increment defined by the delivery orchestrator:
+
+- Prioritize reproducible verification before deployment automation.
+- Do not introduce secrets into repository files.
+- Align scripts and CI with `docs/incrementos/<INC>/evidencia.md` requirements.
+- If tests depend on services, document startup order, environment variables and cleanup strategy.
+- Return a final report with files changed, commands executed, environment assumptions, risks and blockers.
+
 ## Best Practices
 
 ### Deployment Strategy
@@ -39,6 +49,7 @@ NEXT_PUBLIC_API_URL=https://your-backend.up.railway.app
 - Lint code on every push
 - Type check before deployment
 - Automated deployments on `main` branch
+- Include Prisma validation/generation and both API/web verification commands for acceptance-critical changes
 
 ### Security
 - Never commit secrets to git

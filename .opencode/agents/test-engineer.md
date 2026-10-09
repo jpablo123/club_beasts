@@ -16,6 +16,17 @@ You are an elite Test Engineer specializing in Vitest + Playwright + TDD/ATDD fo
 - Backend testing: `fastify.inject` for HTTP simulation
 - Database: Prisma with SQLite for test isolation
 
+## Delivery Protocol
+
+Work under the active increment defined by the delivery orchestrator:
+
+- Map every test to an increment criterion ID.
+- Write RED tests before implementation when adding or repairing behavior.
+- Do not use empty assertions, optional branches that skip critical checks, or tests that pass with zero relevant fixtures.
+- Prefer deterministic factories or isolated databases over shared development state.
+- Record commands and results in `docs/incrementos/<INC>/evidencia.md` when the orchestrator asks for closure evidence.
+- Return a final report with tests added/changed, commands executed, failures, risks and remaining gaps.
+
 ## Best Practices
 
 ### TDD Workflow (Red-Green-Refactor)
@@ -46,6 +57,8 @@ tests/
 - Use `beforeEach` for fresh test data
 - Mock external dependencies (email, payment, etc.)
 - Never test implementation details, test behavior
+- Never use `expect(true).toBe(true)` or `>= 0` as acceptance evidence for a business criterion
+- Avoid `if (isVisible())` around mandatory E2E steps; a missing step should fail the test
 
 ### Integration Tests (Fastify)
 ```typescript

@@ -45,7 +45,19 @@ This file contains instructions for all agents working on this project.
 
 ## Agent Routing
 
-When a user request comes in, automatically detect which agent should handle it:
+When a user request comes in, the default entry point is `delivery-orchestrator` for any task that affects product scope, implementation, tests, release quality, or MVP progress. The orchestrator delegates to the specialized subagents below.
+
+Simple single-domain requests can go directly to the corresponding specialist, but accepted MVP progress is only certified through the delivery protocol below.
+
+### Delivery Orchestration → `delivery-orchestrator`
+- Convert product goals into increments with clear specifications.
+- Delegate to subagents with explicit criteria, files, constraints, and expected evidence.
+- Maintain `docs/producto/mvp.md`, `docs/producto/decisiones.md`, `docs/producto/avance.md`, and `docs/incrementos/*`.
+- Distinguish implemented, verified, and accepted.
+- Never certify percentage progress without evidence.
+- Block work when product decisions, data rules, permissions, or test isolation are undefined.
+
+When a specialist is needed, use this routing:
 
 ### Backend Tasks → `backend-developer`
 - Create/modify API routes
@@ -98,6 +110,58 @@ When a user request comes in, automatically detect which agent should handle it:
 - Verify test coverage
 
 ## Shared Conventions
+
+### Delivery Protocol
+
+Every non-trivial increment follows this state machine:
+
+```text
+PROPUESTO -> ESPECIFICADO -> LISTO -> RED -> IMPLEMENTADO -> VERIFICADO -> REVISADO -> ACEPTADO
+```
+
+`BLOQUEADO` can be used at any point with a documented reason and owner.
+
+#### Source of Truth
+- `docs/producto/mvp.md`: MVP weights and accepted-progress formula.
+- `docs/producto/decisiones.md`: approved and pending product/technical decisions.
+- `docs/producto/avance.md`: certified progress and blocking gaps.
+- `docs/incrementos/<INC>/spec.md`: acceptance criteria for the active increment.
+- `docs/incrementos/<INC>/tareas.md`: operational backlog by agent.
+- `docs/incrementos/<INC>/evidencia.md`: executed commands, results, review findings, and closure evidence.
+- `fase1.md` and `fase2.md`: historical phase notes, not final percentage authority.
+
+#### Definition of Ready
+- Acceptance criteria are observable and testable.
+- Product decisions that affect permissions, data, or UX are resolved.
+- API contracts are defined before backend/frontend parallel work.
+- Test data, fixtures, and environment assumptions are explicit.
+- Required increment docs exist.
+
+#### Definition of Accepted
+- Every included criterion is verified or removed by explicit scope change.
+- API and web compile where applicable.
+- Critical API behavior has integration tests.
+- Critical user flows have real E2E tests where applicable.
+- Tests do not contain empty assertions or optional steps that hide failures.
+- Review has no blocking findings.
+- `docs/producto/avance.md` is updated with accepted points.
+
+#### Mandatory Task Contract
+When delegating to a subagent, include:
+
+- Active increment and affected criteria IDs.
+- Allowed files or areas.
+- Relevant business rules.
+- Expected tests and verification commands.
+- Explicit non-goals and files not to touch.
+- Required final report: files changed, evidence, risks, and blockers.
+
+#### Progress Accounting
+- **Implemented** means code or UI exists.
+- **Verified** means the behavior has executed evidence.
+- **Accepted** means it satisfies criteria, tests, and review.
+- Only accepted criteria count toward MVP percentage.
+- Do not close mandatory criteria as "postponed" unless the scope is explicitly changed in `docs/producto/decisiones.md` and reflected in the increment spec.
 
 ### Code Style
 - TypeScript strict mode for all code
