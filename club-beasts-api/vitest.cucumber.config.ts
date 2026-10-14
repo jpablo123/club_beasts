@@ -15,8 +15,16 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const compatShimPath = path.resolve(rootDir, "features/support/vitest-compat.ts");
 const vitestCucumberId = /@lotun[\\/]vitest-cucumber/;
 
-/** DEC-014: 28 escenarios expandidos (auth) + 35 (clientes) = 63. */
-const INC00_SCENARIO_COUNT = 63;
+/**
+ * DEC-014: 28 escenarios expandidos (auth) + 35 (clientes) = 63.
+ *
+ * GAP-RED-02 (INC-03): el alcance suma los 63 escenarios nuevos de INC-03
+ * (vencimiento, portal, recepcion consulta/ingresos/rapida), asi que el guard
+ * exige 63 + 63 = **126** escenarios ejecutados. Se SUBE la constante (nunca
+ * se baja): con 63 el guard marcaba exit 1 en toda corrida completa aunque
+ * los 126 escenarios pasaran, porque `executed` era 126.
+ */
+const INC00_SCENARIO_COUNT = 126;
 
 /**
  * `@lotun/vitest-cucumber@0.5.x` apunta a vitest 4/5 y el proyecto usa vitest

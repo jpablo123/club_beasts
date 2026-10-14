@@ -1,0 +1,14 @@
+-- AlterTable
+-- Portabilizado (precedente INC-02/20261008184627 e INC-03/20261013220244): el
+-- motor de Prisma genera RedefineTables (DROP/CREATE de la tabla completa)
+-- por la FK de la relacion opcional User.sede. Aqui se usa ADD COLUMN puro con
+-- REFERENCES inline, soportado por SQLite (dev) y PostgreSQL (prod), sin rewrite
+-- de filas existentes: todos los usuarios existentes quedan sedeId = NULL
+-- (contrato INC-03 #5/DEC-031: si el token no trae sede -> 400 "sedeId es requerido").
+-- ON DELETE SET NULL / ON UPDATE CASCADE = comportamiento por defecto de Prisma
+-- para relaciones opcionales (igual que el RedefineTables generado).
+-- NOTA: SQLite no soporta nombrar constraints en ADD COLUMN (ni ALTER TABLE ADD
+-- CONSTRAINT), por eso la FK va inline sin nombre "User_sedeId_fkey"; Prisma no
+-- exige el nombre en el diff de datamodel. No se crea indice: el motor de Prisma
+-- no lo genera para esta columna y SQLite no auto-indexa FKs.
+ALTER TABLE "User" ADD COLUMN "sedeId" TEXT REFERENCES "Sede" ("id") ON DELETE SET NULL ON UPDATE CASCADE;

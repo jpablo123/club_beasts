@@ -65,6 +65,95 @@ export interface ResultadoPausa {
   } | null;
 }
 
+/**
+ * Estado de acceso del gimnasio expuesto por INC-03 en portal (#1) y
+ * recepcion (#2). El backend calcula el enum; la UI solo lo traduce
+ * (CONF-04). `SIN_VIGENCIA` no existe en `EstadoMembresia` porque describe
+ * la ausencia de cualquier vigencia GYM (`HU25-C06`).
+ */
+export type EstadoAccesoGym = EstadoMembresia | "SIN_VIGENCIA";
+
+export interface RangoCongelacion {
+  fechaInicio: string;
+  fechaFin: string;
+}
+
+/** Respuesta 200 de `GET /portal/resumen` (`portalResumenResponseSchema`). */
+export interface PortalResumen {
+  cliente: {
+    id: string;
+    nombres: string;
+    apellidos: string;
+    cedula: string;
+    sede: { id: string; nombre: string };
+  };
+  estadoAccesoGym: EstadoAccesoGym;
+  /** `fechaFin` en `YYYY-MM-DD`; `null` sin vigencia (HU25-C03/C06). */
+  fechaVencimiento: string | null;
+  /** Solo presente con `estadoAccesoGym = CONGELADO` (HU25-C04). */
+  congelacion: RangoCongelacion | null;
+  fechaActual: string;
+}
+
+/** Alerta operativa no sensible derivada del estado (DEC-028). */
+export interface AlertaRecepcion {
+  codigo: string;
+  mensaje: string;
+}
+
+/** Respuesta 200 de `GET /recepcion/consulta` (`consultaRecepcionResponseSchema`). */
+export interface ConsultaRecepcion {
+  id: string;
+  nombreCompleto: string;
+  cedula: string;
+  sede: { id: string; nombre: string };
+  /** Siempre `null` en INC-03 (DEC-029: no existe `Cliente.foto`). */
+  foto: string | null;
+  estadoAccesoGym: EstadoAccesoGym;
+  fechaVencimiento: string | null;
+  congelacion: RangoCongelacion | null;
+  ultimoIngreso: {
+    fecha: string;
+    hora: string;
+    sede: { id: string; nombre: string };
+  } | null;
+  alertas: AlertaRecepcion[];
+  fechaActual: string;
+}
+
+/** Fila de `Ingreso` (HU-30 / `ingresoResponseSchema`). */
+export interface Ingreso {
+  id: string;
+  clienteId: string;
+  cedula: string;
+  fecha: string;
+  hora: string;
+  sede: { id: string; nombre: string };
+  registradoPor: { id: string; nombre: string };
+  createdAt: string;
+}
+
+/** Respuesta 200 de `GET /recepcion/ingresos` (`ingresosListResponseSchema`). */
+export interface IngresosList {
+  ingresos: Ingreso[];
+  total: number;
+}
+
+/** Respuesta 201 de `POST /recepcion/clientes-rapidos` (`clienteRapidoResponseSchema`). */
+export interface ClienteRapido {
+  id: string;
+  cedula: string;
+  nombres: string;
+  apellidos: string;
+  telefono: string;
+  email: string | null;
+  sede: { id: string; nombre: string };
+  estado: string;
+  perfilPendiente: boolean;
+  observaciones: string | null;
+  creadoPor: { id: string; nombre: string };
+}
+
 function createApiError(
   message: string,
   opts: { code?: string; status?: number; kind?: ApiError["kind"] } = {}
@@ -74,6 +163,18 @@ function createApiError(
   err.status = opts.status;
   err.kind = opts.kind ?? "unknown";
   return err;
+}
+
+/**
+ * Body de un error HTTP como objeto. `JSON.parse` puede devolver escalares o
+ * `null` (respuesta inesperada): en ese caso se trata como objeto vacio para
+ * que `classifyError` siempre produzca un `ApiError` clasificado en vez de
+ * lanzar un `TypeError` al leer `data.code`.
+ */
+function asErrorBody(data: unknown): Record<string, unknown> {
+  return typeof data === "object" && data !== null
+    ? (data as Record<string, unknown>)
+    : {};
 }
 
 function classifyError(status: number, data: Record<string, unknown>): ApiError {
@@ -104,7 +205,21 @@ function classifyError(status: number, data: Record<string, unknown>): ApiError 
   return createApiError(message, { code, status, kind: "server" });
 }
 
-async function fetchApi(endpoint: string, options: RequestInit = {}) {
+/**
+ * Ejecuta una llamada al backend y devuelve el body JSON parseado.
+ *
+ * El body se parsea como `unknown` porque `JSON.parse` no garantiza forma.
+ * `T` es el contrato DTO del endpoint (los schemas de respuesta del backend,
+ * p. ej. `clienteRapidoResponseSchema`); la conversion `unknown -> T` es la
+ * UNICA asercion del modulo y vive solo aqui: el web no valida en runtime
+ * (sin zod), por eso el caller declara el tipo y los call sites quedan
+ * tipados sin casts. El default conserva el comportamiento historico
+ * (`Record<string, unknown>`) para los endpoints sin DTO declarado.
+ */
+async function fetchApi<T = Record<string, unknown>>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
   const session = await getSession();
   const token = (session?.user as { apiToken?: string })?.apiToken ?? null;
 
@@ -132,7 +247,7 @@ async function fetchApi(endpoint: string, options: RequestInit = {}) {
 
   const text = await res.text();
 
-  let data: Record<string, unknown>;
+  let data: unknown;
   try {
     data = JSON.parse(text);
   } catch {
@@ -143,7 +258,7 @@ async function fetchApi(endpoint: string, options: RequestInit = {}) {
   }
 
   if (!res.ok) {
-    const error = classifyError(res.status, data);
+    const error = classifyError(res.status, asErrorBody(data));
 
     // Recuperación centralizada de sesión (INC00-AUTH-01).
     // Solo un 401 de sesión vencida/ausente dispara el cierre de sesión;
@@ -157,7 +272,7 @@ async function fetchApi(endpoint: string, options: RequestInit = {}) {
     throw error;
   }
 
-  return data;
+  return data as T;
 }
 
 export const api = {
@@ -203,8 +318,12 @@ export const api = {
     get: (id: string) => fetchApi(`/clientes/${id}`),
     create: (data: Record<string, unknown>) =>
       fetchApi("/clientes", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: string, data: Record<string, unknown>) =>
-      fetchApi(`/clientes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    // `T` documenta la forma del DTO que devuelve el PATCH (el backend responde
+    // con el select del cliente); default `Record<string, unknown>` para los
+    // call sites que ignoran la respuesta. INC-03 / DEC-033 lo consume como
+    // `ClienteRapido` (contrato fijado por el RED de recepcion-rapida).
+    update: <T = Record<string, unknown>>(id: string, data: Record<string, unknown>) =>
+      fetchApi<T>(`/clientes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   },
   membresias: {
     list: (clienteId: string) =>
@@ -251,6 +370,45 @@ export const api = {
     ) =>
       fetchApi(`/clientes/${clienteId}/vigencias/${membresiaId}/congelacion`, {
         method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+  },
+  // INC-03 (endpoint #1): resumen del portal del cliente, sesion CLIENTE.
+  portal: {
+    resumen: () => fetchApi("/portal/resumen"),
+  },
+  // INC-03 (endpoints #2..#5): superficie de recepcion, sesion staff
+  // (DUENO / RECEPCIONISTA; el CLIENTE queda fuera por middleware + UI).
+  recepcion: {
+    // Cada endpoint declara su DTO de respuesta (mismo schema que valida el
+    // backend), asi los call sites consumen el tipo sin casts intermedios.
+    consulta: (cedula: string) =>
+      fetchApi<ConsultaRecepcion>(
+        `/recepcion/consulta?cedula=${encodeURIComponent(cedula)}`
+      ),
+    registrarIngreso: (data: { cedula: string; sedeId: string }) =>
+      fetchApi<Ingreso>("/recepcion/ingresos", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    listarIngresos: (cedula: string, fecha?: string) => {
+      const query = new URLSearchParams({ cedula });
+      if (fecha) query.set("fecha", fecha);
+      return fetchApi<IngresosList>(`/recepcion/ingresos?${query.toString()}`);
+    },
+    // DEC-031: el minimo son {cedula, nombres, apellidos, telefono};
+    // `sedeId` es opcional (si se omite usa la sede del recepcionista).
+    crearClienteRapido: (data: {
+      cedula: string;
+      nombres: string;
+      apellidos: string;
+      telefono: string;
+      email?: string;
+      observaciones?: string;
+      sedeId?: string;
+    }) =>
+      fetchApi<ClienteRapido>("/recepcion/clientes-rapidos", {
+        method: "POST",
         body: JSON.stringify(data),
       }),
   },

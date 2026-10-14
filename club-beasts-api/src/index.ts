@@ -5,6 +5,8 @@ import authPlugin from "./plugins/auth.js";
 import authRoutes from "./routes/auth.js";
 import clienteRoutes from "./routes/clientes.js";
 import membresiaRoutes from "./routes/membresia.js";
+import portalRoutes from "./routes/portal.js";
+import recepcionRoutes from "./routes/recepcion.js";
 
 const server = Fastify({
   logger: true,
@@ -23,6 +25,8 @@ async function start() {
   await server.register(authRoutes);
   await server.register(clienteRoutes);
   await server.register(membresiaRoutes);
+  await server.register(portalRoutes);
+  await server.register(recepcionRoutes);
 
   server.get("/health", async () => ({ status: "ok" }));
 

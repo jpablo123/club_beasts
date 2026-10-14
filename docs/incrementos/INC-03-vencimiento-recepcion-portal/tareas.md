@@ -2,39 +2,45 @@
 
 ## Estado
 
-Estado actual: **BLOQUEADO** (2026-10-09). Spec, criterios y plantilla de evidencia listos;
-el incremento no entra en ejecucion hasta resolver `INC03-PEND-01..08` (Producto) y ratificar
-el contrato (backend-developer), segun el checklist de la puerta LISTO de `spec.md`.
+Estado actual: **ACEPTADO** (2026-10-14). Historial: BLOQUEADO (2026-10-09) -> LISTO
+(2026-10-10, puerta de entrada completa) -> RED (2026-10-13) -> GREEN + VERIFICADO +
+REVISADO + ACEPTADO (2026-10-14). Pipeline final: API tsc 0/0 + vitest **471/471**,
+Gherkin **126/126 x2** (guard actualizado 63->126), web tsc 0/0 + vitest **174/174** +
+build PASS, Playwright **47/47 x2**, migraciones 8/0 sin drift, revision
+`code-reviewer` **ACEPTA sin hallazgos bloqueantes** (REV-01..REV-05 no bloqueantes).
+Certificacion de puntos: **+11** (HU-16 1 + bloque 4 10, reparto INC03-R05) en
+`docs/producto/auditoria-puntos-inc00.md` seccion 9; total MVP 30 -> **41/100**.
 
 Criterios: **40** (`INC03-VEN-01..05`, `INC03-POR-01..07`, `INC03-REC-01..10`,
-`INC03-ING-01..11`, `INC03-RAP-01..07`); **7 bloqueados** por decision de Producto
-(`VEN-04`, `REC-01`, `REC-05`, `ING-10`, `RAP-01`, `RAP-02`, `RAP-03`).
+`INC03-ING-01..11`, `INC03-RAP-01..07`); **0 bloqueados** (los 7 que dependian de PEND
+quedaron OK con DEC-026..033).
 
 ## Backlog operativo
 
 | # | Tarea | Criterios | Agente | Prioridad | Estado |
 |---:|---|---|---|---|---|
 | 1 | Spec de INC-03 (objetivo, alcance, criterios, contrato API, fixtures, evidencia, riesgos) | todos | acceptance-criteria-analyst | Alta | **Completada (2026-10-09)**: paquete `spec.md` + `tareas.md` + `evidencia.md`; 40 criterios |
-| 2 | Resolver `INC03-PEND-01` y `INC03-PEND-02` (que bloquea VENCIDA y multi-servicio) y registrarlos en `docs/producto/decisiones.md` | `VEN-04` | Producto + Orquestador | **Critica** (bloquea LISTO) | Pendiente |
-| 3 | Resolver `INC03-PEND-03` (definicion de "alerta operativa no sensible") | `REC-05` | Producto | **Critica** (bloquea LISTO) | Pendiente |
-| 4 | Resolver `INC03-PEND-04` (campo `Cliente.foto` si/no) | `REC-01` | Producto + database-admin | **Critica** (bloquea LISTO) | Pendiente |
-| 5 | Resolver `INC03-PEND-05` (estado general `SUSPENDIDO`/`RETIRADO` en el ingreso) | `ING-10` | Producto | **Critica** (bloquea LISTO) | Pendiente |
-| 6 | Resolver `INC03-PEND-06` (`sedeId` obligatorio o sede por defecto en la creacion rapida) | `RAP-01` | Producto + Backend | **Critica** (bloquea LISTO) | Pendiente |
-| 7 | Resolver `INC03-PEND-07` (campo `perfilPendiente` vs derivacion) | `RAP-02` | Producto + database-admin | **Critica** (bloquea LISTO) | Pendiente |
-| 8 | Resolver `INC03-PEND-08` (condicion que limpia `perfilPendiente`) | `RAP-03` | Producto | **Critica** (bloquea LISTO) | Pendiente |
-| 9 | Ratificar el contrato del spec (paths, bodies, errores, orden de evaluacion, mensajes exactos) | todos | backend-developer | Alta (bloquea LISTO) | Pendiente |
-| 10 | Registrar las confirmaciones `CONF-01..06` y el reparto de no-duplicado HU-16 vs bloque 4 | `VEN-01..05` + reparto de puntos | Orquestador | Alta (bloquea LISTO) | Pendiente |
-| 11 | Pasar el incremento a **LISTO** (checklist completo) y habilitar el RED | todos | Orquestador | Alta | Pendiente |
-| 12 | **RED** de API: integracion de `/portal/resumen`, `/recepcion/consulta`, `/recepcion/ingresos` (POST+GET), `/recepcion/clientes-rapidos`, guardas de vigencia y permisos (sin tocar `src/`) | `POR-*`, `REC-*`, `ING-*`, `RAP-*`, `VEN-01..05` | test-engineer | Alta | Pendiente |
-| 13 | **RED** de UI: unit tests del portal con datos reales y de la pantalla de recepcion (consulta, ingreso, alta rapida) | `POR-*`, `REC-*`, `ING-*`, `RAP-*`, `VEN-03` | test-engineer | Alta | Pendiente |
-| 14 | Escenarios **Gherkin** nuevos (`features/*.feature` + `features/steps/*`) para vencimiento, portal, recepcion e ingreso; mantener el guard `test:gherkin` en verde | `VEN-*`, `POR-*`, `REC-*`, `ING-*`, `RAP-*` | test-engineer | Alta | Pendiente |
-| 15 | Migracion Prisma: entidad `Ingreso` + `Cliente.perfilPendiente` (+ `Cliente.foto` si `PEND-04` = si) + fixtures/seed (F1..F14) | `ING-*`, `RAP-01/02` | database-admin | Alta | Pendiente |
-| 16 | **GREEN** API: `routes/recepcion.ts` (consulta, ingresos, clientes-rapidos), `routes/portal.ts` (o equivalente), schemas Zod reutilizando los `HU-XX-schemas.ts` | `POR-*`, `REC-*`, `ING-*`, `RAP-*` | backend-developer | Alta | Pendiente |
-| 17 | **GREEN** API de vencimiento: fuente unica de estado (exportar `pausasActivas`, corregir `cliente.service.ts:144-149`) y guardas de acceso si `PEND-01` lo exige | `VEN-01..05` | backend-developer | Alta | Pendiente |
-| 18 | **GREEN** UI: portal con estado real (eliminar `portal/page.tsx:122`) y pantalla de recepcion (consulta por cedula, registrar ingreso, creacion rapida, marca de perfil pendiente) | `VEN-03`, `POR-*`, `REC-*`, `ING-*`, `RAP-*` | frontend-developer | Alta | Pendiente |
-| 19 | **VERIFICADO**: E2E real de portal y recepcion, bateria completa (API + web + Playwright) y registro en `evidencia.md` | todos | test-engineer | Alta | Pendiente |
-| 20 | **Revision**: seguridad/permisos, DEC-005/006/017/025, no duplicado de puntos, pruebas sin aserciones vacias | todos | code-reviewer | Alta | Pendiente |
-| 21 | Actualizar `docs/producto/avance.md`, `docs/producto/mvp.md` y `docs/producto/auditoria-puntos-inc00.md` con los puntos aceptados (+11 max., solo si la revision no bloquea) | HU-16 + HU-25/29/30/31 | Orquestador (delivery-orchestrator) | Alta | Pendiente |
+| 2 | Resolver `INC03-PEND-01` y `INC03-PEND-02` (que bloquea VENCIDA y multi-servicio) y registrarlos en `docs/producto/decisiones.md` | `VEN-04` | Producto + Orquestador | **Critica** (bloquea LISTO) | **Completada (2026-10-10)**: DEC-026 (opcion B: login intacto; denegacion en portal+ingreso) y DEC-027 (opcion a: acceso al servicio vigente) |
+| 3 | Resolver `INC03-PEND-03` (definicion de "alerta operativa no sensible") | `REC-05` | Producto | **Critica** (bloquea LISTO) | **Completada (2026-10-10)**: DEC-028 (opcion a: derivadas de estado) |
+| 4 | Resolver `INC03-PEND-04` (campo `Cliente.foto` si/no) | `REC-01` | Producto + database-admin | **Critica** (bloquea LISTO) | **Completada (2026-10-10)**: DEC-029 (opcion b: sin columna; `foto` siempre `null`) |
+| 5 | Resolver `INC03-PEND-05` (estado general `SUSPENDIDO`/`RETIRADO` en el ingreso) | `ING-10` | Producto | **Critica** (bloquea LISTO) | **Completada (2026-10-10)**: DEC-030 (opcion b: 403 `INGRESO_NO_PERMITIDO`) |
+| 6 | Resolver `INC03-PEND-06` (`sedeId` obligatorio o sede por defecto en la creacion rapida) | `RAP-01` | Producto + Backend | **Critica** (bloquea LISTO) | **Completada (2026-10-10)**: DEC-031 (opcion b: default del token, minimo 4 campos) |
+| 7 | Resolver `INC03-PEND-07` (campo `perfilPendiente` vs derivacion) | `RAP-02` | Producto + database-admin | **Critica** (bloquea LISTO) | **Completada (2026-10-10)**: DEC-032 (opcion a: campo nuevo) |
+| 8 | Resolver `INC03-PEND-08` (condicion que limpia `perfilPendiente`) | `RAP-03` | Producto | **Critica** (bloquea LISTO) | **Completada (2026-10-10)**: DEC-033 (opcion b: al tener `email`) |
+| 9 | Ratificar el contrato del spec (paths, bodies, errores, orden de evaluacion, mensajes exactos) | todos | backend-developer | Alta (bloquea LISTO) | **Completada (2026-10-10)**: contrato verificado contra `src/`; ajustes en el spec (path `PATCH /clientes/:id`, mensajes exactos con tildes, orden de errores #4/#6, fuente unica de estado con `pausasActivas` exportado, regla de seleccion de vigencia GYM, modelo `Ingreso` con back-relations + indice); 8 incompatibilidades G14 documentadas; celdas PEND luego rellenadas con DEC-026..033 |
+| 10 | Registrar las confirmaciones `CONF-01..06` y el reparto de no-duplicado HU-16 vs bloque 4 | `VEN-01..05` + reparto de puntos | Orquestador | Alta (bloquea LISTO) | **Completada (2026-10-10)**: secciones en `decisiones.md` (CONF ratificadas; no-duplicado: efecto -> HU-16, contrato/pintado -> bloque 4) |
+| 11 | Pasar el incremento a **LISTO** (checklist completo) y habilitar el RED | todos | Orquestador | Alta | **Completada (2026-10-10)**: checklist del spec completa; `BLOQUEADO -> LISTO` |
+| 12 | **RED** de API: integracion de `/portal/resumen`, `/recepcion/consulta`, `/recepcion/ingresos` (POST+GET), `/recepcion/clientes-rapidos`, guardas de vigencia y permisos (sin tocar `src/`) | `POR-*`, `REC-*`, `ING-*`, `RAP-*`, `VEN-01..05` | test-engineer | Alta | **Completada (2026-10-13)**: 5 archivos, 92 tests; base 379 verde; 86 en rojo granular; grep confirma rutas inexistentes |
+| 13 | **RED** de UI: unit tests del portal con datos reales y de la pantalla de recepcion (consulta, ingreso, alta rapida) | `POR-*`, `REC-*`, `ING-*`, `RAP-*`, `VEN-03` | test-engineer | Alta | **Completada (2026-10-13)**: 4 archivos, 26 tests; base 148 verde; 26 en rojo; contratos de UI (aria-labels/botones) fijados en las cabeceras |
+| 14 | Escenarios **Gherkin** nuevos (`features/*.feature` + `features/steps/*`) para vencimiento, portal, recepcion e ingreso; mantener el guard `test:gherkin` en verde | `VEN-*`, `POR-*`, `REC-*`, `ING-*`, `RAP-*` | test-engineer | Alta | **Completada (2026-10-13)**: 5 features + 7 steps, 63 escenarios nuevos en rojo, base 63 verde; traducciones G14 aplicadas; al consolidar GREEN actualizar guard a 126 (GAP-RED-03) |
+| 15 | Migracion Prisma: entidad `Ingreso` + `Cliente.perfilPendiente` (**sin `foto`**: DEC-029) + fixtures/seed (F1..F14) | `ING-*`, `RAP-01/02` | database-admin | Alta | **Completada (2026-10-13)**: migracion `20261013220244` (CREATE TABLE + ADD COLUMN portable), 7/0, sin drift, seed sin cambios; **enmienda pendiente**: `User.sedeId` (GAP-RED-01, DEC-031) |
+| 15b | Enmienda de modelo: `User.sedeId` (default de sede del recepcionista, DEC-031) + backfill del RECEPCIONISTA en el seed | `RAP-01` | database-admin | Alta | **Completada (2026-10-13/14)**: migracion `20261013224545_add_user_sede`, backfill en `prisma/seed.ts` y fixture E2E `start-api-e2e.mjs` (GAP-RED-01 cerrado) |
+| 16 | **GREEN** API: `routes/recepcion.ts` (consulta, ingresos, clientes-rapidos), `routes/portal.ts` (o equivalente), schemas Zod reutilizando los `HU-XX-schemas.ts` | `POR-*`, `REC-*`, `ING-*`, `RAP-*` | backend-developer | Alta | **Completada (2026-10-14)**: rutas/schemas nuevos; fix del select del PATCH (`selectClienteUpdate` con `creadoPor`+`perfilPendiente`, GAP-RED-04 cerrado); vitest 471/471 |
+| 17 | **GREEN** API de vencimiento: fuente unica de estado (exportar `pausasActivas`, corregir `cliente.service.ts:144-149`); **#7 login sin modificacion** (DEC-026) | `VEN-01..05` | backend-developer | Alta | **Completada (2026-10-14)**: fuente unica `resolverEstadoAcceso`; `auth.*` intacto; VEN-05 verificado (mismo estado en ficha/listado/portal/recepcion) |
+| 18 | **GREEN** UI: portal con estado real (eliminar `portal/page.tsx:122`) y pantalla de recepcion (consulta por cedula, registrar ingreso, creacion rapida, marca de perfil pendiente) | `VEN-03`, `POR-*`, `REC-*`, `ING-*`, `RAP-*` | frontend-developer | Alta | **Completada (2026-10-14)**: portal con estado real + `src/app/recepcion/*` + `EstadoAccesoBadge`; tipado del `fetchApi<T>` (0 errores tsc; 174/174; build PASS) |
+| 19 | **VERIFICADO**: E2E real de portal y recepcion, bateria completa (API + web + Playwright) y registro en `evidencia.md` | todos | test-engineer | Alta | **Completada (2026-10-14)**: specs `recepcion.spec.ts` (5), `recepcion-creacion-rapida.spec.ts` (4), `acceso-vencimiento.spec.ts` (3), `portal.spec.ts` extendido (+5); Playwright 47/47 x2; evidencia secciones 1/4/5 registradas; Gherkin 126/126 x2 |
+| 20 | **Revision**: seguridad/permisos, DEC-005/006/017/025, no duplicado de puntos, pruebas sin aserciones vacias | todos | code-reviewer | Alta | **Completada (2026-10-14)**: **ACEPTA sin hallazgos bloqueantes**; REV-01 (MEDIO) y REV-02..05 (BAJO/SUG) pasados a backlog; dictamen en `evidencia.md` seccion 6 |
+| 21 | Actualizar `docs/producto/avance.md`, `docs/producto/mvp.md` y `docs/producto/auditoria-puntos-inc00.md` con los puntos aceptados (+11 max., solo si la revision no bloquea) | HU-16 + HU-25/29/30/31 | Orquestador (delivery-orchestrator) | Alta | **Completada (2026-10-14)**: **+11 certificados** (HU-16 4/4 = 1; bloque 4 = 10 con reparto INC03-R05: HU-25 3 + HU-29 3 + HU-30 3 + HU-31 1); total **41/100** |
 
 ## Orden recomendado
 

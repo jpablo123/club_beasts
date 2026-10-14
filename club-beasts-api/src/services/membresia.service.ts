@@ -15,6 +15,21 @@ export function getTodayBogota(): string {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * INC-03 (CONF-06): hora actual en America/Bogota como `HH:mm:ss`, usada por
+ * `POST /recepcion/ingresos` para la columna `Ingreso.hora`. Misma conversion
+ * que `getTodayBogota` (offset fijo -05:00, DEC-005).
+ */
+export function getHoraBogota(): string {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const bogota = new Date(utc + BOGOTA_OFFSET * 3600000);
+  const hh = String(bogota.getHours()).padStart(2, "0");
+  const mm = String(bogota.getMinutes()).padStart(2, "0");
+  const ss = String(bogota.getSeconds()).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
 export function calcularEstado(
   fechaInicio: string,
   fechaFin: string,
@@ -116,7 +131,7 @@ export function hasOverlap(
 
 type RangoPausa = { congelacionInicio: string; congelacionFin: string };
 
-type FilaCambio = {
+export type FilaCambio = {
   accion: string;
   version: number;
   congelacionInicio: string | null;
@@ -139,7 +154,7 @@ const ACCIONES_PAUSA = new Set([
  * formula `diasDevueltos` (= 0 -> `409 CONGELACION_INEXISTENTE`), que ademas
  * permite descongelar una pausa futura devolviendo los N dias completos.
  */
-function pausaVigente(cambios: FilaCambio[]): RangoPausa | null {
+export function pausaVigente(cambios: FilaCambio[]): RangoPausa | null {
   const secuencia = cambios
     .filter((cambio) => ACCIONES_PAUSA.has(cambio.accion))
     .sort((a, b) => a.version - b.version);
@@ -166,7 +181,7 @@ function pausaVigente(cambios: FilaCambio[]): RangoPausa | null {
  * Se usa para (a) calcular `CONGELADO`, (b) detectar solape con "otra"
  * congelacion (DEC-008) y (c) excluir la pausa que se esta editando.
  */
-function pausasActivas(cambios: FilaCambio[]): RangoPausa[] {
+export function pausasActivas(cambios: FilaCambio[]): RangoPausa[] {
   const activas: RangoPausa[] = [];
   const ordenados = [...cambios].sort((a, b) => a.version - b.version);
 
@@ -204,6 +219,67 @@ function rangosComoPeriodos(
     fechaInicio: rango.congelacionInicio,
     fechaFin: rango.congelacionFin,
   }));
+}
+
+// ─── INC-03 (HU-16 b3): fuente unica de estado de acceso al gym ──────────────
+
+export type EstadoAccesoGym =
+  | "PROGRAMADA"
+  | "ACTIVA"
+  | "VENCIDA"
+  | "CONGELADO"
+  | "SIN_VIGENCIA";
+
+export type ResultadoEstadoAcceso = {
+  estadoAccesoGym: EstadoAccesoGym;
+  /** `fechaFin` de la vigencia elegida; null cuando no hay vigencia GYM. */
+  fechaVencimiento: string | null;
+  /** Rango de la pausa vigente SOLO si `hoy` cae dentro de ella; si no, null. */
+  congelacion: { fechaInicio: string; fechaFin: string } | null;
+};
+
+/**
+ * INC-03 / HU-16 b3 (VEN-05): UNICA fuente del estado que exponen ficha,
+ * listado, portal y recepcion. `calcularEstado` no cambia (INC-02 aceptado);
+ * aqui se le agregan (a) las pausas de la secuencia para detectar CONGELADO,
+ * (b) el sin-vigencia cuando no hay fila GYM y (c) el rango de congelacion a
+ * exponer cuando `hoy` esta contenido en una pausa activa.
+ */
+export function resolverEstadoAcceso(
+  membresia: { fechaInicio: string; fechaFin: string } | null,
+  cambios: FilaCambio[] | undefined,
+  hoy: string
+): ResultadoEstadoAcceso {
+  if (!membresia) {
+    return {
+      estadoAccesoGym: "SIN_VIGENCIA",
+      fechaVencimiento: null,
+      congelacion: null,
+    };
+  }
+
+  const rangos = pausasActivas(cambios ?? []);
+  const estado = calcularEstado(
+    membresia.fechaInicio,
+    membresia.fechaFin,
+    hoy,
+    rangos
+  );
+  const rangoHoy =
+    rangos.find(
+      (rango) => rango.congelacionInicio <= hoy && hoy <= rango.congelacionFin
+    ) ?? null;
+
+  return {
+    estadoAccesoGym: estado,
+    fechaVencimiento: membresia.fechaFin,
+    congelacion: rangoHoy
+      ? {
+          fechaInicio: rangoHoy.congelacionInicio,
+          fechaFin: rangoHoy.congelacionFin,
+        }
+      : null,
+  };
 }
 
 /** Tipos de servicio congelables (DEC-023): NUTRICION queda fuera. */

@@ -83,12 +83,24 @@ async function seedDeterministicFixtures() {
 
     await prisma.user.upsert({
       where: { email: "recep@clubbeasts.com" },
-      update: { contrasena: receptionistPassword, nombre: "Maria Garcia", rol: "RECEPCIONISTA" },
+      // INC-03 / DEC-031 (GAP-RED-01): el recepcionista opera en una sede
+      // concreta; su `sedeId` es el default de la creacion rapida de
+      // clientes. Espejo exacto de `club-beasts-api/prisma/seed.ts` (el
+      // fixture E2E se alinea con el GREEN; el alta rapida sin `sedeId`
+      // respondria 400 "sedeId es requerido"). El DUENO del seed NO tiene
+      // sede: comportamiento ratificado en el spec INC-03 #5.
+      update: {
+        contrasena: receptionistPassword,
+        nombre: "Maria Garcia",
+        rol: "RECEPCIONISTA",
+        sedeId: "sede-1",
+      },
       create: {
         email: "recep@clubbeasts.com",
         contrasena: receptionistPassword,
         nombre: "Maria Garcia",
         rol: "RECEPCIONISTA",
+        sedeId: "sede-1",
       },
     });
 

@@ -35,19 +35,23 @@ async function main() {
   console.log("Admin creado:", { email: admin.email, rol: admin.rol });
 
   // Crear recepcionista
+  // INC-03 / DEC-031: el recepcionista opera en una sede concreta; su sede se usa
+  // como default cuando la creacion rapida (#5) omite sedeId. update: { sedeId }
+  // tambien backfillea BDs de dev ya sembradas (idempotente).
   const recepHashed = await bcrypt.hash("recep123", 10);
   const recepcionista = await prisma.user.upsert({
     where: { email: "recep@clubbeasts.com" },
-    update: {},
+    update: { sedeId: "sede-1" },
     create: {
       email: "recep@clubbeasts.com",
       contrasena: recepHashed,
       nombre: "María García",
       rol: "RECEPCIONISTA",
+      sedeId: "sede-1",
     },
   });
 
-  console.log("Recepcionista creado:", { email: recepcionista.email, rol: recepcionista.rol });
+  console.log("Recepcionista creado:", { email: recepcionista.email, rol: recepcionista.rol, sedeId: recepcionista.sedeId });
 
   // Crear cliente de prueba
   const clienteHashed = await bcrypt.hash("1234", 10);

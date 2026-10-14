@@ -1,16 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Navbar, PageHeader } from "@/components";
+import EstadoAccesoBadge from "@/components/EstadoAccesoBadge";
 import ChangePinForm from "@/components/ChangePinForm";
+import { api, type ApiError, type PortalResumen } from "@/lib/api";
 import { resolveSessionExit } from "@/lib/session-recovery";
 
 export default function PortalPage() {
   const { data: session, status, update } = useSession();
   const router = useRouter();
   const [pinChangeSuccess, setPinChangeSuccess] = useState(false);
+
+  // INC-03 / INC03-POR-01..07: el portal consume `GET /portal/resumen`.
+  // Identidad, estado de acceso, vencimiento y congelacion salen del
+  // backend (nunca de la sesion ni de un texto fijo: fin del hardcode
+  // "Activo" que era el gap INC03-VEN-03).
+  const [resumen, setResumen] = useState<PortalResumen | null>(null);
+  const [errorResumen, setErrorResumen] = useState("");
+  const [cargandoResumen, setCargandoResumen] = useState(true);
+
+  useEffect(() => {
+    if (status !== "authenticated") {
+      // Sin sesion no queda ningun dato privado en memoria de la pantalla.
+      setResumen(null);
+      return;
+    }
+    let vivo = true;
+    (async () => {
+      try {
+        const data = (await api.portal.resumen()) as unknown as PortalResumen;
+        if (vivo) {
+          setResumen(data);
+          setErrorResumen("");
+        }
+      } catch (err) {
+        // INC03-POR-05: un fallo de lectura no cierra la sesion; se pinta
+        // en la zona de error y se ofrece reintento.
+        if (vivo) {
+          setErrorResumen(
+            (err as ApiError).message ||
+              "No se pudo cargar tu informacion de acceso."
+          );
+        }
+      } finally {
+        if (vivo) setCargandoResumen(false);
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [status]);
+
 
   if (status === "loading") {
     return (
@@ -112,16 +155,83 @@ export default function PortalPage() {
               <h3 className="text-xl font-display font-bold text-white uppercase mb-4">
                 Mi Informacion
               </h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-400">Nombre</p>
-                  <p className="text-white">{session.user?.name}</p>
+              {errorResumen ? (
+                <div role="alert" className="p-3 rounded-card bg-red-500/10 border border-red-500/30">
+                  <p className="text-red-400 text-sm">{errorResumen}</p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => window.location.reload()}
+                  >
+                    Reintentar
+                  </Button>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-400">Estado</p>
-                  <p className="text-emerald-400">Activo</p>
+              ) : !resumen ? (
+                <p className="text-gray-400">Cargando...</p>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-400">Nombre</p>
+                    <p className="text-white">
+                      {resumen.cliente.nombres} {resumen.cliente.apellidos}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Cedula</p>
+                    <p className="text-white font-mono">{resumen.cliente.cedula}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Sede</p>
+                    <p className="text-white">{resumen.cliente.sede.nombre}</p>
+                  </div>
                 </div>
-              </div>
+              )}
+            </Card>
+
+            <Card padding="lg">
+              <h3 className="text-xl font-display font-bold text-white uppercase mb-4">
+                Estado de acceso
+              </h3>
+              {!resumen ? (
+                errorResumen ? null : <p className="text-gray-400">Cargando...</p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <EstadoAccesoBadge estado={resumen.estadoAccesoGym} size="md" />
+                    {resumen.estadoAccesoGym === "VENCIDA" && (
+                      <span className="text-red-400 text-sm font-medium">
+                        Sin acceso al gimnasio
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <p className="text-sm text-gray-400">Fecha de vencimiento</p>
+                      {resumen.fechaVencimiento ? (
+                        <p className="text-white font-mono">{resumen.fechaVencimiento}</p>
+                      ) : (
+                        <p className="text-gray-500">Sin fecha de vencimiento</p>
+                      )}
+                    </div>
+                    {resumen.congelacion && (
+                      <div>
+                        <p className="text-sm text-gray-400">Congelacion</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-white font-mono">
+                            {resumen.congelacion.fechaInicio}
+                          </p>
+                          <span className="text-gray-500">a</span>
+                          <p className="text-white font-mono">
+                            {resumen.congelacion.fechaFin}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </Card>
 
             <Card padding="lg">

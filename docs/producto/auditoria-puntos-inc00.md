@@ -294,3 +294,51 @@ Gaps de la seccion 4 cerrados: **G1**, **G2**, **G3**; **G4 parcial** (relacion 
 **Totales actualizados**: bloque 3 = 4.5 + 3.5 = **8/15**, **total MVP = 30/100 (30%)**.
 
 Cierres de la seccion 4 que afectan a este incremento: **G5** (estado `CONGELADO` / HU-15) cerrado. Gaps restantes del bloque 3: HU-13/HU-14 (G6/G8, DEC-018/019 resueltas, pendientes de INC-05) y HU-16 (G7, DEC-021, INC-03).
+
+---
+
+## 9. Ampliacion INC-03 (2026-10-14)
+
+- **Incremento**: `INC-03-vencimiento-recepcion-portal` (ACEPTADO, 40/40 criterios, revision `code-reviewer` ACEPTA sin hallazgos bloqueantes, REV-01..05 no bloqueantes).
+- **Evidencia**: `docs/incrementos/INC-03-vencimiento-recepcion-portal/evidencia.md` (RED 2026-10-13: 86 API + 26 web + 63 escenarios en rojo con base intacta; GREEN 2026-10-14: API **471/471**, Gherkin **126/126 x2**, web **174/174**, tsc 0/0 API y web, build PASS, migraciones 8/0 sin drift incl. `add_ingresos_y_perfil_pendiente` + `add_user_sede`; E2E **47/47 x2** con specs `recepcion`, `recepcion-creacion-rapida`, `acceso-vencimiento` nuevos y `portal` extendido; dictamen seccion 6).
+- **Metodo**: DEC-016 (fraccion de bullets cerrados con spec + implementacion + prueba + evidencia + revision) + regla de no-duplicado de `decisiones.md` (2026-10-10): el efecto "vencido = sin acceso" se acredita **una sola vez en HU-16**; el bloque 4 acredita su contrato y pintado (INC03-R05).
+
+### 9.1 HU-16 (peso 1) — bloque 3
+
+| Bullet HU-16 | Criterio(s) INC-03 | Evidencia | Cerrado |
+|---|---|---|---|
+| b1 deteccion de vencimiento | `INC03-VEN-01` | `vencimiento.test.ts` (bordes `fechaFin`/`fechaFin+1`), Gherkin `vencimiento.feature`, fuente unica `resolverEstadoAcceso` | Si |
+| b2 estado `VENCIDA` en API/UI y reversible | `INC03-VEN-02` | `vencimiento.test.ts` (postergar `fechaFin`), badge UI | Si |
+| b3 estado visible en las 3 superficies (ficha, portal, recepcion) | `INC03-VEN-03` + `INC03-VEN-05` | portal E2E (fin del hardcode "Activo"), recepcion E2E, mismo estado en ficha/listado/portal/recepcion (divergencia corregida) | Si |
+| b4 acceso denegado observable | `INC03-VEN-04` | ingreso 403 `INGRESO_NO_PERMITIDO` (rama `VENCIDA` de `ING-04`), portal sin acceso, login intacto (DEC-026); E2E `acceso-vencimiento.spec.ts` | Si |
+
+Fraccion: **4/4**. Puntos: **1.0** (0 -> 1).
+
+### 9.2 Bloque 4 (10 puntos, reparto INC03-R05) — HU-25/29/30/31
+
+Reparto fijado por el orquestador al cierre (10 puntos sin ponderar por HU en `mvp.md`; pesos asignados aqui por alcance/bullets y prioridad de la HU): **HU-25 = 3, HU-29 = 3, HU-30 = 3, HU-31 = 1**.
+
+| HU (peso asignado) | Bullets cerrados | Criterios INC-03 | Evidencia | Puntos |
+|---|---|---|---|---:|
+| **HU-25** portal estado real (3) | b1 nombre/cedula/sede, b2 estado de acceso, b3 fecha de vencimiento, b4 rango de congelacion | `POR-01..07` | `portal.test.ts` (12), unit web portal, `portal.spec.ts` (8 E2E), Gherkin `portal.feature` | **3.0** (3 x 4/4) |
+| **HU-29** consulta por cedula (3) | b1 identidad+sede+foto, b2 estado, b3 vencimiento/congelacion, b4 ultimo ingreso, b5 alertas no sensibles | `REC-01..10` | `recepcion-consulta.test.ts` (22), unit web consulta, `recepcion.spec.ts`, Gherkin (DEC-028/029) | **3.0** (3 x 5/5) |
+| **HU-30** registro de ingreso (3) | b1 multiples ingresos/dia, b2 fecha/hora/sede/usuario, b3 solo si habilitada, b4 historial visible | `ING-01..11` | `recepcion-ingresos.test.ts` (29), unit web ingreso, `recepcion.spec.ts`, Gherkin (DEC-025/030, CONF-03/06) | **3.0** (3 x 4/4) |
+| **HU-31** creacion rapida (1) | b1 datos minimos, b2 marca de perfil pendiente, b3 dueno completa despues | `RAP-01..07` | `recepcion-rapida.test.ts` (22), unit web rapida, `recepcion-creacion-rapida.spec.ts`, Gherkin (DEC-031/032/033) | **1.0** (1 x 3/3) |
+
+- **No-duplicado aplicado**: la rama `VENCIDA -> 403` de `ING-04` se prueba en HU-30 pero el punto del efecto acredita **HU-16** (9.1), ya cobrado; el bloque 4 no lo duplica.
+- **Sin puntos propios**: `CONF-01..06`, `DEC-026..033` (login intacto, sede default, sin `foto`, 403 suspendido, etc.) son contrato/regla, no bullets.
+
+Subtotal bloque 4: **10.0** (0 -> 10).
+
+### 9.3 Totales actualizados
+
+| Bloque | Antes (INC-02) | INC-03 | Despues |
+|---|---:|---:|---:|
+| Identidad, sesiones y permisos | 10 | 0 | 10 |
+| Clientes, sedes, estados y ficha basica | 12 | 0 | 12 |
+| Vigencias de servicios y congelacion | 8 | **+1** (HU-16 4/4) | **9** |
+| Recepcion, ingresos y portal operativo | 0 | **+10** | **10** |
+| Resto (bloques 5-8) | 0 | 0 | 0 |
+| **Total MVP** | **30** | **+11** | **41/100 (41%)** |
+
+G7 (HU-16 sin efecto en recepcion/portal/acceso) **cerrado**. Riesgos abiertos que tocan este bloque: R-01 (concurrencia de vigencias en Postgres), REV-01 (DUENO sin sede en alta rapida, sin test propio), REV-02 (divergencia de fixtures DUENO-con-sede). Ruta al 50% restante: INC-04 (+2) + INC-05 (+6) = 49, +1 de HU-07/anamnesis (PEND-003) segun DEC-021.

@@ -78,25 +78,44 @@ async function seedDeterministicFixtures(databaseUrl: string) {
       create: { id: "sede-2", nombre: "Sede Secundaria", direccion: "Dirección por definir" },
     });
 
+    // INC-03 (DEC-031 / GAP-RED-01): staff del seed con sede `sede-1` (igual
+    // que prisma/seed.ts para el recepcionista) para que el flujo rapido sin
+    // `sedeId` pueda resolver la sede default del token (RAP-01 y RAP-05
+    // ejercitan el camino default con el token del dueno y del recepcionista).
     await prisma.user.upsert({
       where: { email: "admin@clubbeasts.com" },
-      update: { contrasena: adminPassword, nombre: "David Rozo", rol: "DUENO" },
+      update: {
+        contrasena: adminPassword,
+        nombre: "David Rozo",
+        rol: "DUENO",
+        sedeId: "sede-1",
+      },
       create: {
         email: "admin@clubbeasts.com",
         contrasena: adminPassword,
         nombre: "David Rozo",
         rol: "DUENO",
+        sedeId: "sede-1",
       },
     });
 
+    // INC-03 (DEC-031 / GAP-RED-01): el recepcionista del seed lleva sede
+    // `sede-1` (igual que prisma/seed.ts) para que el flujo rapido sin
+    // `sedeId` pueda resolver la sede default del token.
     await prisma.user.upsert({
       where: { email: "recep@clubbeasts.com" },
-      update: { contrasena: receptionistPassword, nombre: "María García", rol: "RECEPCIONISTA" },
+      update: {
+        contrasena: receptionistPassword,
+        nombre: "María García",
+        rol: "RECEPCIONISTA",
+        sedeId: "sede-1",
+      },
       create: {
         email: "recep@clubbeasts.com",
         contrasena: receptionistPassword,
         nombre: "María García",
         rol: "RECEPCIONISTA",
+        sedeId: "sede-1",
       },
     });
 

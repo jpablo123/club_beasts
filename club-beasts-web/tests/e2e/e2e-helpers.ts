@@ -56,7 +56,7 @@ export interface ClienteFixture {
   cedula: string;
 }
 
-interface OpcionesCliente {
+export interface OpcionesCliente {
   sedeId: string;
   nombres?: string;
   apellidos?: string;
@@ -151,4 +151,124 @@ export function diasInclusivos(inicioISO: string, finISO: string): number {
 export function isoDesdeLarga(fechaLargaText: string): string {
   const [d, m, y] = fechaLargaText.split("/");
   return `${y}-${m}-${d}`;
+}
+
+// ─── INC-03 (tarea 19): fixtures de portal / recepcion ──────────────────────
+
+export interface VigenciaFixture {
+  id: string;
+  fechaInicio: string;
+  fechaFin: string;
+  version: number;
+}
+
+/** Vigencia GYM via API (misma superficie que consume el navegador). */
+export async function crearVigenciaApi(
+  request: APIRequestContext,
+  clienteId: string,
+  fechaInicio: string,
+  fechaFin: string
+): Promise<VigenciaFixture> {
+  const token = await tokenApi(request);
+  const res = await request.post(`${API_URL}/clientes/${clienteId}/membresias-gym`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { fechaInicio, fechaFin },
+  });
+  const cuerpo = (await res.json()) as Partial<VigenciaFixture> & { error?: string };
+  expect(
+    res.ok(),
+    `POST /membresias-gym devolvio ${res.status()}: ${JSON.stringify(cuerpo)}`
+  ).toBe(true);
+  expect(typeof cuerpo.id).toBe("string");
+  expect(typeof cuerpo.fechaFin).toBe("string");
+  return {
+    id: cuerpo.id as string,
+    fechaInicio: cuerpo.fechaInicio as string,
+    fechaFin: cuerpo.fechaFin as string,
+    version: cuerpo.version as number,
+  };
+}
+
+/** Aplica una pausa (fixture de congelacion) via API. */
+export async function congelarApi(
+  request: APIRequestContext,
+  clienteId: string,
+  vigenciaId: string,
+  rango: { fechaInicio: string; fechaFin: string; motivo: string; version: number }
+): Promise<{ fechaFin: string; version: number; diasCongelados: number }> {
+  const token = await tokenApi(request);
+  const res = await request.post(
+    `${API_URL}/clientes/${clienteId}/vigencias/${vigenciaId}/congelar`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      data: rango,
+    }
+  );
+  const cuerpo = (await res.json()) as {
+    fechaFin?: string;
+    version?: number;
+    diasCongelados?: number;
+    error?: string;
+  };
+  expect(
+    res.ok(),
+    `POST .../congelar devolvio ${res.status()}: ${JSON.stringify(cuerpo)}`
+  ).toBe(true);
+  return {
+    fechaFin: cuerpo.fechaFin as string,
+    version: cuerpo.version as number,
+    diasCongelados: cuerpo.diasCongelados as number,
+  };
+}
+
+/**
+ * Fija un PIN conocido para un cliente y deja `debeCambiarPin = false`.
+ * El portal exige PIN fijo y NO fuerza el cambio de PIN (los clientes creados
+ * por API nacen con `debeCambiarPin: true`, lo que mostraria el formulario de
+ * cambio en vez del portal).
+ */
+export async function fijarPinApi(
+  request: APIRequestContext,
+  clienteId: string,
+  pin = "1234"
+): Promise<void> {
+  const token = await tokenApi(request);
+  const res = await request.post(`${API_URL}/auth/reset-pin`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { clienteId, newPin: pin },
+  });
+  expect(
+    res.ok(),
+    `POST /auth/reset-pin devolvio ${res.status()}: ${await res.text()}`
+  ).toBe(true);
+}
+
+/** Cliente portal listo para login: creado, PIN fijo y sin cambio pendiente. */
+export async function crearClientePortalApi(
+  request: APIRequestContext,
+  opciones: OpcionesCliente
+): Promise<ClienteFixture> {
+  const cliente = await crearClienteApi(request, opciones);
+  await fijarPinApi(request, cliente.id);
+  return cliente;
+}
+
+/** Login de cliente (cedula + PIN) por la UI; aterriza en /portal. */
+export async function loginComoClienteCon(
+  page: Page,
+  cedula: string,
+  pin: string
+): Promise<void> {
+  await page.goto("/login-cliente");
+  await page.getByPlaceholder("Ingresa tu cedula").fill(cedula);
+  await page.getByPlaceholder("****").fill(pin);
+  await page.getByRole("button", { name: "Ingresar" }).click();
+  await expect(page).toHaveURL(/.*portal/);
+}
+
+/** Card contenedor (`div.rounded-card`) que contiene el heading indicado. */
+export function cardCon(page: Page, heading: string) {
+  return page
+    .locator("div.rounded-card")
+    .filter({ has: page.getByRole("heading", { name: heading }) });
 }

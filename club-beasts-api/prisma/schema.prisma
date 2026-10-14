@@ -12,6 +12,8 @@ model Sede {
   nombre    String
   direccion String?
   clientes  Cliente[]
+  ingresos  Ingreso[] // back-relation INC-03 (obligatoria para Ingreso.sede)
+  usuarios  User[]    // back-relation INC-03 (obligatoria para User.sede, DEC-031)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -30,6 +32,12 @@ model User {
   clientesCreados      Cliente[]            @relation("ClienteCreadoPor")
   clientesActualizados Cliente[]            @relation("ClienteActualizadoPor")
   clientesPinReset     Cliente[]            @relation("ClientePinResetPor")
+  ingresosRegistrados  Ingreso[]            // back-relation INC-03 (registradoPor)
+  // INC-03 (DEC-031): sede del staff de recepcion; al final del modelo para que
+  // la migracion SQLite sea un ADD COLUMN simple (portable), como perfilPendiente.
+  // Nullable: DUENO puede no tener sede; en #5, si el token no trae sede -> 400.
+  sedeId               String?
+  sede                 Sede?                @relation(fields: [sedeId], references: [id])
 }
 
 model Cliente {
@@ -54,7 +62,12 @@ model Cliente {
   pinResetAt      DateTime?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  // DEC-032 (INC-03): marca de perfil rapido por completar; se limpia con email (DEC-033).
+  // Al final del modelo para que la migracion SQLite sea un ADD COLUMN simple (portable).
+  // NOTA: sin `foto` — DEC-029: esa columna NO se crea en INC-03.
+  perfilPendiente Boolean          @default(false)
   membresias      MembresiaGym[]
+  ingresos        Ingreso[]        // back-relation INC-03 (obligatoria para Ingreso.cliente)
 }
 
 model MembresiaGym {
@@ -97,4 +110,24 @@ model MembresiaGymCambio {
   createdAt           DateTime       @default(now())
 
   @@unique([membresiaId, version])
+}
+
+// INC-03 (HU-30): registro de ingreso en recepcion.
+// fechas como String para migracion portable SQLite + PostgreSQL (DEC-012),
+// consistente con MembresiaGym.fechaInicio/fechaFin.
+// Sin constraint de unicidad en (clienteId, fecha): multiples ingresos por dia
+// son criterio INC03-ING-02 (CONF-03 tambien entre sedes).
+model Ingreso {
+  id              String   @id @default(cuid())
+  clienteId       String
+  sedeId          String
+  registradoPorId String
+  fecha           String   // YYYY-MM-DD America/Bogota (DEC-005)
+  hora            String   // HH:mm:ss America/Bogota (CONF-06)
+  createdAt       DateTime @default(now())
+  cliente         Cliente  @relation(fields: [clienteId], references: [id])
+  sede            Sede     @relation(fields: [sedeId], references: [id])
+  registradoPor   User     @relation(fields: [registradoPorId], references: [id])
+
+  @@index([clienteId, fecha]) // ultimoIngreso (#2) e historial (#4)
 }
