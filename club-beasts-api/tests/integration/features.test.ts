@@ -336,7 +336,8 @@ describe("Feature: Gestión de Clientes", () => {
         method: "PATCH",
         url: `/clientes/${excludedId}`,
         headers: { authorization: `Bearer ${token}` },
-        payload: { estado: "ACTIVO" },
+        // INC-04 / DEC-035: motivo obligatorio en el cambio de estado.
+        payload: { estado: "ACTIVO", motivo: "Alta para prueba de filtro" },
       });
       expect(patchRes.statusCode).toBe(200);
       expect(JSON.parse(patchRes.body).estado).toBe("ACTIVO");

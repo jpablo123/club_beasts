@@ -142,7 +142,7 @@ describe("INC00-CLI-03 limpiar email y observaciones en la ficha", () => {
 });
 
 describe("INC00-CLI-02 sede y estado en la ficha", () => {
-  it("envia sedeId y estado elegidos en el modo edicion", async () => {
+  it("envia sedeId, estado y motivo elegidos en el modo edicion", async () => {
     render(<FichaClientePage />);
 
     const editar = await screen.findByRole("button", { name: "Editar" });
@@ -154,6 +154,11 @@ describe("INC00-CLI-02 sede y estado en la ficha", () => {
     fireEvent.change(screen.getByLabelText("Estado"), {
       target: { value: "SUSPENDIDO" },
     });
+    // INC-04 / DEC-035: todo cambio de estado exige motivo (el test aceptado
+    // de INC00-CLI-02 se actualiza enviandolo, nunca se elimina).
+    fireEvent.change(await screen.findByLabelText("Motivo"), {
+      target: { value: "Falta de pago" },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
 
@@ -161,6 +166,7 @@ describe("INC00-CLI-02 sede y estado en la ficha", () => {
     const payload = mockUpdate.mock.calls[0][1] as Record<string, unknown>;
     expect(payload.sedeId).toBe("sede-2");
     expect(payload.estado).toBe("SUSPENDIDO");
+    expect(payload.motivo).toBe("Falta de pago");
     // Sigue enviando lo basico del formulario.
     expect(payload.nombres).toBe("Ana");
     expect(payload.apellidos).toBe("Perez");
@@ -189,5 +195,45 @@ describe("INC00-CLI-02 sede y estado en la ficha", () => {
     expect(screen.queryByRole("button", { name: "Editar" })).toBeNull();
     expect(screen.queryByLabelText("Sede")).toBeNull();
     expect(screen.queryByLabelText("Estado")).toBeNull();
+  });
+});
+
+// ─── INC04-EST-06 (HU-17 b2 UI, DEC-035): motivo en el formulario ───────────
+
+describe("INC04-EST-06 el formulario de edicion captura el motivo del cambio de estado", () => {
+  it("muestra el campo Motivo en modo edicion para los roles con permiso", async () => {
+    render(<FichaClientePage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Editar" }));
+
+    // El campo existe (aunque todavia no se haya tocado el estado): es la
+    // entrada del motivo que el backend exige en todo cambio de estado.
+    expect(await screen.findByLabelText("Motivo")).toBeTruthy();
+  });
+
+  it("el 400 del backend por motivo faltante se muestra en un role=alert y no guarda", async () => {
+    // El backend rechaza el cambio sin motivo (INC04-EST-03): la UI debe
+    // mostrar el mensaje accesible y permanecer en modo edicion.
+    mockUpdate.mockRejectedValue({
+      name: "ApiError",
+      message: "Motivo es requerido cuando cambia el estado",
+      code: "VALIDATION_ERROR",
+      status: 400,
+      kind: "validation",
+    });
+
+    render(<FichaClientePage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Editar" }));
+    fireEvent.change(await screen.findByLabelText("Estado"), {
+      target: { value: "INACTIVO" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("Motivo es requerido cuando cambia el estado");
+    // Sigue en modo edicion: el estado no se aplico.
+    expect(screen.getByLabelText("Estado")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeTruthy();
   });
 });

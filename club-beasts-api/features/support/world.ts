@@ -54,6 +54,9 @@ async function restoreClientesBaseline() {
   await prisma.ingreso.deleteMany({});
   await prisma.membresiaGymCambio.deleteMany({});
   await prisma.membresiaGym.deleteMany({});
+  // INC-04 (residual FK): ClienteEstadoCambio tambien es FK RESTRICT sobre
+  // Cliente (migracion #9); se vacia ANTES del deleteMany de clientes.
+  await prisma.clienteEstadoCambio.deleteMany({});
   // 2) padres: clientes fuera del seed deterministico.
   await prisma.cliente.deleteMany({
     where: { cedula: { not: SEEDED_CLIENTE_CEDULA } },

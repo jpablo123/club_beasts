@@ -135,6 +135,30 @@ describe("API Error Classification", () => {
     });
   });
 
+  describe("AUTH_CLIENTE_INACTIVO → no session_expired (INC04-R11)", () => {
+    it("el 401 de cuenta inactiva no se clasifica como session_expired", async () => {
+      // INC04-R11: el 401 generico de api.ts:199-200 dispararia
+      // recoverSession en un login sin sesion; el code explicito debe
+      // clasificarse ANTES del fallback 401.
+      global.fetch = mockFetchResponse(401, {
+        error: "La cuenta está inactiva. Contacte con recepción.",
+        code: "AUTH_CLIENTE_INACTIVO",
+      });
+
+      try {
+        await api.auth.loginCliente("9914000001", "1234");
+        expect.fail("Debería haber lanzado un error");
+      } catch (err: any) {
+        expect(err.kind).not.toBe("session_expired");
+        expect(err.code).toBe("AUTH_CLIENTE_INACTIVO");
+        expect(err.status).toBe(401);
+        expect(err.message).toBe(
+          "La cuenta está inactiva. Contacte con recepción."
+        );
+      }
+    });
+  });
+
   describe("Error de red → kind=network", () => {
     it("clasifica error de fetch como network", async () => {
       global.fetch = mockNetworkError();

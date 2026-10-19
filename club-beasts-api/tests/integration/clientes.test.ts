@@ -423,7 +423,9 @@ describe("Clientes - Editar", () => {
       method: "PATCH",
       url: `/clientes/${clienteId}`,
       headers: { authorization: `Bearer ${token}` },
-      payload: { sedeId: "sede-2", estado: "ACTIVO" },
+      // INC-04 / DEC-035: todo cambio de estado exige motivo (el payload
+      // aceptado de HU-05 se actualiza, no se elimina).
+      payload: { sedeId: "sede-2", estado: "ACTIVO", motivo: "Cambio de sede y activacion" },
     });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
@@ -453,7 +455,8 @@ describe("Clientes - Editar", () => {
       method: "PATCH",
       url: `/clientes/${clienteId}`,
       headers: { authorization: `Bearer ${recepToken}` },
-      payload: { sedeId: "sede-2", estado: "SUSPENDIDO" },
+      // INC-04 / DEC-035: motivo obligatorio en el cambio de estado.
+      payload: { sedeId: "sede-2", estado: "SUSPENDIDO", motivo: "Suspension por falta de pago" },
     });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
@@ -733,7 +736,8 @@ describe("Clientes - Búsqueda y Filtros", () => {
       method: "PATCH",
       url: `/clientes/${excludedId}`,
       headers: { authorization: `Bearer ${token}` },
-      payload: { estado: "ACTIVO" },
+      // INC-04 / DEC-035: motivo obligatorio en el cambio de estado.
+      payload: { estado: "ACTIVO", motivo: "Alta para prueba de filtro" },
     });
     expect(patchRes.statusCode).toBe(200);
     expect(JSON.parse(patchRes.body).estado).toBe("ACTIVO");
