@@ -57,7 +57,13 @@ async function main() {
   const clienteHashed = await bcrypt.hash("1234", 10);
   const cliente = await prisma.cliente.upsert({
     where: { cedula: "1234567890" },
-    update: {},
+    // Idempotencia real de credenciales: el `update` vacio no restauraba el PIN
+    // si algun test/manual cambio el cliente seed (el login devolvia
+    // AUTH_INVALID_CREDENTIALS con el PIN documentado 1234). Mismo patron que
+    // tests/setup-isolated-sqlite.ts (que ya re-fija `pin`). `debeCambiarPin`
+    // vuelve a `true` para que el estado coincida con el de un cliente recien
+    // creado (schema default) y permita probar el cambio obligatorio en /portal.
+    update: { pin: clienteHashed, debeCambiarPin: true },
     create: {
       cedula: "1234567890",
       nombres: "Carlos",

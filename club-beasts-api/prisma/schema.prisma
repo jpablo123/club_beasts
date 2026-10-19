@@ -33,6 +33,7 @@ model User {
   clientesActualizados Cliente[]            @relation("ClienteActualizadoPor")
   clientesPinReset     Cliente[]            @relation("ClientePinResetPor")
   ingresosRegistrados  Ingreso[]            // back-relation INC-03 (registradoPor)
+  estadosClienteCambiados ClienteEstadoCambio[] // back-relation INC-04/DEC-036 (actor; obligatoria)
   // INC-03 (DEC-031): sede del staff de recepcion; al final del modelo para que
   // la migracion SQLite sea un ADD COLUMN simple (portable), como perfilPendiente.
   // Nullable: DUENO puede no tener sede; en #5, si el token no trae sede -> 400.
@@ -68,6 +69,7 @@ model Cliente {
   perfilPendiente Boolean          @default(false)
   membresias      MembresiaGym[]
   ingresos        Ingreso[]        // back-relation INC-03 (obligatoria para Ingreso.cliente)
+  estadoCambios   ClienteEstadoCambio[] // back-relation INC-04/DEC-036 (obligatoria)
 }
 
 model MembresiaGym {
@@ -130,4 +132,35 @@ model Ingreso {
   registradoPor   User     @relation(fields: [registradoPorId], references: [id])
 
   @@index([clienteId, fecha]) // ultimoIngreso (#2) e historial (#4)
+}
+
+// INC-04 (HU-08 b2/b3, HU-17 b2/b3; DEC-036 opcion (a)): historial acumulable de
+// cambios de estado del cliente. Patron `MembresiaGymCambio` (spec INC-04,
+// seccion "Modelo de datos").
+// - Columna de actor ratificada `actorId`/`actor` (incompatibilidad #15: DEC-036
+//   la describe como "creadoPorId" pero el G14 y el patron usan actorId; delegacion
+//   del G14 resuelta por este spec).
+// - `estadoAnterior` nullable: null solo si no hubo estado previo conocido.
+// - `motivo` String NO nullable: 3-200, obligatorio en todo cambio (DEC-035 opcion a).
+// - Sin nombre de relation: cada par (Cliente, User) tiene una sola fila de relation
+//   con ClienteEstadoCambio (a diferencia de MembresiaGymCambio, que si los necesita).
+// - FKs sin onDelete explicito = patron existente (RESTRICT / UPDATE CASCADE, igual
+//   que MembresiaGymCambio e Ingreso): la limpieza de fixtures borra
+//   ClienteEstadoCambio antes que Cliente (precedente world.ts INC-03).
+// - `@@index([clienteId, createdAt])` de lectura (orden del historial); SIN unique
+//   sobre (clienteId, estadoNuevo): repetir un estado en momentos distintos es valido.
+// - Migracion portable SQLite/PostgreSQL (DEC-012): solo CREATE TABLE + CREATE INDEX,
+//   sin ALTER de tablas existentes (las back-relations no generan columna).
+model ClienteEstadoCambio {
+  id             String   @id @default(cuid())
+  clienteId      String
+  cliente        Cliente  @relation(fields: [clienteId], references: [id])
+  estadoAnterior String?  // null solo si no hubo estado previo conocido
+  estadoNuevo    String   // NUEVO | ACTIVO | SUSPENDIDO | RETIRADO | INACTIVO
+  motivo         String   // 3-200, requerido (HU-17 b2 / HU-08 b3)
+  actorId        String
+  actor          User     @relation(fields: [actorId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([clienteId, createdAt])
 }
