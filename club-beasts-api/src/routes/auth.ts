@@ -43,17 +43,31 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const { cedula, pin } = result.data;
     const cliente = await loginClient(cedula, pin);
     if (!cliente) {
+      // Credenciales primero, estado despues (HU08-C04a / anti-enumeracion):
+      // un PIN mal recibe siempre este 401 generico, sea o no INACTIVO.
       return reply.status(401).send({
         error: "Cédula o PIN inválido",
         code: "AUTH_INVALID_CREDENTIALS",
       });
     }
 
-    const token = fastify.jwt.sign({ ...cliente, rol: "CLIENTE" });
+    // INC-04 (HU-08 b4 / DEC-034): PIN correcto pero cuenta INACTIVA -> 401
+    // propio SIN token (no se abre sesion a una cuenta bloqueada). El literal
+    // es el del contrato G14 `HU08-C04a`.
+    const { estado, ...clienteSesion } = cliente;
+    if (estado === "INACTIVO") {
+      return reply.status(401).send({
+        error: "La cuenta está inactiva. Contacte con recepción.",
+        code: "AUTH_CLIENTE_INACTIVO",
+      });
+    }
+
+    // Regresion HU-02: la respuesta de exito queda IDENTICA (sin `estado`).
+    const token = fastify.jwt.sign({ ...clienteSesion, rol: "CLIENTE" });
     const decoded = fastify.jwt.verify(token) as any;
     return {
       token,
-      cliente,
+      cliente: clienteSesion,
       tokenExpiresAt: decoded.exp,
     };
   });

@@ -3,14 +3,17 @@ import {
   createCliente,
   updateCliente,
   getClienteById,
+  getUltimoCambioEstado,
   searchClientes,
   SEDE_INEXISTENTE,
+  TRANSICION_INVALIDA,
 } from "../services/cliente.service.js";
 import {
   createClienteSchema,
   updateClienteSchema,
   searchClientesSchema,
   clienteParamsSchema,
+  MOTIVO_REQUERIDO_CAMBIO_ESTADO,
 } from "../schemas/cliente.schema.js";
 import {
   esErrorPrismaClient,
@@ -25,6 +28,8 @@ import {
  *
  * Reglas:
  * - sedeId inexistente -> 400 VALIDATION_ERROR con mensaje claro.
+ * - transicion de estado fuera de la matriz DEC-038 -> 409 TRANSICION_INVALIDA
+ *   (INC-04, mensaje fijado en el spec de INC-04).
  * - cedula duplicada (P2002) -> 409 DUPLICATE (contrato existente).
  * - cualquier otro error de Prisma se responde con un cuerpo generico:
  *   jamas se expone el objeto de error de Prisma (P2003, rutas, stack).
@@ -44,6 +49,18 @@ function responderErrorCliente(
       body: {
         error: "La sede indicada no existe. Verifique el identificador enviado.",
         code: "VALIDATION_ERROR",
+      },
+    };
+  }
+
+  // INC-04 (DEC-038 / HU17-C04): la matriz se evalua en el servicio y aqui
+  // se traduce al 409 con el mensaje exacto del spec, sin escritura.
+  if (message === TRANSICION_INVALIDA) {
+    return {
+      status: 409,
+      body: {
+        error: "Transición de estado no permitida",
+        code: "TRANSICION_INVALIDA",
       },
     };
   }
@@ -129,7 +146,16 @@ export default async function clienteRoutes(fastify: FastifyInstance) {
       if (!cliente) {
         return reply.status(404).send({ error: "Cliente no encontrado", code: "NOT_FOUND" });
       }
-      return cliente;
+
+      // INC-04 (CONF-05 + DEC-041): aditivo `motivo` derivado del ultimo
+      // registro de `ClienteEstadoCambio` (una sola fuente, DEC-036). Solo
+      // staff lo ve; para el rol CLIENTE (self-only) el campo va `null`.
+      // No se expone `ultimoCambio` ni ningun array de historial aqui.
+      const motivo =
+        rol === "CLIENTE"
+          ? null
+          : ((await getUltimoCambioEstado(id))?.motivo ?? null);
+      return { ...cliente, motivo };
     }
   );
 
@@ -184,6 +210,20 @@ export default async function clienteRoutes(fastify: FastifyInstance) {
       if (!bodyResult.success) {
         const errors = bodyResult.error.errors.map((e) => e.message);
         return reply.status(400).send({ error: errors.join(", "), code: "VALIDATION_ERROR" });
+      }
+
+      // INC-04 (DEC-035 opcion a / CONF-04): paso de 400 body (antes del
+      // 404, orden CONF-03). Si el body trae `estado`, `motivo` es
+      // obligatorio; el mensaje es el literal del contrato G14. El motivo
+      // viajero sin `estado` (CONF-07) no dispara esta regla y se ignora.
+      if (
+        bodyResult.data.estado !== undefined &&
+        bodyResult.data.motivo === undefined
+      ) {
+        return reply.status(400).send({
+          error: MOTIVO_REQUERIDO_CAMBIO_ESTADO,
+          code: "VALIDATION_ERROR",
+        });
       }
 
       const cliente = await getClienteById(id);

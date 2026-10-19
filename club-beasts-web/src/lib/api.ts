@@ -11,6 +11,7 @@ export interface ApiError extends Error {
     | "network"
     | "session_expired"
     | "invalid_credentials"
+    | "auth_cliente_inactivo"
     | "forbidden"
     | "validation"
     | "server"
@@ -192,6 +193,17 @@ function classifyError(status: number, data: Record<string, unknown>): ApiError 
   }
   if (code === "AUTH_INVALID_CREDENTIALS") {
     return createApiError(message, { code, status, kind: "invalid_credentials" });
+  }
+  // INC04-R11 (DEC-034): el 401 de cuenta inactiva del portal NO es sesion
+  // vencida. Se clasifica ANTES del fallback 401 para que un login de cliente
+  // inactivo no dispare `recoverSession` ni borre el mensaje aprobado del
+  // backend ("La cuenta esta inactiva. Contacte con recepcion.").
+  if (code === "AUTH_CLIENTE_INACTIVO") {
+    return createApiError(message, {
+      code,
+      status,
+      kind: "auth_cliente_inactivo",
+    });
   }
   if (code === "AUTH_FORBIDDEN" || status === 403) {
     return createApiError(message, { code, status, kind: "forbidden" });

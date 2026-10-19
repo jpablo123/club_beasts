@@ -35,7 +35,23 @@ export default function LoginClientePage() {
       });
 
       if (result?.error) {
-        setError("Cedula o PIN invalido");
+        if (result.error === "CredentialsSignin") {
+          // INC04-CLI-04 (DEC-034): Auth.js v5 acota lo que puede viajar al
+          // navegador: el fallo de credenciales llega como
+          // `error=CredentialsSignin` con `code=credentials`, y el literal
+          // aprobado del backend de una cuenta inactiva viaja como `code`
+          // propio (propagado por src/lib/auth.ts). Con `code` distinto del
+          // generico se muestra el literal; sin el, sigue siendo un PIN o
+          // cedula invalido. La sesion vencida (DEC-010) no pasa por aqui: se
+          // anuncia con el banner de recuperacion.
+          setError(
+            result.code && result.code !== "credentials"
+              ? result.code
+              : "Cedula o PIN invalido"
+          );
+        } else {
+          setError(result.error);
+        }
       } else {
         // INC00-AUTH-03: regresa a la pantalla original cuando aplica.
         router.push(resolvePostLoginPath("/portal"));
@@ -63,7 +79,10 @@ export default function LoginClientePage() {
           <SessionExpiredBanner />
 
           {error && (
-            <div className="mb-6 p-3 bg-red-500/20 text-red-400 rounded-card text-sm">
+            <div
+              role="alert"
+              className="mb-6 p-3 bg-red-500/20 text-red-400 rounded-card text-sm"
+            >
               {error}
             </div>
           )}

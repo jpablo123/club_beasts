@@ -22,18 +22,34 @@ async function getApp() {
   return app;
 }
 
-async function getAuthToken(): Promise<string> {
+async function getAuthToken(): Promise<{ token: string; userId: string }> {
   const server = await getApp();
   const res = await server.inject({
     method: "POST",
     url: "/auth/login",
     payload: { email: "admin@clubbeasts.com", password: "admin123" },
   });
-  return JSON.parse(res.body).token;
+  const data = JSON.parse(res.body);
+  return { token: data.token, userId: data.user.id };
 }
 
-Given("soy un usuario autenticado como DUENO", async function (this: ApiWorld) {
-  this.token = await getAuthToken();
+/**
+ * D3 (defecto RED, 2026-10-19): los Then de trazabilidad ("el actor del ultimo
+ * cambio del cliente de prueba es el usuario autenticado",
+ * `inc04-estados.steps.ts`) comparan `fila.actorId` contra `this.actorId`, pero
+ * este Given solo seteaba `this.token` y el escenario INC-04
+ * "El cambio de estado persiste motivo, actor e historial a la vez" fallaba con
+ * "falta el usuario staff autenticado". El login del DUENO ahora publica TAMBIEN
+ * el id del actor autenticado. No afecta a los demas escenarios: los unicos
+ * Then que leen `actorId` fuera de INC-04 son de escenarios que usan
+ * "el recepcionista esta autenticado" (que sobreescribe `actorId` con el suyo).
+ */
+Given("soy un usuario autenticado como DUENO", async function (
+  this: ApiWorld & { actorId?: string | null }
+) {
+  const { token, userId } = await getAuthToken();
+  this.token = token;
+  this.actorId = userId;
 });
 
 Given("existe un cliente con cédula {string}", async function (this: ApiWorld, cedula: string) {

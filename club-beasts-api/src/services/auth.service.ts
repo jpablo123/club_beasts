@@ -24,6 +24,10 @@ export async function loginClient(cedula: string, pin: string) {
     nombres: cliente.nombres,
     apellidos: cliente.apellidos,
     debeCambiarPin: cliente.debeCambiarPin,
+    // INC-04 (HU-08 b4 / DEC-034): la ruta lo usa para el bloqueo de login
+    // del cliente INACTIVO; NUNCA se expone en la respuesta de exito ni en
+    // el token (la ruta lo separa antes de firmar).
+    estado: cliente.estado,
   };
 }
 

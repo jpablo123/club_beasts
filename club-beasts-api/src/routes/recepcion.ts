@@ -224,9 +224,16 @@ export default async function recepcionRoutes(fastify: FastifyInstance) {
         return reply.status(400).send(SEDE_NO_EXISTE_BODY);
       }
 
-      // DEC-030: el estado general del cliente bloquea ANTES de la vigencia
-      // (SUSPENDIDO / RETIRADO no pueden registrar ingresos, sin escritura).
-      if (cliente.estado === "SUSPENDIDO" || cliente.estado === "RETIRADO") {
+      // DEC-030 (INC-03, ya aceptado): el estado general del cliente bloquea
+      // ANTES de la vigencia (SUSPENDIDO / RETIRADO no pueden registrar
+      // ingresos, sin escritura). INC-04 / DEC-039 amplia la MISMA condicion
+      // con INACTIVO (HU-08 b4): el mensaje lo produce el template existente,
+      // sin clave con sufijo. La rama SUSPENDIDO/RETIRADO queda intacta.
+      if (
+        cliente.estado === "SUSPENDIDO" ||
+        cliente.estado === "RETIRADO" ||
+        cliente.estado === "INACTIVO"
+      ) {
         return reply.status(403).send({
           error: `El cliente está ${cliente.estado} y no puede registrar ingresos`,
           code: "INGRESO_NO_PERMITIDO",

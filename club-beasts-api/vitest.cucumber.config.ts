@@ -24,7 +24,7 @@ const vitestCucumberId = /@lotun[\\/]vitest-cucumber/;
  * se baja): con 63 el guard marcaba exit 1 en toda corrida completa aunque
  * los 126 escenarios pasaran, porque `executed` era 126.
  */
-const INC00_SCENARIO_COUNT = 126;
+const INC00_SCENARIO_COUNT = 153;
 
 /**
  * `@lotun/vitest-cucumber@0.5.x` apunta a vitest 4/5 y el proyecto usa vitest

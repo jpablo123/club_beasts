@@ -106,7 +106,16 @@ async function crearClienteDirecto(
   return { id: cliente.id, cedula };
 }
 
-/** Cliente NUEVO via API HU-04 (fixture F10: 0 cambios de historial). */
+/**
+ * Cliente NUEVO via API HU-04 (fixture F10: 0 cambios de historial).
+ *
+ * D1 (defecto RED, 2026-10-19): el default anterior era
+ * `Cliente${clienteSeq}` (con DIGITO), que la validacion aceptada de HU-04
+ * rechaza con 400 "Apellidos solo pueden contener letras y espacios"
+ * (DEC-015) antes de llegar al escenario. El aislamiento de fixtures lo da el
+ * prefijo de cedula `9904`, NO los apellidos: se corrige el DATO (precedente
+ * INC-01), sin relajar la regex del backend.
+ */
 async function crearClienteApi(
   overrides: Partial<{ nombres: string; apellidos: string; email: string }> = {}
 ): Promise<{ id: string; cedula: string; createdAt: string }> {
@@ -119,7 +128,7 @@ async function crearClienteApi(
     payload: {
       cedula,
       nombres: overrides.nombres ?? "Historial",
-      apellidos: overrides.apellidos ?? `Cliente${clienteSeq}`,
+      apellidos: overrides.apellidos ?? "Prueba Historial",
       telefono: "3000000000",
       ...(overrides.email ? { email: overrides.email } : {}),
       sedeId: SEDE_PRINCIPAL,
@@ -378,6 +387,29 @@ describe("INC04-EST-02 / INC04-CLI-03 el cambio de estado persiste motivo, actor
 describe("INC04-CLI-03 el motivo se expone solo a staff (DEC-041) y los errores respetan el orden CONF-03", () => {
   it("CLI-03 la ficha self-only del rol CLIENTE expone motivo null", async () => {
     const cliente = await crearClienteDirecto("ACTIVO");
+
+    // D2 (defecto RED): el bloqueo self-only de CLIENTE (403, contrato
+    // ratificado INC-04 y pre-existente de INC-03) exige que el token pertenezca
+    // al MISMO cliente de la URL. `tokenCliente` (beforeAll) es de OTRO cliente,
+    // asi que aqui se emite la sesion del propio cliente (mientras esta ACTIVO,
+    // DEC-040: la sesion emitida no se revoca al inactivar).
+    const login = await app.inject({
+      method: "POST",
+      url: "/auth/login-cliente",
+      payload: { cedula: cliente.cedula, pin: "1234" },
+    });
+    expect(login.statusCode).toBe(200);
+    const tokenPropio = parseBody(login).token;
+
+    // Precondicion documentada: con el token de OTRO cliente la ficha es 403.
+    const ajena = await app.inject({
+      method: "GET",
+      url: `/clientes/${cliente.id}`,
+      headers: headers(tokenCliente),
+    });
+    expect(ajena.statusCode).toBe(403);
+    expect(parseBody(ajena).code).toBe("AUTH_FORBIDDEN");
+
     const inactivacion = await app.inject({
       method: "PATCH",
       url: `/clientes/${cliente.id}`,
@@ -389,7 +421,7 @@ describe("INC04-CLI-03 el motivo se expone solo a staff (DEC-041) y los errores 
     const ficha = await app.inject({
       method: "GET",
       url: `/clientes/${cliente.id}`,
-      headers: headers(tokenCliente),
+      headers: headers(tokenPropio),
     });
     expect(ficha.statusCode).toBe(200);
     // DEC-041: el motivo es informacion interna; para el cliente va null.

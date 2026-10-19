@@ -19,8 +19,42 @@ interface UpdateClienteInput {
   email?: string | null;
   sedeId?: string;
   estado?: string;
+  /** INC-04 (DEC-035): motivo del cambio de estado (3-200). Nunca se
+   * persiste en `Cliente`; la fuente unica es `ClienteEstadoCambio`. */
+  motivo?: string;
   observaciones?: string | null;
 }
+
+/**
+ * INC-04 (HU-17 b1 derivado / HU17-C04, DEC-038): codigo de error de negocio
+ * cuando la transicion de estado no esta en la matriz ratificada. La ruta
+ * /clientes lo traduce a 409 con el mensaje fijado en el spec
+ * ("Transicion de estado no permitida").
+ */
+export const TRANSICION_INVALIDA = "TRANSICION_INVALIDA";
+
+/**
+ * INC-04 (DEC-038, matriz ratificada 5x5 del spec de INC-04):
+ *   - NUEVO -> ACTIVO | SUSPENDIDO | RETIRADO | INACTIVO
+ *   - ACTIVO <-> SUSPENDIDO
+ *   - * -> RETIRADO (incluido INACTIVO) e * -> INACTIVO (excepto desde RETIRADO)
+ *   - INACTIVO -> ACTIVO (DEC-020, reactivacion)
+ *   - RETIRADO es terminal: sin salidas
+ * La diagonal (`desde === hacia`) no esta en la matriz: es no-op 200 sin
+ * registro (CONF-02) y el servicio la resuelve ANTES de mirar esta tabla.
+ * `src/` no puede importar G14; es el espejo exacto de
+ * `features/acceptance-criteria/HU-17-schemas.ts:287-296`.
+ */
+const TRANSICIONES_ESTADO_CLIENTE: Record<
+  string,
+  Partial<Record<string, boolean>>
+> = {
+  NUEVO: { ACTIVO: true, SUSPENDIDO: true, RETIRADO: true, INACTIVO: true },
+  ACTIVO: { SUSPENDIDO: true, RETIRADO: true, INACTIVO: true },
+  SUSPENDIDO: { ACTIVO: true, RETIRADO: true, INACTIVO: true },
+  RETIRADO: {}, // terminal (DEC-038): no se reactiva ni se cambia
+  INACTIVO: { ACTIVO: true, RETIRADO: true }, // DEC-020 + "* -> RETIRADO"
+};
 
 const selectCliente = {
   id: true,
@@ -164,27 +198,154 @@ function normalizeLimpieza(value: string | null | undefined): string | null | un
   return value.trim() === "" ? null : value;
 }
 
-export async function updateCliente(id: string, data: UpdateClienteInput, actorId?: string) {
-  if (data.sedeId !== undefined) {
-    await assertSedeExiste(data.sedeId);
-  }
+/**
+ * INC-04 (HU-08 b3 / HU-17 b2, DEC-035 + DEC-036 + DEC-038): actualizacion
+ * del cliente CON cambio de estado trazable. Orden CONF-03 del endpoint #1
+ * (el 401/403 preHandler y el 400 de params/ body los resuelve la ruta):
+ *   404 (ya resuelto por la ruta) -> 409 TRANSICION_INVALIDA (matriz
+ *   ratificada, sin escritura) -> 400 sedeId inexistente / 409 DUPLICATE
+ *   (P2002) -> 200.
+ *
+ * Escritura atomica (HU08-C03): el update del cliente y el registro de
+ * historial en `ClienteEstadoCambio` ocurren dentro del MISMO
+ * `prisma.$transaction`; si algo falla no queda ni el estado nuevo ni la fila.
+ *
+ * Reglas:
+ *  - `motivo` (3-200, ya validado por Zod en la ruta) se persiste SOLO en el
+ *    registro de historial; jamas en una columna de `Cliente` (una sola
+ *    fuente, DEC-036).
+ *  - `estado` igual al actual -> no-op 200: update de los demas campos sin
+ *    registro nuevo y sin `ultimoCambio` (CONF-02).
+ *  - `motivo` sin `estado` (CONF-07) no escribe historial: aqui simplemente
+ *    no hay rama de estado.
+ *  - La respuesta agrega `motivo` (del ultimo cambio; si el request traia
+ *    `motivo` sin cambio persistible, el viajero) y `ultimoCambio` SOLO
+ *    cuando hubo cambio de estado (aditivo, incompatibilidad #2 del spec).
+ */
+export async function updateCliente(
+  id: string,
+  data: UpdateClienteInput,
+  actorId?: string
+) {
+  // El motivo viajero nunca llega a `prisma.cliente.update` (no existe la
+  // columna): se separa aqui y se usa unicamente para el historial/respuesta.
+  const { motivo, ...campos } = data;
 
-  // INC-03 (DEC-033): si el PATCH toca `email` y el valor resultante NO esta
-  // vacio, el cliente deja de tener perfil rapido pendiente. Un PATCH sin
-  // `email` (o con email vacio -> null) conserva la marca tal cual.
-  const emailNormalizado = normalizeLimpieza(data.email);
-  const limpiaPerfilPendiente = data.email !== undefined && Boolean(emailNormalizado);
+  return prisma.$transaction(async (tx) => {
+    const cliente = await tx.cliente.findUnique({
+      where: { id },
+      select: { estado: true },
+    });
 
-  return prisma.cliente.update({
-    where: { id },
-    data: {
-      ...data,
-      email: emailNormalizado,
-      observaciones: normalizeLimpieza(data.observaciones),
-      ...(limpiaPerfilPendiente ? { perfilPendiente: false } : {}),
-      ...(actorId ? { actualizadoPorId: actorId } : {}),
-    },
-    select: selectClienteUpdate,
+    let ultimoCambio: {
+      id: string;
+      clienteId: string;
+      estadoAnterior: string | null;
+      estadoNuevo: string;
+      motivo: string;
+      actor: { id: string; nombre: string };
+      createdAt: string;
+    } | null = null;
+
+    const cambiaEstado = data.estado !== undefined &&
+      cliente !== null &&
+      data.estado !== cliente.estado;
+
+    if (data.estado !== undefined && cliente !== null && cambiaEstado) {
+      // 409 (CONF-03): la matriz se evalua con el estado ya leido (tras el
+      // 404 de la ruta) y ANTES de sedeId/DUPLICATE; sin escritura.
+      const permitida = TRANSICIONES_ESTADO_CLIENTE[cliente.estado]?.[
+        data.estado
+      ];
+      if (!permitida) {
+        throw new Error(TRANSICION_INVALIDA);
+      }
+    }
+
+    if (data.sedeId !== undefined) {
+      await assertSedeExiste(data.sedeId);
+    }
+
+    // INC-03 (DEC-033): si el PATCH toca `email` y el valor resultante NO esta
+    // vacio, el cliente deja de tener perfil rapido pendiente. Un PATCH sin
+    // `email` (o con email vacio -> null) conserva la marca tal cual.
+    const emailNormalizado = normalizeLimpieza(data.email);
+    const limpiaPerfilPendiente = data.email !== undefined && Boolean(emailNormalizado);
+
+    const actualizado = await tx.cliente.update({
+      where: { id },
+      data: {
+        ...campos,
+        email: emailNormalizado,
+        observaciones: normalizeLimpieza(data.observaciones),
+        ...(limpiaPerfilPendiente ? { perfilPendiente: false } : {}),
+        ...(actorId ? { actualizadoPorId: actorId } : {}),
+      },
+      select: selectClienteUpdate,
+    });
+
+    if (cambiaEstado && data.estado !== undefined) {
+      // `actorId` siempre viene del JWT de staff en la ruta PATCH; el registro
+      // de historial lo exige HU08-C03 (quien realizo el cambio).
+      const fila = await tx.clienteEstadoCambio.create({
+        data: {
+          clienteId: id,
+          estadoAnterior: cliente!.estado,
+          estadoNuevo: data.estado,
+          motivo: motivo!,
+          actorId: actorId!,
+        },
+        include: { actor: { select: { id: true, nombre: true } } },
+      });
+
+      ultimoCambio = {
+        id: fila.id,
+        clienteId: fila.clienteId,
+        estadoAnterior: fila.estadoAnterior,
+        estadoNuevo: fila.estadoNuevo,
+        motivo: fila.motivo,
+        // Precedente `Ingreso.createdAt.toISOString()` (recepcion.ts:284).
+        actor: { id: fila.actor.id, nombre: fila.actor.nombre },
+        createdAt: fila.createdAt.toISOString(),
+      };
+    }
+
+    // `motivo` de la respuesta: derivado del ultimo cambio (una sola fuente,
+    // DEC-036); el motivo viajero solo pinta cuando no hay cambio que
+    // persistir (no-op CONF-02) y aun asi NUNCA se escribe en BD.
+    let motivoRespuesta: string | null = ultimoCambio?.motivo ?? null;
+    if (motivoRespuesta === null && motivo !== undefined) {
+      motivoRespuesta = motivo;
+    }
+    if (motivoRespuesta === null) {
+      const ultimaFila = await tx.clienteEstadoCambio.findFirst({
+        where: { clienteId: id },
+        orderBy: { createdAt: "desc" },
+        select: { motivo: true },
+      });
+      motivoRespuesta = ultimaFila?.motivo ?? null;
+    }
+
+    return {
+      ...actualizado,
+      motivo: motivoRespuesta,
+      // Aditivo: presente SOLO cuando hubo cambio de estado (CONF-02);
+      // `undefined` desaparece del JSON y el campo queda ausente.
+      ...(ultimoCambio ? { ultimoCambio } : {}),
+    };
+  });
+}
+
+/**
+ * INC-04 (CONF-05, endpoint #2): ultimo registro de historial del cliente
+ * (mas reciente primero) para derivar el `motivo` de la ficha. Sin endpoint
+ * nuevo de historial: la ficha expone SOLO el motivo del ultimo cambio.
+ */
+export async function getUltimoCambioEstado(clienteId: string) {
+  return prisma.clienteEstadoCambio.findFirst({
+    where: { clienteId },
+    orderBy: { createdAt: "desc" },
+    include: { actor: { select: { id: true, nombre: true } } },
   });
 }
 

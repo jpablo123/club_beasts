@@ -1,7 +1,40 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+/** Codigo de error del backend para un login de cliente con cuenta INACTIVA. */
+const CODIGO_CLIENTE_INACTIVO = "AUTH_CLIENTE_INACTIVO";
+
+/**
+ * INC04-CLI-04 (DEC-034): Auth.js v5 beta solo permite ver al cliente el
+ * `type` de los errores client-safe (`CredentialsSignin` => `error=...`) y,
+ * ademas, el `code` configurable de `CredentialsSignin` (=> `code=...` en la
+ * misma URL de error). Cualquier otro error lanzado dentro de `authorize` se
+ * reporta al navegador como `Configuration` y el literal del backend se
+ * pierde. Este error lanza `CredentialsSignin` con `code` = literal aprobado
+ * del backend ("La cuenta esta inactiva. Contacte con recepcion."), que la
+ * pagina /login-cliente lee de `result.code` y muestra en su role=alert.
+ */
+class CuentaInactivaSignin extends CredentialsSignin {
+  constructor(literal: string) {
+    super();
+    this.code = literal;
+  }
+}
+
+/**
+ * Body JSON de un error del backend como `{ code, error }` tipados. Respuestas
+ * sin body o con body no-objeto producen `{}` para no lanzar al leer `.code`.
+ */
+function leerErrorBackend(body: unknown): { code?: string; error?: string } {
+  if (typeof body !== "object" || body === null) return {};
+  const data = body as { code?: unknown; error?: unknown };
+  return {
+    code: typeof data.code === "string" ? data.code : undefined,
+    error: typeof data.error === "string" && data.error ? data.error : undefined,
+  };
+}
 
 const nextAuthSecret = process.env.NEXTAUTH_SECRET;
 if (!nextAuthSecret) {
@@ -37,7 +70,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               body: JSON.stringify({ cedula, pin }),
             });
 
-            if (!res.ok) return null;
+            if (!res.ok) {
+              // INC04-CLI-04 (DEC-034): el 401 de cuenta inactiva propagaria su
+              // literal via `CredentialsSignin.code`; el resto de fallos
+              // (credenciales invalidas, token, sesion) sigue retornando null,
+              // que Auth.js traduce a CredentialsSignin generico.
+              const { code, error } = leerErrorBackend(
+                await res.json().catch(() => null)
+              );
+              if (code === CODIGO_CLIENTE_INACTIVO && error) {
+                throw new CuentaInactivaSignin(error);
+              }
+              return null;
+            }
 
             const data = await res.json();
             return {

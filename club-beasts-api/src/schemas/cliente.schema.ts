@@ -31,6 +31,27 @@ export const createClienteSchema = z.object({
 const blankToNull = (value: unknown): unknown =>
   typeof value === "string" && value.trim() === "" ? null : value;
 
+/**
+ * INC-04 (HU-17 b2 / HU-08 b3, DEC-035 + CONF-04): motivo del cambio de
+ * estado, 3..200 caracteres con los 3 mensajes exactos del contrato G14
+ * (`HU-08-schemas.ts:28-31`, espejo `HU-17-schemas.ts:66-69`).
+ *
+ * La obligatoriedad ("si el body trae `estado`, `motivo` es requerido") NO
+ * vive aqui como `superRefine`: `tests/unit/cliente.schema.test.ts:150-155`
+ * (base aceptada) exige que `{ estado: "ACTIVO" }` siga parseando a nivel de
+ * schema, y el 400 lo emite el ENDPOINT en el paso de 400 body (CONF-03,
+ * antes del 404). Ver `MOTIVO_REQUERIDO_CAMBIO_ESTADO` + la ruta PATCH de
+ * `routes/clientes.ts`.
+ */
+export const motivoCambioEstadoSchema = z
+  .string()
+  .min(3, "Motivo debe tener al menos 3 caracteres")
+  .max(200, "Motivo no puede exceder 200 caracteres");
+
+/** Mensaje exacto del contrato G14 para el motivo ausente (CONF-04). */
+export const MOTIVO_REQUERIDO_CAMBIO_ESTADO =
+  "Motivo es requerido cuando cambia el estado";
+
 export const updateClienteSchema = z.object({
   nombres: namesSchemaFor("Nombres").optional(),
   apellidos: namesSchemaFor("Apellidos").optional(),
@@ -44,6 +65,13 @@ export const updateClienteSchema = z.object({
     .max(36, "sedeId excede longitud máxima")
     .optional(),
   estado: clienteEstadoEnum.optional(),
+  /**
+   * INC-04 (DEC-035): el motivo viaja junto al `estado` en el PATCH. El
+   * campo es opcional a nivel de schema (la obligatoriedad la emite la ruta
+   * en el paso de 400 body, ver `MOTIVO_REQUERIDO_CAMBIO_ESTADO`); su
+   * longitud usa los mensajes exactos del contrato G14.
+   */
+  motivo: motivoCambioEstadoSchema.optional(),
   observaciones: z.preprocess(
     blankToNull,
     z

@@ -44,6 +44,17 @@ const RESPUESTAS_ERROR: Record<
     error: "Las fechas se solapan con un período existente",
     code: "MEMBRESIA_SOLAPADA",
   },
+  // ── INC-04 (HU-08 b4 / HU08-C04b, CONF-06) ────────────────────────────────
+  // Guarda en el SERVICIO `crearMembresia`, ANTES del solape: un cliente
+  // INACTIVO no recibe servicios activos nuevos hasta ser reactivado. El
+  // literal es el del contrato G14 `HU08-C04b`. `code` distinto de DUPLICATE
+  // y de MEMBRESIA_SOLAPADA desambigua el conflicto.
+  CLIENTE_INACTIVO: {
+    status: 409,
+    error:
+      "El cliente está inactivo. Reactíveolo antes de asignar servicios nuevos.",
+    code: "CLIENTE_INACTIVO",
+  },
   VALIDATION_ERROR: {
     status: 400,
     error: "Fecha fin no puede ser anterior a fecha de inicio",

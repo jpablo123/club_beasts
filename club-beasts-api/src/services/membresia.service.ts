@@ -427,6 +427,19 @@ export async function crearMembresia(
   assertFechaEditable(fechaInicio);
   assertFechaEditable(fechaFin);
 
+  // INC-04 (HU-08 b4 / HU08-C04b, CONF-06): un cliente INACTIVO no puede
+  // recibir servicios activos nuevos. La guarda vive en el SERVICIO (no en la
+  // ruta) para que INC-05 (PERSONALIZADO/NUTRICION) la herede, y evalua
+  // ANTES del solape: la respuesta es 409 CLIENTE_INACTIVO, nunca
+  // MEMBRESIA_SOLAPADA. Sin escritura.
+  const cliente = await prisma.cliente.findUnique({
+    where: { id: clienteId },
+    select: { estado: true },
+  });
+  if (cliente?.estado === "INACTIVO") {
+    throw new Error("CLIENTE_INACTIVO");
+  }
+
   // INC00-MEM-02: la verificacion de solape y la escritura ocurren dentro de la
   // MISMA transaccion. Si otro periodo se compromete en la ventana entre la
   // verificacion y la escritura, esta transaccion lo ve (o choca contra la

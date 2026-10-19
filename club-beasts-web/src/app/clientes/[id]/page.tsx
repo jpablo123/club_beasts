@@ -46,7 +46,9 @@ export default function FichaClientePage() {
   const { data: session } = useSession();
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<Partial<Cliente>>({});
+  // INC-04 / DEC-035 (EST-06): el formulario lleva `motivo` ademas del DTO;
+  // el payload lo emite solo cuando cambia el estado (ver cliente-payload).
+  const [form, setForm] = useState<Partial<Cliente> & { motivo?: string }>({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -116,7 +118,8 @@ export default function FichaClientePage() {
         <div className="pt-24 pb-12">
           <div className="max-w-3xl mx-auto px-5">
             <Card padding="lg">
-              <p className="text-red-400 text-center">{error}</p>
+              {/* Accesible: el error de carga se anuncia como alert. */}
+              <p role="alert" className="text-red-400 text-center">{error}</p>
             </Card>
           </div>
         </div>
@@ -145,9 +148,13 @@ export default function FichaClientePage() {
 
       <div className="pt-24 pb-12">
         <div className="max-w-3xl mx-auto px-5">
-          {/* Error inline */}
+          {/* Error inline (INC04-EST-06: rol alert accesible, p. ej. el 400
+              "Motivo es requerido cuando cambia el estado"). */}
           {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-card">
+            <div
+              role="alert"
+              className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-card"
+            >
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
@@ -220,6 +227,27 @@ export default function FichaClientePage() {
                   </div>
                 )}
               </div>
+
+              {/* INC-04 / DEC-035 (EST-06): el backend exige `motivo` en todo
+                  cambio de estado, asi que el formulario lo captura siempre
+                  que hay modo edicion con permiso (DUENO/RECEPCIONISTA).
+                  DEC-041: al ser un campo staff-only, el rol CLIENTE nunca lo
+                  ve (no existe modo edicion para ese rol). */}
+              {editing && canEdit && (
+                <div>
+                  <Input
+                    label="Motivo"
+                    type="text"
+                    value={form.motivo || ""}
+                    onChange={(e) => setForm({ ...form, motivo: e.target.value })}
+                    placeholder="Motivo del cambio de estado"
+                    maxLength={200}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Obligatorio cuando cambias el estado (3 a 200 caracteres).
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
