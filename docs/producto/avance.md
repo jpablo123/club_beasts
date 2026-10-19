@@ -1,6 +1,22 @@
 # Avance del MVP
 
-Fecha de corte: 2026-10-14.
+Fecha de corte: 2026-10-19.
+
+Actualizacion 2026-10-19 (**sin cambio de puntos; sigue 41 de 100 certificados**):
+
+- **INC-04 en LISTO sincronizado**: la puerta de entrada se cumplio el 2026-10-14
+  (`INC04-PEND-01..08` -> DEC-034..041, contrato ratificado por `backend-developer`,
+  `INC04-CONF-01..07` + regla de no-duplicado en `decisiones.md:42-61`), pero
+  `spec.md`, `evidencia.md` y este archivo no lo reflejaban. Sincronizacion documental
+  del 2026-10-19; RED/GREEN **sin ejecutar** (`evidencia.md`: 9 comandos "Sin
+  ejecutar"). Sin puntos nuevos: no hay prueba ni revision (DEC-011/DEC-016).
+- Trabajo **implementado sin commitear** en el worktree (no cuenta como avance):
+  modelo `ClienteEstadoCambio` en `schema.prisma` + migracion
+  `20261014213742_add_cliente_estado_cambio`, ajustes de `seed.ts`, enmienda de
+  `HU-17-schemas.ts` y de los criterios `.md` de HU-08/HU-17.
+- Riesgo detectado fuera de alcance de INC-04: E2E sin trackear
+  `club-beasts-web/tests/e2e/cambio-pin-obligatorio.spec.ts` (flujo `debeCambiarPin`);
+  pendiente de decision de Producto sobre donde acreditarlo.
 
 Ultima actualizacion de gestion: 2026-10-14 — **cierre de `INC-03-vencimiento-recepcion-portal` (ACEPTADO, revision `code-reviewer` sin hallazgos bloqueantes)**: +11 puntos certificados (HU-16 4/4 = 1 con el efecto vencido cobrado una sola vez; bloque 4 10/10 con reparto INC03-R05: HU-25 3 + HU-29 3 + HU-30 3 + HU-31 1). **Total: 41 de 100 puntos certificados (41%)**. Evidencia: API 471/471, Gherkin 126/126 x2 (guard 63->126), web 174/174, build PASS, E2E 47/47 x2, migraciones 8/0 sin drift, en `docs/incrementos/INC-03-vencimiento-recepcion-portal/evidencia.md`; trazabilidad en seccion 9 de `docs/producto/auditoria-puntos-inc00.md`. Decisiones del ciclo: DEC-026..DEC-033 + CONF-01..06 (registradas 2026-10-10); sin decisiones nuevas el dia del cierre.
 

@@ -39,10 +39,26 @@ Este registro evita que los agentes resuelvan la misma duda de formas distintas.
 | DEC-031 | Resuelve `INC03-PEND-06` (Producto, 2026-10-10, opcion b): en la creacion rapida de recepcion, `sedeId` **no es obligatorio**: si se omite se usa **la sede del recepcionista** derivada del token; el minimo de campos pasa a 4 (`cedula`, `nombres`, `apellidos`, `telefono`). La sede efectiva se expone en la respuesta | Aprobada (2026-10-10) | INC-03, `RAP-01`, cuerpo #5 |
 | DEC-032 | Resuelve `INC03-PEND-07` (Producto, 2026-10-10, opcion a): la marca de perfil por completar es un **campo nuevo `Cliente.perfilPendiente Boolean @default(false)`** (migracion de 1 columna), persistido y visible en lecturas posteriores | Aprobada (2026-10-10) | INC-03, `RAP-02`, modelo Prisma |
 | DEC-033 | Resuelve `INC03-PEND-08` (Producto, 2026-10-10, opcion b): `perfilPendiente` se limpia (`false`) **cuando el cliente tiene `email`** (canal de contacto y notificaciones); un PATCH sin email no limpia la marca | Aprobada (2026-10-10) | INC-03, `RAP-03`, PATCH `/clientes/:id` |
+| DEC-034 | Resuelve `INC04-PEND-01` (Producto, 2026-10-14, opcion a): un cliente `INACTIVO` **no puede autenticarse** en el portal; tras validar credenciales el login devuelve **401 `AUTH_CLIENTE_INACTIVO`** (codigo propio, anti-enumeracion); el cliente ve un mensaje de cuenta inactiva y debe contactar recepcion | Aprobada (2026-10-14) | INC-04, `INC04-CLI-04/08`, `auth.service.ts` |
+| DEC-035 | Resuelve `INC04-PEND-02` (Producto, 2026-10-14, opcion a): el campo `motivo` es **obligatorio en todo cambio de estado** del cliente via PATCH (literal HU-17 b2); los tests aceptados de HU-05/Gherkin/UI que no lo envian se **actualizan como cambio de contrato documentado** (RED antes que GREEN; ningun test se elimina) | Aprobada (2026-10-14) | INC-04, `CLI-03`, `EST-03/06`, schema y tests HU-05 |
+| DEC-036 | Resuelve `INC04-PEND-03` (Producto, 2026-10-14, opcion a): el historial de estados se persiste en el **modelo nuevo `ClienteEstadoCambio`** (clienteId, estadoAnterior, estadoNuevo, motivo, creadoPorId, createdAt; back-relations en `Cliente`/`User`); HU-17 exige historial acumulable observable | Aprobada (2026-10-14) | INC-04, `CLI-02/03`, `EST-02/04`, Prisma |
+| DEC-037 | Resuelve `INC04-PEND-04` (Producto, 2026-10-14, opcion b): **`DUENO` y `RECEPCIONISTA`** pueden inactivar/suspender/retirar/reactivar clientes (coherente con DEC-020 y con HU-05 aceptado donde el RECEPCIONISTA ya edita; la opcion solo-DUENO regresaria HU-05) | Aprobada (2026-10-14) | INC-04, `CLI-03/08`, `EST-02`, permisos |
+| DEC-038 | Resuelve `INC04-PEND-05` (Producto, 2026-10-14, opcion b): existe **matriz de transiciones validas**; `RETIRADO` es estado **terminal** (no se reactiva ni se cambia); cualquier transicion invalida devuelve **409 `TRANSICION_INVALIDA`** sin escribir | Aprobada (2026-10-14) | INC-04, `EST-05`, servicio de cliente |
+| DEC-039 | Resuelve `INC04-PEND-06` (Producto, 2026-10-14, opcion a): un cliente `INACTIVO` **no puede registrar ingreso fisico**: `403 INGRESO_NO_PERMITIDO` en `POST /recepcion/ingresos` (coherente con DEC-030 para SUSPENDIDO/RETIRADO); regresion obligatoria del INC-03 | Aprobada (2026-10-14) | INC-04, `CLI-07`, `recepcion.ts` |
+| DEC-040 | Resuelve `INC04-PEND-07` (Producto, 2026-10-14, opcion b): **no se revoca** la sesion JWT ya emitida al inactivar; expira con el TTL absoluto de 24h (DEC-009); los "servicios activos nuevos" de HU-08 b4 se refieren a asignaciones nuevas, no a lecturas de sesiones vivas | Aprobada (2026-10-14) | INC-04, `CLI-06`, auth |
+| DEC-041 | Resuelve `INC04-PEND-08` (Producto, 2026-10-14, opcion a): el `motivo` del cambio de estado se expone **solo a roles staff** (DUENO/RECEPCIONISTA); el rol CLIENTE no lo ve en su ficha ni en `/portal/resumen` (puede ser informacion interna; coherente con R-11/SEC-03/REC-10) | Aprobada (2026-10-14) | INC-04, `CLI-03`, `EST-02`, exposicion |
 
 ### Confirmaciones de INC-03 ratificadas por el orquestador (2026-10-10)
 
 Las `CONF-01..06` del spec de INC-03 (opciones por defecto adoptadas alli) quedan **ratificadas** al abrir la puerta LISTO: CONF-01 (deteccion derivada del vencimiento sin job/cron), CONF-02 (`CONGELADO` permite ingreso 201, coherente con DEC-025), CONF-03 (varios ingresos del mismo dia en sedes distintas permitidos), CONF-04 (etiquetas UI en espanol mapeadas desde el enum; la API devuelve el enum), CONF-05 (`DUENO` y `RECEPCIONISTA` completan el perfil rapido, precedente HU-05), CONF-06 (hora de ingreso como string `HH:mm:ss` America/Bogota).
+
+### Confirmaciones de INC-04 ratificadas por el orquestador (2026-10-14)
+
+Las `CONF-01..07` del spec de INC-04 (opciones por defecto adoptadas alli) quedan **ratificadas** al abrir la puerta LISTO: CONF-01 (la reactivacion deja el estado en `ACTIVO`, no en el anterior), CONF-02 (un PATCH sin cambio de estado es no-op y no escribe en el historial), CONF-03 (el orden de evaluacion del PATCH es: validacion Zod -> existencia -> matriz de transiciones -> motivo -> escritura atomica cliente+historial), CONF-04 (`motivo` longitud 3-200, trim, mensaje exacto en espanol), CONF-05 (el historial es observable via `ultimoCambio` en la respuesta del PATCH/GET y en la BD; **sin endpoint nuevo** de historial en este incremento; la UI visible del historial es de HU-07/HU-32), CONF-06 (la guarda de "servicios activos nuevos" vive en el servicio de cliente/membresia y se hereda a INC-05 sin crear rutas aqui), CONF-07 (un `motivo` sin `estado` en el cuerpo se ignora junto al cambio de estado, no genera 400 por esa sola razon).
+
+### Regla de no duplicado de puntos INC-04 (asignacion del orquestador, 2026-10-14)
+
+Los puntos de HU-08 y HU-17 acreditan **solo sus bullets exclusivos**: inactivacion con `motivo`, bloqueo de login (DEC-034), guarda de ingreso (DEC-039), reactivacion reglada, transiciones y historial (`ClienteEstadoCambio`). El **estado y el filtro** de clientes ya estan acreditados en HU-05/HU-06 (INC-00/01); la **guarda de ingreso por SUSPENDIDO/RETIRADO** (DEC-030) ya esta acreditada en HU-30 (INC-03); el **efecto de vencimiento** en HU-16 (INC-03). Ningun bullet se cobra dos veces (DEC-016).
 
 ### Regla de no duplicado de puntos HU-16 vs bloque 4 (asignacion del orquestador, 2026-10-10)
 
@@ -54,11 +70,13 @@ Resueltas el 2026-10-08: PEND-002 -> DEC-017, PEND-004 -> DEC-018, PEND-005 -> D
 
 Bloque nuevo el 2026-10-09: `INC03-PEND-01..08`, formuladas en `docs/incrementos/INC-03-vencimiento-recepcion-portal/spec.md` (seccion "Decisiones pendientes"). **Resueltas el 2026-10-10** por el Producto (confirmacion unica de las 8 recomendaciones del orquestador) y registradas como **DEC-026..DEC-033**; con ellas y la ratificacion de contrato, INC-03 paso a `LISTO`. Texto completo y contexto de cada una en el spec.
 
+Bloque nuevo el 2026-10-14: `INC04-PEND-01..08`, formuladas en `docs/incrementos/INC-04-estados-cliente/spec.md`. **Resueltas el 2026-10-14** por el Producto (confirmacion unica de las 8 recomendaciones) y registradas como **DEC-034..DEC-041**; con ellas, la ratificacion de contrato y CONF-01..07, INC-04 puede pasar a `LISTO`.
+
 | ID | Decision pendiente | Opciones | Responsable |
 |---|---|---|---|
 | PEND-003 | Campos exactos de anamnesis (ruta ya fijada en DEC-021; se resuelve al especificar el incremento de bloque 5) | Formulario minimo / formulario completo del gimnasio | Producto + Analista |
 
-Las `INC03-PEND-01..08` de esta tabla quedan **fuera** por resueltas (DEC-026..033, 2026-10-10); el unico pendiente de producto antes del corte del 50% es **PEND-003** (anamnesis, bloque 5).
+Las `INC03-PEND-01..08` quedan **fuera** por resueltas (DEC-026..033, 2026-10-10); las `INC04-PEND-01..08` quedan **fuera** por resueltas (DEC-034..041, 2026-10-14); el unico pendiente de producto antes del corte del 50% es **PEND-003** (anamnesis, bloque 5).
 
 ## Reglas de resolucion
 

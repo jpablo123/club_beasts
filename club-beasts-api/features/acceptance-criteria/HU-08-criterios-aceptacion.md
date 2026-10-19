@@ -4,7 +4,7 @@
 
 Inactivar un cliente en lugar de borrarlo: el estado pasa a `INACTIVO`, se conserva todo el historial, se registra quién hizo el cambio y por qué, y el cliente inactivo pierde el acceso (portal y servicios nuevos) hasta ser reactivado.
 
-**Decisiones aplicadas**: DEC-001 (roles DUENO, RECEPCIONISTA, CLIENTE), DEC-002 (cédula identifica al cliente), DEC-020 (DUENO y RECEPCIONISTA pueden reactivar un cliente INACTIVO), DEC-016 (fraccionable: spec + implementación + prueba + evidencia + revisión).
+**Decisiones aplicadas**: DEC-001 (roles DUENO, RECEPCIONISTA, CLIENTE), DEC-002 (cédula identifica al cliente), DEC-020 (DUENO y RECEPCIONISTA pueden reactivar un cliente INACTIVO), DEC-016 (fraccionable: spec + implementación + prueba + evidencia + revisión), y de INC-04 (todas aprobadas 2026-10-14): **DEC-034** (login INACTIVO → 401 `AUTH_CLIENTE_INACTIVO`), **DEC-035** (`motivo` obligatorio en todo cambio), **DEC-036** (historial `ClienteEstadoCambio`), **DEC-037** (DUENO + RECEPCIONISTA), **DEC-039** (ingreso físico INACTIVO → 403 `INGRESO_NO_PERMITIDO`, criterio `INC04-CLI-07`), **DEC-040** (sesión JWT previa expira con TTL, sin revocación).
 
 **Alcance anti-duplicado (auditoría G14)**: el bullet 1 ("cambiar el estado del cliente") ya está pagado en HU-05 (cambio de estado aceptado) y HU-06 (filtro por estado). Este documento solo aporta puntos por los bullets **distintivos**: conservación de historial (C02), motivo + actor (C03) y bloqueo de acceso + reactivación (C04/C05). `HU08-C01` queda como referencia trazable, **no puntuable en INC-04**.
 
@@ -15,7 +15,7 @@ Inactivar un cliente en lugar de borrarlo: el estado pasa a `INACTIVO`, se conse
 | 1 | El sistema permite cambiar el estado del cliente a inactivo. | HU08-C01 | REF (base aceptada en HU-05/HU-06) | No (duplicado) |
 | 2 | El sistema conserva su historial. | HU08-C02 | LISTO para RED | Sí |
 | 3 | El sistema registra quien realizo el cambio y el motivo. | HU08-C03 | LISTO para RED | Sí |
-| 4 | Un cliente inactivo no puede ingresar ni acceder a servicios activos nuevos sin ser reactivado. | HU08-C04 (bloqueo) + HU08-C05 (reactivación, DEC-020) | C04a/C04b LISTO; C04c BLOQUEADO (P-02); C05 LISTO | Sí |
+| 4 | Un cliente inactivo no puede ingresar ni acceder a servicios activos nuevos sin ser reactivado. | HU08-C04 (bloqueo) + HU08-C05 (reactivación, DEC-020) | C04a LISTO (DEC-034); C04b LISTO (409 `CLIENTE_INACTIVO` decidido, `INC04-CLI-05`; ingreso físico INACTIVO → 403 DEC-039 = `INC04-CLI-07`); C04c LISTO (DEC-040); C05 LISTO | Sí |
 
 ## Detalle por criterio
 
@@ -52,7 +52,7 @@ Inactivar un cliente en lugar de borrarlo: el estado pasa a `INACTIVO`, se conse
   - 400 VALIDATION_ERROR — "Motivo es requerido cuando cambia el estado" (ausente), "Motivo debe tener al menos 3 caracteres" (2 chars), "Motivo no puede exceder 200 caracteres" (201 chars), "Invalid enum value" (estado fuera de NUEVO/ACTIVO/SUSPENDIDO/RETIRADO/INACTIVO).
   - 404 NOT_FOUND — id inexistente.
   - 403 AUTH_FORBIDDEN — rol CLIENTE.
-- **Qué NO cubre**: registro de motivo en cambios a estados distintos de INACTIVO (→ HU17-C02, con P-01), captura del motivo en el formulario web, motivo en edición de datos que no sea estado.
+- **Qué NO cubre**: registro de motivo en cambios a estados distintos de INACTIVO (→ HU17-C02, DEC-035), captura del motivo en el formulario web, motivo en edición de datos que no sea estado.
 - **Orden de validación requerido**: primero formato/enum, luego existencia del cliente, luego permiso de rol, luego motivo.
 - **Prueba esperada**: integración → "PATCH INACTIVO con motivo persiste motivo + actor + historial" (asertar respuesta **y** BD), "PATCH INACTIVO sin motivo → 400", "límites de motivo 2/3/200/201".
 
@@ -65,19 +65,21 @@ Tres ramas fraccionables:
   - **Resultado observable**: 401 con `{ error: "La cuenta está inactiva. Contacte con recepción.", code: "AUTH_CLIENTE_INACTIVO" }` y **sin** `token`.
   - **Orden de chequeo obligatorio**: validar credenciales (cédula + PIN) **antes** de evaluar el estado → si el PIN es incorrecto la respuesta es el 401 genérico `AUTH_INVALID_CREDENTIALS` ("Cédula o PIN inválido"), sin revelar que la cuenta existe/está inactiva (evita enumeración de cédulas).
   - **HTTP / códigos**: 401 AUTH_CLIENTE_INACTIVO (inactivo + PIN ok) · 401 AUTH_INVALID_CREDENTIALS (PIN mal o cédula inexistente) · 400 VALIDATION_ERROR (formato).
-  - **Qué NO cubre**: revocación de sesiones ya emitidas (→ P-02), vigencia de membresía vencida en el login (HU-16), login del portal interno de usuarios (HU-01).
+  - **Qué NO cubre**: revocación de sesiones ya emitidas (→ HU08-C04c, decidido en DEC-040: sin revocación, expira por TTL), vigencia de membresía vencida en el login (HU-16), login del portal interno de usuarios (HU-01).
   - **Prueba esperada**: integración → "login cliente INACTIVO → 401 AUTH_CLIENTE_INACTIVO sin token", "login INACTIVO con PIN mal → 401 AUTH_INVALID_CREDENTIALS", "login ACTIVO → 200 (regresión HU-02)".
 
 - **HU08-C04b — Sin servicios activos nuevos**
   - **Condición previa**: cliente `INACTIVO`.
   - **Disparo**: `POST /clientes/:clienteId/membresias-gym` (creación de vigencia nueva) u otra asignación futura de servicio.
   - **Resultado observable**: 409 con `{ error: "El cliente está inactivo. Reactíveolo antes de asignar servicios nuevos.", code: "CLIENTE_INACTIVO" }`; no se crea ninguna fila.
-  - **HTTP / códigos**: 409 CLIENTE_INACTIVO (propuesto) · 404 NOT_FOUND (cliente) · 403 AUTH_FORBIDDEN (rol CLIENTE) · 201 si el cliente no está inactivo (regresión).
-  - **Qué NO cubre**: servicios ya existentes del cliente (se conservan, ver C02), ingreso físico a sede/recepción (HU-25/HU-29), rutinas/planes futuros (aplicarán el mismo guard cuando existan: HU-13-C04/HU-14-C04).
-  - **Prueba esperada**: integración → "POST membresías-gym con cliente INACTIVO → 409 CLIENTE_INACTIVO y count sin cambio".
+  - **Gap G14 cerrado — ingreso físico (criterio `INC04-CLI-07`, DEC-039)**: `POST /recepcion/ingresos` con cliente `INACTIVO` → **403 `INGRESO_NO_PERMITIDO`** (mensaje `El cliente está INACTIVO y no puede registrar ingresos`), sin fila creada; la rama SUSPENDIDO/RETIRADO queda intacta del INC-03 (DEC-030, `INC03-ING-10`, no se re-cobra aquí).
+  - **HTTP / códigos**: 409 CLIENTE_INACTIVO (decidido — `INC04-CLI-05`) · 403 INGRESO_NO_PERMITIDO (ingreso físico INACTIVO, DEC-039) · 404 NOT_FOUND (cliente) · 403 AUTH_FORBIDDEN (rol CLIENTE) · 201 si el cliente no está inactivo (regresión).
+  - **Qué NO cubre**: servicios ya existentes del cliente (se conservan, ver C02), rutinas/planes futuros (aplicarán el mismo guard cuando existan: HU-13-C04/HU-14-C04), bloqueo de SUSPENDIDO/RETIRADO en el ingreso (ya pagado en INC-03, DEC-030).
+  - **Prueba esperada**: integración → "POST membresías-gym con cliente INACTIVO → 409 CLIENTE_INACTIVO y count sin cambio" + "POST /recepcion/ingresos con cliente INACTIVO → 403 INGRESO_NO_PERMITIDO sin fila creada".
 
-- **HU08-C04c — Sesión ya emitida antes de inactivar** — **BLOQUEADO: P-02**
-  - Pregunta al producto abajo. Sin decisión, no se especifica ni se puntúa.
+- **HU08-C04c — Sesión ya emitida antes de inactivar** — LISTO (DEC-040)
+  - **Decidido — DEC-040** (`INC04-PEND-07`, opción (b), 2026-10-14): **no se revoca** la sesión JWT ya emitida al inactivar al cliente; expira con el TTL absoluto de 24 h (DEC-009). Los "servicios activos nuevos" del bullet b4 se refieren a asignaciones nuevas, no a lecturas de sesiones vivas.
+  - **Criterio de INC-04**: `INC04-CLI-06` — prueba de **no-regresión** (sin cambio de código): la sesión abierta sigue funcionando hasta el TTL.
 
 ### HU08-C05 — Reactivación del cliente INACTIVO (DEC-020)
 - **Condición previa**: cliente `INACTIVO`; actor DUENO o RECEPCIONISTA (DEC-020).
@@ -87,7 +89,7 @@ Tres ramas fraccionables:
   - El login del portal vuelve a responder 200 con token (HU08-C04a invertido).
   - Vuelve a permitirse crear servicios nuevos (HU08-C04b invertido).
 - **HTTP / códigos**: 200 OK · 400 VALIDATION_ERROR (sin motivo o inválido) · 404 NOT_FOUND · 403 AUTH_FORBIDDEN (rol CLIENTE).
-- **Qué NO cubre**: reactivación automática por pago, notificación al cliente, transiciones desde RETIRADO (→ P-04 / HU17-C04), estado destino exacto (→ P-03, propuesta ACTIVO).
+- **Qué NO cubre**: reactivación automática por pago, notificación al cliente, transiciones desde RETIRADO (→ HU17-C04, DEC-038: `RETIRADO` es terminal, 409 `TRANSICION_INVALIDA`), estado destino de la reactivación (ya fijado en la matriz DEC-038: `INACTIVO → ACTIVO`).
 - **Prueba esperada**: integración → "RECEPCIONISTA reactiva INACTIVO → ACTIVO con motivo y historial" + "login tras reactivación → 200" + "DUENO reactiva → 200" + "CLIENTE → 403".
 
 ## Partición de Equivalencia
@@ -98,7 +100,7 @@ Tres ramas fraccionables:
 | motivo | String 3-200 | "Mudanza de ciudad" | Vacío, <3, >200 | "", "No", 201 chars |
 | rol actor | DUENO o RECEPCIONISTA | DUENO | CLIENTE / sin sesión | CLIENTE |
 | cédula (login) | Registrada + estado INACTIVO + PIN ok | 1234567890 + 1234 | PIN incorrecto, no registrada | 1234567890 + 0000 |
-| cliente objetivo | Estado ≠ INACTIVO (para inactivar) / = INACTIVO (para reactivar) | ACTIVO / INACTIVO | Transición no aplicable | INACTIVO → INACTIVO sin cambio |
+| cliente objetivo | Estado ≠ INACTIVO (para inactivar) / = INACTIVO (para reactivar) | ACTIVO / INACTIVO | Transición fuera de matriz (409, DEC-038) | RETIRADO → INACTIVO (terminal) |
 
 ## Análisis de Valores Límite
 | Campo | Tipo | Mín | Máx | Mín-1 | Máx+1 |
@@ -127,23 +129,24 @@ Tres ramas fraccionables:
 | true | false | INACTIVO | 401 AUTH_INVALID_CREDENTIALS (no revela estado) |
 | false | * | * | 401 AUTH_INVALID_CREDENTIALS |
 
-\* RETIRADO: acceso del portal RETIRADO no está decidido aquí → ver P-04/HU17-C04; hoy no se filtra (gap conocido, fuera de alcance de HU-08).
+\* RETIRADO: el bloqueo de **login** del portal solo está decidido para INACTIVO (DEC-034); para RETIRADO el acceso del portal no se filtra hoy (gap conocido, fuera del alcance de HU-08). La **transición** RETIRADO → cualquier otra está decidida en HU17-C04 (DEC-038: terminal → 409), pero eso no bloquea el login por sí solo.
 
 ### D3 — Reactivación (DEC-020)
 | estado actual | rol válido | motivo ok | Acción |
 |---|---|---|---|
-| INACTIVO | DUENO/RECEPCIONISTA | true | 200 → estado destino (propuesta ACTIVO, P-03) + historial |
+| INACTIVO | DUENO/RECEPCIONISTA | true | 200 → estado ACTIVO (matriz DEC-038; DEC-020) + historial |
 | INACTIVO | DUENO/RECEPCIONISTA | false | 400 VALIDATION_ERROR |
 | INACTIVO | CLIENTE | * | 403 AUTH_FORBIDDEN |
 | ≠ INACTIVO | * | * | 200 si la transición es válida (HU17-C04) / 404 si no existe |
 
 ## Transiciones de Estado
-### Cliente (alcance HU-08)
+### Cliente (alcance HU-08; coherente con la matriz ratificada DEC-038 / HU17-C04)
 | Estado Actual | Evento | Estado Siguiente | Válido |
 |--------------|--------|-----------------|--------|
-| NUEVO/ACTIVO/SUSPENDIDO/RETIRADO | Inactivar (con motivo) | INACTIVO | Sí |
-| INACTIVO | Reactivar (DEC-020, con motivo) | ACTIVO (propuesta P-03) | Sí |
-| INACTIVO | Inactivar de nuevo (sin cambio) | INACTIVO | No-op: sin registro nuevo de cambio |
+| NUEVO/ACTIVO/SUSPENDIDO | Inactivar (con motivo) | INACTIVO | Sí |
+| RETIRADO | Inactivar (con motivo) | INACTIVO | **No — 409 TRANSICION_INVALIDA** (RETIRADO terminal, DEC-038) |
+| INACTIVO | Reactivar (DEC-020, con motivo) | ACTIVO (matriz DEC-038) | Sí |
+| INACTIVO | Inactivar de nuevo (sin cambio) | INACTIVO | No-op: 200 sin registro nuevo de cambio (diagonal) |
 | * | Borrado físico | — | No existe endpoint (C02) |
 
 ## Cobertura de Ramas
@@ -175,6 +178,13 @@ Tres ramas fraccionables:
 | 1 | cliente INACTIVO | fechas válidas | 409 CLIENTE_INACTIVO, sin fila creada |
 | 2 | cliente ACTIVO (regresión) | fechas válidas | 201 (HU-12) |
 | 3 | cliente inexistente | id inexistente | 404 NOT_FOUND |
+
+### Ruta: POST /api/recepcion/ingresos (HU08-C04b, gap G14 → criterio INC04-CLI-07, DEC-039)
+| # | Escenario | Input | Resultado Esperado |
+|---|-----------|-------|-------------------|
+| 1 | cliente INACTIVO | ingreso con vigencia válida | 403 INGRESO_NO_PERMITIDO, sin fila creada |
+| 2 | SUSPENDIDO / RETIRADO | — | 403 (DEC-030, INC-03; rama intacta, no se re-cobra) |
+| 3 | cliente ACTIVO (regresión) | vigencia válida | 201 (INC-03) |
 
 ### Ruta: Reactivación (HU08-C05)
 | # | Escenario | Input | Resultado Esperado |
@@ -221,6 +231,11 @@ Feature: Inactivación de clientes sin borrado físico
       |  | Motivo es requerido cuando cambia el estado |
       | No | Motivo debe tener al menos 3 caracteres |
       | [201 caracteres] | Motivo no puede exceder 200 caracteres |
+
+    # Nota de materialización (D4): la fila "requerido" se cumple OMITIENDO el
+    # campo `motivo` en el body (superRefine solo con `estado` sin `motivo`);
+    # un `""` literal enviado cae en "Motivo debe tener al menos 3 caracteres"
+    # (coherente con HU-17-schemas.ts:59-64). No se cambia el Example.
 
   # HU08-C03 — ramas de error
   Scenario: Inactivar cliente inexistente retorna 404
@@ -293,10 +308,12 @@ Feature: Inactivación de clientes sin borrado físico
 | No hay ruta DELETE de clientes (correcto: confirmarlo con prueba, no borrar nada) | `src/routes/clientes.ts` (GET/POST/PATCH únicamente) | HU08-C02 |
 
 ## Preguntas al producto
+> **Resueltas 2026-10-14** en `docs/producto/decisiones.md`: **P-02 → DEC-040** (la sesión JWT previa no se revoca; expira con TTL 24 h) y **P-03 → DEC-037 + DEC-038** (DUENO y RECEPCIONISTA inactivan/reactivan; el estado destino de la reactivación queda fijado en la matriz ratificada como `INACTIVO → ACTIVO`). La tabla queda como historial de la pregunta/opciones.
+
 | ID | Pregunta | Impacto | Criterio |
 |----|----------|---------|----------|
-| **P-02** | ¿La sesión JWT ya emitida a un cliente que queda INACTIVO se revoca de inmediato (chequeo de estado en cada request del portal) o expira sola con el TTL de 24 h (DEC-009/DEC-010)? | Si no se decide, HU08-C04c no se puede especificar ni probar; "no puede ingresar" queda cubierto solo en el login. | HU08-C04c |
-| **P-03** | ¿A qué estado exacto lleva la reactivación DEC-020 (propuesta: `ACTIVO`)? ¿Y puede RECEPCIONISTA **inactivar** (la HU dice "Como dueno", la ruta `PATCH /clientes` ya permite ambos roles y DEC-020 da ambos para reactivar)? | Define el valor esperado en la prueba de C05 y el permiso de inactivación. | HU08-C05 |
+| **P-02 → DEC-040** | ~~¿La sesión JWT ya emitida a un cliente que queda INACTIVO se revoca de inmediato o expira sola con el TTL de 24 h?~~ **Resuelta (opción (b))**: no se revoca; expira con el TTL absoluto de 24 h (DEC-009); criterio `INC04-CLI-06` (prueba de no-regresión). | Cerrada: HU08-C04c especificado; "no puede ingresar" queda cubierto en el login (DEC-034). | HU08-C04c |
+| **P-03 → DEC-037 + DEC-038** | ~~¿A qué estado exacto lleva la reactivación DEC-020 y quién puede inactivar?~~ **Resuelta**: destino **ACTIVO** (matriz ratificada DEC-038: `INACTIVO → ACTIVO` permitida; `INACTIVO → SUSPENDIDO` → 409) y permisos **DUENO + RECEPCIONISTA** (DEC-037). | Cerrada: valor esperado y permisos fijados para la prueba de C05. | HU08-C05 |
 
 ## Nota de seguridad (resuelta en el criterio)
 Para no revelar cuentas existentes, HU08-C04a exige verificar cédula+PIN **antes** que el estado: un atacante sin el PIN solo recibe `AUTH_INVALID_CREDENTIALS` genérico, igual que hoy (HU-02).

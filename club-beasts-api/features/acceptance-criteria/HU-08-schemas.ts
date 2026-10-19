@@ -46,14 +46,16 @@ export const cambioEstadoClienteSchema = z.object({
  * obligatorio (incluso si el estado resultara igual al actual: el servicio,
  * que conoce el estado vigente, decide si el cambio es no-op).
  *
- * ⚠ P-01 PENDIENTE DE CONFIRMACIÓN: la obligatoriedad universal del motivo
- * (este `.superRefine`) afecta tests ya aceptados de HU-05 que cambian estado
- * sin motivo (`tests/unit/cliente.schema.test.ts:150-155`,
+ * DEC-035 aplicada (opción (a), 2026-10-14): la obligatoriedad universal del
+ * motivo (este `.superRefine`) es **contrato decidido**, no una duda abierta.
+ * Impacto documentado como cambio de contrato (no regresión): afecta tests ya
+ * aceptados de HU-05 que cambian estado sin motivo
+ * (`tests/unit/cliente.schema.test.ts:150-155`,
  * `tests/integration/clientes.test.ts:426/456`,
  * `tests/integration/features.test.ts:339` — runner Gherkin 63/63) y el
- * formulario web (`club-beasts-web/src/lib/cliente-payload.ts:41`).
- * Si Producto restringe el motivo a cambios críticos, eliminar el refine y
- * mover la exigencia al servicio solo para INACTIVO/SUSPENDIDO/RETIRADO.
+ * formulario web (`club-beasts-web/src/lib/cliente-payload.ts:41`): se
+ * **actualizan** en el RED, nunca se eliminan (riesgo `INC04-R01`;
+ * enmienda D3 — antes: "P-01 PENDIENTE DE CONFIRMACIÓN").
  */
 export const updateClienteConMotivoSchema = z
   .object({

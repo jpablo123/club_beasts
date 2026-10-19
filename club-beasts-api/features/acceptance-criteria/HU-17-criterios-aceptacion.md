@@ -4,7 +4,7 @@
 
 Ciclo de vida del estado general del cliente (NUEVO, ACTIVO, SUSPENDIDO, RETIRADO, INACTIVO): cada cambio deja motivo y actor, y nunca destruye el historial previo.
 
-**Decisiones aplicadas**: DEC-001 (roles DUENO, RECEPCIONISTA, CLIENTE), DEC-020 (INACTIVO → reactivación), DEC-016 (fraccionable), más las reglas ya decididas de HU-05 (ACTIVO ↔ SUSPENDIDO; * → RETIRADO).
+**Decisiones aplicadas**: DEC-001 (roles DUENO, RECEPCIONISTA, CLIENTE), DEC-020 (INACTIVO → reactivación), DEC-016 (fraccionable), más las reglas ya decididas de HU-05 (ACTIVO ↔ SUSPENDIDO; * → RETIRADO), y de INC-04 (todas aprobadas 2026-10-14): **DEC-035** (`motivo` obligatorio en todo cambio de estado → C02b), **DEC-036** (historial en `ClienteEstadoCambio` → C02a/C03), **DEC-037** (DUENO + RECEPCIONISTA), **DEC-038** (matriz de transiciones; `RETIRADO` terminal → C04) y **DEC-041** (`motivo` visible solo a staff).
 
 **Alcance anti-duplicado (auditoría G14)**: el bullet 1 (catálogo de estados) y el filtro por estado ya están pagados en HU-05 (cambio de estado aceptado, enum validado) y HU-06 (filtro + badge). `HU17-C01` queda como referencia trazable, **no puntuable en INC-04**. Lo distintivo y puntuable: **motivo del cambio** (C02), **conservación/visibilidad de historial** (C03) y **rechazo de transiciones inválidas** (C04).
 
@@ -13,9 +13,9 @@ Ciclo de vida del estado general del cliente (NUEVO, ACTIVO, SUSPENDIDO, RETIRAD
 | # | Bullet de la HU | ID criterio | Estado | Puntuable INC-04 |
 |---|-----------------|-----------|--------|------------------|
 | 1 | El sistema permite manejar estados generales como nuevo, activo, suspendido, retirado e inactivo. | HU17-C01 | REF (base aceptada en HU-05/HU-06) | No (duplicado) |
-| 2 | El sistema registra motivo cuando el estado cambia. | HU17-C02a (persistir) + HU17-C02b (obligatorio) | C02a LISTO para RED; **C02b BLOQUEADO (P-01)** | Sí (C02a sí; C02b tras P-01) |
+| 2 | El sistema registra motivo cuando el estado cambia. | HU17-C02a (persistir) + HU17-C02b (obligatorio) | C02a y C02b LISTO para RED (**DEC-035**: obligatorio en todo cambio) | Sí |
 | 3 | El estado general no elimina el historial previo del cliente. | HU17-C03 | LISTO para RED | Sí |
-| (derivado) | Transiciones inválidas rechazadas (expectativa de la auditoría G9) | HU17-C04 | **BLOQUEADO (P-04)** — la matriz de transiciones no está aprobada | Sí, tras P-04 |
+| (derivado) | Transiciones inválidas rechazadas (expectativa de la auditoría G9) | HU17-C04 | LISTO para RED (**DEC-038**, matriz ratificada 2026-10-14) | Sí |
 
 ## Detalle por criterio
 
@@ -36,16 +36,16 @@ Ciclo de vida del estado general del cliente (NUEVO, ACTIVO, SUSPENDIDO, RETIRAD
   - En BD, en la misma transacción: fila de historial con A → B, motivo, actor y fecha; `actualizadoPorId` = actor.
   - El motivo provisto queda recuperable vía ficha/historial (no se sobreescribe con el tiempo: C03).
 - **HTTP / códigos**: 200 OK · 400 VALIDATION_ERROR (motivo 0/2/201 chars, enum inválido) · 404 NOT_FOUND · 403 AUTH_FORBIDDEN.
-- **Qué NO cubre**: exigir el motivo cuando falta (→ C02b/P-01), cambios de campos que no sean estado, UI del formulario.
+- **Qué NO cubre**: exigir el motivo cuando falta (→ C02b, decidido en DEC-035), cambios de campos que no sean estado, UI del formulario.
 - **Prueba esperada**: integración → "PATCH estado con motivo persiste motivo + actor + registro A→B en BD" (asertar respuesta **y** BD).
 
-### HU17-C02b — El motivo es obligatorio en todo cambio de estado — **BLOQUEADO (P-01)**
+### HU17-C02b — El motivo es obligatorio en todo cambio de estado — LISTO (DEC-035)
 - **Condición previa**: idéntica a C02a.
 - **Disparo**: `PATCH /clientes/:id` con `estado` presente **sin** `motivo`.
 - **Resultado esperado (lectura literal de la HU)**: 400 VALIDATION_ERROR "Motivo es requerido cuando cambia el estado"; el estado no cambia.
-- **Estado**: **BLOQUEADO — P-01**. La HU dice "registra motivo cuando el estado cambia" (lectura literal: todo cambio). Implementarlo tal cual afecta evidencia ya aceptada y el runner actual (ver tabla de impacto en "Preguntas al producto"). Hasta que Producto confirme, C02a (persistir lo que llega) se puede cerrar y C02b no.
+- **Estado**: **decidido — DEC-035** (`INC04-PEND-02`, opción (a), 2026-10-14): el `motivo` es obligatorio en **todo** cambio de estado (lectura literal de la HU). Los tests aceptados de HU-05/Gherkin/UI que no lo enviaban se **actualizan como cambio de contrato documentado** (RED antes que GREEN; ningún test se elimina). Criterio de INC-04: `INC04-EST-03`.
 - **Qué NO cubre**: motivo opcional en ediciones sin cambio de estado, motivo en altas de cliente (estado inicial NUEVO, HU-04).
-- **Prueba esperada (tras decisión)**: integración → "PATCH {estado} sin motivo → 400 y el estado no cambia" + actualización controlada de los tests afectados.
+- **Prueba esperada**: integración → "PATCH {estado} sin motivo → 400 y el estado no cambia" + actualización controlada de los tests afectados (cambian los inputs, no las asertaciones de rechazo).
 
 ### HU17-C03 — El estado general no elimina el historial previo
 - **Condición previa**: cliente con datos completos, al menos una membresía y ≥ 2 cambios de estado previos registrados.
@@ -59,23 +59,23 @@ Ciclo de vida del estado general del cliente (NUEVO, ACTIVO, SUSPENDIDO, RETIRAD
 - **Qué NO cubre**: historial de ediciones de campos no-estado (HU-05), historial visible en UI (HU-07/HU-32), exportación de reportes (HU-33).
 - **Prueba esperada**: integración → "tres cambios de estado consecutivos acumulan 3 registros y los datos base no cambian" + "DELETE /clientes/:id → 404".
 
-### HU17-C04 — Transiciones inválidas rechazadas — **BLOQUEADO (P-04)**
-- **Condición previa**: cliente en estado A; actor DUENO/RECEPCIONISTA.
+### HU17-C04 — Transiciones inválidas rechazadas — LISTO (DEC-038)
+- **Condición previa**: cliente en estado A; actor DUENO/RECEPCIONISTA (DEC-037).
 - **Disparo**: `PATCH /clientes/:id` con `estado` = B.
 - **Resultado esperado**:
-  - Transición permitida → 200 (con motivo, C02).
-  - Transición no permitida → **409 con `{ error, code: "TRANSICION_INVALIDA" }`** (propuesto) y el estado no cambia.
+  - Transición permitida por la matriz → 200 con `motivo` obligatorio (DEC-035) y registro A→B en historial.
+  - Transición **fuera de la matriz** → **409 con `{ error: "Transición de estado no permitida", code: "TRANSICION_INVALIDA" }`** (mensaje fijado en el spec de INC-04) y el estado no cambia, sin escritura alguna.
   - Estado fuera del enum → 400 (REF, HU-05/HU-06).
-  - Mismo estado que el actual → 200 no-op: no se registra un cambio nuevo (la HU solo habla de registrar motivo "cuando el estado cambia").
-- **Matriz** (ver sección Transiciones): decididas = ACTIVO ↔ SUSPENDIDO, * → RETIRADO, * → INACTIVO, INACTIVO → ACTIVO (DEC-020); **pendiente de aprobación = todo lo que sale de RETIRADO y las salidas de NUEVO** → P-04.
-- **Estado**: **BLOQUEADO — P-04**: no se puede probar "rechazo de transición inválida" sin una matriz aprobada.
-- **Qué NO cubre**: permisos por transición (idénticos para todas), transiciones automáticas por vencimiento (HU-16), transiciones desde RETIRADO hacia ACTIVO por reingreso (decidir en P-04).
-- **Prueba esperada (tras decisión)**: integración → "transición aprobada → 200", "transición rechazada → 409 TRANSICION_INVALIDA y estado sin cambio".
+  - Mismo estado que el actual (diagonal) → 200 **no-op**: no se registra un cambio nuevo (CONF-02; la HU solo habla de registrar motivo "cuando el estado cambia").
+- **Matriz**: **ratificada — DEC-038** (`INC04-PEND-05`, opción (b), 2026-10-14), ver sección "Transiciones de Estado": `RETIRADO` **terminal** (ninguna salida); diagonal = no-op; `INACTIVO → RETIRADO` **permitida** por la regla `* -> RETIRADO` (celda ratificada por el orquestador 2026-10-14); fuera de matriz → 409 `TRANSICION_INVALIDA`.
+- **Estado**: **decidido — DEC-038**; criterio de INC-04: `INC04-EST-05`. El contrato importable es `HU-17-schemas.ts` (`transicionesAprobadas` + `clasificarTransicion`, enmendado 2026-10-14, en paridad celda a celda con la matriz de este documento).
+- **Qué NO cubre**: permisos por transición (idénticos para todas, DEC-037), transiciones automáticas por vencimiento (HU-16), el estado destino de la reactivación (ya fijado en la matriz: `INACTIVO → ACTIVO`, DEC-020).
+- **Prueba esperada**: integración → "transición permitida → 200 con historial", "transición fuera de matriz (p. ej. RETIRADO → ACTIVO) → 409 TRANSICION_INVALIDA y estado sin cambio", "diagonal → 200 no-op sin registro nuevo".
 
 ## Partición de Equivalencia
 | Campo | Clase Válida | Ejemplo | Clase Inválida | Ejemplo |
 |-------|-------------|---------|---------------|---------|
-| estado (target) | Enum de 5 valores con transición permitida | ACTIVO → SUSPENDIDO | Fuera de enum / transición no permitida | BLOQUEADO / RETIRADO → ACTIVO (según P-04) |
+| estado (target) | Enum de 5 valores con transición permitida | ACTIVO → SUSPENDIDO | Fuera de enum / transición no permitida | BLOQUEADO / RETIRADO → ACTIVO (fuera de matriz, DEC-038) |
 | motivo | String 3-200 presente en cambio | "Falta de pago" | Ausente, <3, >200 | "", "No", 201 chars |
 | rol actor | DUENO o RECEPCIONISTA | RECEPCIONISTA | CLIENTE / anónimo | CLIENTE |
 | historial | ≥ N registros previos | 2 cambios previos | Historial vacío (cliente recién creado) | 0 cambios |
@@ -89,37 +89,39 @@ Ciclo de vida del estado general del cliente (NUEVO, ACTIVO, SUSPENDIDO, RETIRAD
 
 ## Tabla de Decisiones
 ### Cambio de estado con motivo
-| cliente existe | rol válido | estado válido (enum) | transición permitida (P-04) | motivo presente | Acción |
+| cliente existe | rol válido | estado válido (enum) | transición permitida (DEC-038) | motivo presente | Acción |
 |---|---|---|---|---|---|
 | true | DUENO/RECEPCIONISTA | true | true | true | 200 + historial A→B con motivo y actor |
-| true | DUENO/RECEPCIONISTA | true | true | false | 400 VALIDATION_ERROR (C02b, sujeto a P-01) |
-| true | DUENO/RECEPCIONISTA | true | false | * | 409 TRANSICION_INVALIDA (C04, sujeto a P-04) |
+| true | DUENO/RECEPCIONISTA | true | true | false | 400 VALIDATION_ERROR (C02b, DEC-035) |
+| true | DUENO/RECEPCIONISTA | true | false | * | 409 TRANSICION_INVALIDA (C04, DEC-038) |
 | true | DUENO/RECEPCIONISTA | false | * | * | 400 Invalid enum value (REF HU-05/06) |
 | true | CLIENTE | * | * | * | 403 AUTH_FORBIDDEN |
 | false | * | * | * | * | 404 NOT_FOUND |
 
 ## Transiciones de Estado
-### Cliente (matriz completa; **P-04 pendiente de aprobación**)
+### Cliente — matriz ratificada (DEC-038, criterio INC04-EST-05; ratificada por el orquestador 2026-10-14)
 | Estado Actual \ Siguiente | NUEVO | ACTIVO | SUSPENDIDO | RETIRADO | INACTIVO |
 |---|---|---|---|---|---|
-| **NUEVO** | no-op (200) | propuesto: sí | propuesto: sí | sí (* → RETIRADO, HU-05) | sí (* → INACTIVO, HU-08) |
-| **ACTIVO** | no (propuesto: rechazar) | no-op (200) | sí (HU-05) | sí (HU-05) | sí (HU-08) |
-| **SUSPENDIDO** | no (propuesto: rechazar) | sí (HU-05) | no-op (200) | sí (HU-05) | sí (HU-08) |
-| **RETIRADO** | **P-04** (propuesto: rechazar) | **P-04** (propuesto: rechazar) | **P-04** (propuesto: rechazar) | no-op (200) | **P-04** (propuesto: rechazar) |
-| **INACTIVO** | no (propuesto: rechazar) | sí (DEC-020) | **P-04** (propuesto: rechazar) | **P-04** (propuesto: rechazar) | no-op (200) |
+| **NUEVO** | no-op (200) | sí | sí | sí | sí |
+| **ACTIVO** | 409 | no-op (200) | sí (HU-05) | sí (* → RETIRADO, HU-05) | sí (HU-08) |
+| **SUSPENDIDO** | 409 | sí (HU-05) | no-op (200) | sí (* → RETIRADO, HU-05) | sí (HU-08) |
+| **RETIRADO** | 409 | 409 | 409 | no-op (200) | 409 |
+| **INACTIVO** | 409 | sí (DEC-020) | 409 | sí (* → RETIRADO, ratificada 2026-10-14) | no-op (200) |
 
-- "sí" = 200 con motivo; "no-op" = 200 sin registro nuevo; "rechazar" = 409 TRANSICION_INVALIDA (propuesto); **P-04** = requiere aprobación de Producto antes de implementar/probar.
+- "sí" = 200 con `motivo` obligatorio (DEC-035) y registro A→B en historial; "no-op" = 200 sin registro nuevo (mismo estado, diagonal, CONF-02); "409" = `{ error: "Transición de estado no permitida", code: "TRANSICION_INVALIDA" }` sin escritura.
+- `RETIRADO` es **terminal**: ninguna transición sale de RETIRADO (DEC-038); la diagonal es siempre no-op; `INACTIVO → RETIRADO` es **permitida** por la regla `* -> RETIRADO` (celda ratificada por el orquestador 2026-10-14); cualquier celda fuera de esta matriz → 409 `TRANSICION_INVALIDA`.
+- Espejo importable: `HU-17-schemas.ts` (`transicionesAprobadas` + `clasificarTransicion`, enmendado 2026-10-14) — paridad celda a celda verificada con esta tabla.
 
 ## Cobertura de Ramas
 ### Ruta: PATCH /api/clientes/:id (cambio de estado)
 | # | Escenario | Input | Resultado Esperado |
 |---|-----------|-------|-------------------|
 | 1 | Happy path | ACTIVO → SUSPENDIDO + motivo | 200 + historial A→B con actor |
-| 2 | motivo ausente | { estado } solo | 400 (C02b, según P-01) |
+| 2 | motivo ausente | { estado } solo | 400 (C02b, DEC-035) |
 | 3 | motivo 2 chars | motivo "No" | 400 "Motivo debe tener al menos 3 caracteres" |
 | 4 | motivo 201 chars | motivo 201 `a` | 400 "Motivo no puede exceder 200 caracteres" |
 | 5 | enum inválido | estado "BLOQUEADO" | 400 Invalid enum value |
-| 6 | transición no permitida | según matriz P-04 | 409 TRANSICION_INVALIDA |
+| 6 | transición no permitida | ej.: RETIRADO → ACTIVO (fuera de matriz) | 409 TRANSICION_INVALIDA |
 | 7 | mismo estado | estado actual | 200 no-op sin registro nuevo |
 | 8 | cliente inexistente | id "nonexistent-id" | 404 NOT_FOUND |
 | 9 | rol CLIENTE | token CLIENTE | 403 AUTH_FORBIDDEN |
@@ -131,7 +133,7 @@ Ciclo de vida del estado general del cliente (NUEVO, ACTIVO, SUSPENDIDO, RETIRAD
 |-------|------|-----------|---------------|----------|-------------------|
 | id | string | sí (params) | - | 1-36 | UUID/cuid |
 | estado | string | sí (si se pretende cambiar) | - | - | NUEVO, ACTIVO, SUSPENDIDO, RETIRADO, INACTIVO |
-| motivo | string | según P-01 (literal: sí) | texto libre | 3-200 | libre |
+| motivo | string | sí (en todo cambio de estado, DEC-035) | texto libre | 3-200 | libre |
 
 ## Escenarios Gherkin (borrador — NO crear `.feature` todavía; los conecta test-engineer en RED)
 
@@ -163,7 +165,12 @@ Feature: Gestión de estados generales del cliente
       | No | Motivo debe tener al menos 3 caracteres |
       | [201 caracteres] | Motivo no puede exceder 200 caracteres |
 
-  # HU17-C02b — SOLO si P-01 confirma obligatoriedad universal
+    # Nota de materialización (D4): la fila "requerido" se cumple OMITIENDO el
+    # campo `motivo` en el body (superRefine solo con `estado` sin `motivo`);
+    # un `""` literal enviado cae en "Motivo debe tener al menos 3 caracteres"
+    # (coherente con HU-17-schemas.ts:59-64). No se cambia el Example.
+
+  # HU17-C02b — DEC-035 (motivo obligatorio en todo cambio)
   Scenario: Cambiar estado sin motivo retorna 400
     When intento cambiar el estado del cliente a "SUSPENDIDO" sin motivo
     Then el sistema muestra error "Motivo es requerido cuando cambia el estado"
@@ -191,7 +198,7 @@ Feature: Gestión de estados generales del cliente
     And el historial contiene tres registros ordenados por fecha
     And la búsqueda por cédula sigue encontrando al cliente
 
-  # HU17-C04 — SOLO si P-04 aprueba la matriz
+  # HU17-C04 — matriz ratificada (DEC-038)
   Scenario: Transición aprobada se aplica
     Given el cliente está en estado "SUSPENDIDO"
     When cambio el estado del cliente a "ACTIVO" con motivo "Pago recibido"
@@ -204,21 +211,23 @@ Feature: Gestión de estados generales del cliente
     And el estado del cliente sigue siendo "RETIRADO"
 ```
 
-> Nota para test-engineer: `[201 caracteres]` = literal de 201 caracteres. Los escenarios marcados "SOLO si P-01/P-04" no deben conectarse hasta que `docs/producto/decisiones.md` registre la decisión.
+> Nota para test-engineer: `[201 caracteres]` = literal de 201 caracteres. Los escenarios de C02b y C04 están **habilitados** (DEC-035 y DEC-038 aprobadas 2026-10-14); el contrato importable es `HU-17-schemas.ts` (enmendado 2026-10-14, en paridad con este documento).
 
 ## Gaps vs código actual
 | Gap | Evidencia | Criterio |
 |-----|-----------|----------|
 | Sin campo `motivo` en el modelo Cliente | `prisma/schema.prisma:35-58` | HU17-C02a/C02b |
 | Sin tabla de historial de cambios de estado del cliente (solo `MembresiaGymCambio`) | `prisma/schema.prisma:78-93` | HU17-C02a, HU17-C03 |
-| `updateClienteSchema` acepta `estado` sin `motivo` | `src/schemas/cliente.schema.ts:46` | HU17-C02b (P-01) |
+| `updateClienteSchema` acepta `estado` sin `motivo` | `src/schemas/cliente.schema.ts:46` | HU17-C02b (DEC-035) |
 | `updateCliente` no registra actor del cambio de estado ni motivo | `src/services/cliente.service.ts:111-126` | HU17-C02a |
 | La respuesta del PATCH no expone motivo ni historial | `src/routes/clientes.ts:171-206`, `selectCliente` (`cliente.service.ts:25-43`) | HU17-C02a |
-| No hay validación de transiciones (cualquier enum → cualquier enum) | `src/routes/clientes.ts:183-197` + `cliente.service.ts:111` | HU17-C04 (P-04) |
+| No hay validación de transiciones (cualquier enum → cualquier enum) | `src/routes/clientes.ts:183-197` + `cliente.service.ts:111` | HU17-C04 (DEC-038) |
 | No existe código `TRANSICION_INVALIDA` | grep `TRANSICION` = 0 en `src/` | HU17-C04 |
 
 ## Preguntas al producto
+> **Resueltas 2026-10-14** en `docs/producto/decisiones.md`: **P-01 → DEC-035** (motivo obligatorio en todo cambio, opción (a)) y **P-04 → DEC-038** (matriz 5x5, `RETIRADO` terminal, fuera de matriz → 409 `TRANSICION_INVALIDA`; celda `INACTIVO → RETIRADO` ratificada como permitida por el orquestador). La tabla queda como historial de la pregunta/opciones.
+
 | ID | Pregunta | Impacto | Criterio |
 |----|----------|---------|----------|
-| **P-01** | ¿El `motivo` es **obligatorio en todo cambio de estado** (lectura literal de la HU) o solo en cambios críticos (INACTIVO, SUSPENDIDO, RETIRADO)? **Impacto de la opción literal**: rompe `tests/unit/cliente.schema.test.ts:150-155`, `tests/integration/clientes.test.ts:426/456`, `tests/integration/features.test.ts:339` (runner Gherkin 63/63) y exige añadir campo al formulario web (`club-beasts-web/src/lib/cliente-payload.ts:41` + sus tests unit). **Impacto de la opción restringida**: cero regresión; HU-08 (INACTIVO) queda cubierto igual. | Decide C02b y el RED de INC-04: hay que actualizar tests aceptados de HU-05 o no. | HU17-C02b |
-| **P-04** | ¿Cuáles son exactamente las transiciones inválidas? Propuesta en la matriz: RETIRADO es terminal (RETIRADO → X rechazado con 409 `TRANSICION_INVALIDA`) y NUEVO solo sale hacia ACTIVO/SUSPENDIDO/RETIRADO/INACTIVO. Falta confirmar RETIRADO → ACTIVO (¿reingreso?) y RETIRADO → INACTIVO. | Sin matriz aprobada no existe "transición inválida" que probar (expectativa G9 de la auditoría). | HU17-C04 |
+| **P-01 → DEC-035** | ~~¿El `motivo` es **obligatorio en todo cambio de estado** o solo en cambios críticos?~~ **Resuelta (opción (a))**: obligatorio en todo cambio. **Impacto controlado**: los tests aceptados de HU-05/Gherkin/UI que cambiaban estado sin motivo se actualizan como cambio de contrato documentado (`tests/unit/cliente.schema.test.ts:150-155`, `tests/integration/clientes.test.ts:426/456`, `tests/integration/features.test.ts:339`, web `cliente-payload.ts:41` + helpers E2E). | Decide C02b y el RED de INC-04: se actualizan (nunca se borran) los tests afectados. | HU17-C02b |
+| **P-04 → DEC-038** | ~~¿Cuáles son exactamente las transiciones inválidas?~~ **Resuelta (opción (b))**: matriz 5x5 de la sección "Transiciones de Estado"; `RETIRADO` terminal (toda salida → 409); `NUEVO` sale hacia ACTIVO/SUSPENDIDO/RETIRADO/INACTIVO; diagonal no-op; **`INACTIVO → RETIRADO` permitida** por la regla `* -> RETIRADO` (ratificada por el orquestador 2026-10-14); fuera de matriz → 409 `TRANSICION_INVALIDA`. | Cerrada: existe "transición inválida" que probar (expectativa G9 de la auditoría); criterio `INC04-EST-05`. | HU17-C04 |
