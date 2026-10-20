@@ -16,6 +16,16 @@ export const ADMIN = { email: "admin@clubbeasts.com", password: "admin123" };
 export const MENSAJE_SESION_VENCIDA =
   "Tu sesión venció por seguridad. Inicia sesión de nuevo para continuar.";
 
+/**
+ * INC-04 / DEC-035 (cambio de contrato, `PEND-02` = (a)): todo PATCH que
+ * trae `estado` debe traer `motivo` (3..200), si no el backend responde 400
+ * "Motivo es requerido cuando cambia el estado". Las fixtures de estado de
+ * los E2E existentes (`clientes.spec.ts`, `recepcion.spec.ts`) se migran a
+ * este contrato; ninguna asercion se debilita.
+ */
+export const MOTIVO_CAMBIO_ESTADO_E2E =
+  "Cambio de estado solicitado por recepción (E2E)";
+
 /** Login de staff por la UI; aterriza en la lista de clientes. */
 export async function loginComoDueno(page: Page): Promise<void> {
   await page.goto("/login");
@@ -87,16 +97,24 @@ export async function crearClienteApi(
   return { id: body.id, cedula };
 }
 
-/** Cambia el estado de un cliente via API (el alta siempre nace en NUEVO). */
+/**
+ * Cambia el estado de un cliente via API (el alta siempre nace en NUEVO).
+ *
+ * INC-04 / DEC-035: el `motivo` (3..200) es obligatorio en todo cambio de
+ * estado (400 "Motivo es requerido cuando cambia el estado" sin el); se
+ * envia por defecto el motivo aprobado y puede sobreponerse para asertar el
+ * `ultimoCambio` observado despues del cambio.
+ */
 export async function cambiarEstadoCliente(
   request: APIRequestContext,
   clienteId: string,
-  estado: "NUEVO" | "ACTIVO" | "SUSPENDIDO" | "RETIRADO" | "INACTIVO"
+  estado: "NUEVO" | "ACTIVO" | "SUSPENDIDO" | "RETIRADO" | "INACTIVO",
+  motivo: string = MOTIVO_CAMBIO_ESTADO_E2E
 ): Promise<void> {
   const token = await tokenApi(request);
   const res = await request.patch(`${API_URL}/clientes/${clienteId}`, {
     headers: { Authorization: `Bearer ${token}` },
-    data: { estado },
+    data: { estado, motivo },
   });
   expect(res.ok(), `PATCH /clientes/${clienteId} devolvio ${res.status()}: ${await res.text()}`).toBe(
     true

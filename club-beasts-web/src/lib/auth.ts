@@ -94,7 +94,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               tokenExpiresAt: data.tokenExpiresAt,
               debeCambiarPin: data.cliente.debeCambiarPin,
             };
-          } catch {
+          } catch (err) {
+            // INC04-CLI-04 (DEC-034): re-lanzar solo los `CredentialsSignin`
+            // (p. ej. CuentaInactivaSignin) para que su `code` llegue al
+            // navegador. Cualquier otro fallo (red, JSON invalido, errores
+            // internos) sigue retornando null => credenciales invalidas.
+            if (err instanceof CredentialsSignin) throw err;
             return null;
           }
         } else {

@@ -161,6 +161,77 @@ describe("Cliente Schemas", () => {
       expect(result.success).toBe(false);
     });
 
+    /**
+     * INC-04 / gap G-02 (DEC-035 + CONF-04/CONF-07): el motivo del cambio de
+     * estado viaja en el mismo PATCH que el `estado`. Limites 3..200 con los
+     * mensajes exactos del contrato G14 (`HU-08-schemas.ts:28-31`, espejo
+     * `HU-17-schemas.ts:66-69`).
+     */
+    it("acepta motivo valido junto al estado (INC-04 / DEC-035)", () => {
+      const result = updateClienteSchema.safeParse({
+        estado: "INACTIVO",
+        motivo: "Bloqueo por lesión de rodilla",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("acepta motivo en el limite inferior de 3 caracteres (CONF-04)", () => {
+      const result = updateClienteSchema.safeParse({
+        estado: "RETIRADO",
+        motivo: "abc",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("acepta motivo en el limite superior de 200 caracteres (CONF-04)", () => {
+      const result = updateClienteSchema.safeParse({
+        estado: "SUSPENDIDO",
+        motivo: "a".repeat(200),
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rechaza motivo de 1 a 2 caracteres con el mensaje G14", () => {
+      const result = updateClienteSchema.safeParse({
+        estado: "INACTIVO",
+        motivo: "ab",
+      });
+      expect(result.success).toBe(false);
+      expect(result.error?.errors[0].message).toBe(
+        "Motivo debe tener al menos 3 caracteres"
+      );
+    });
+
+    it("rechaza motivo vacío literal con el mensaje G14 de longitud mínima", () => {
+      const result = updateClienteSchema.safeParse({
+        estado: "INACTIVO",
+        motivo: "",
+      });
+      expect(result.success).toBe(false);
+      expect(result.error?.errors[0].message).toBe(
+        "Motivo debe tener al menos 3 caracteres"
+      );
+    });
+
+    it("rechaza motivo de 201 caracteres con el mensaje G14", () => {
+      const result = updateClienteSchema.safeParse({
+        estado: "INACTIVO",
+        motivo: "a".repeat(201),
+      });
+      expect(result.success).toBe(false);
+      expect(result.error?.errors[0].message).toBe(
+        "Motivo no puede exceder 200 caracteres"
+      );
+    });
+
+    it("acepta motivo viajero sin estado (CONF-07: la obligatoriedad la emite el endpoint)", () => {
+      const result = updateClienteSchema.safeParse({
+        telefono: "3009999999",
+        motivo: "Motivo viajero sin cambio de estado",
+      });
+      expect(result.success).toBe(true);
+    });
+
     it("rechaza teléfono inválido", () => {
       const result = updateClienteSchema.safeParse({
         telefono: "2001234567",
