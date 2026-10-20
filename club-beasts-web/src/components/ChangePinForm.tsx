@@ -5,7 +5,8 @@ import { api, type ApiError } from "@/lib/api";
 import { Card, Button, Input } from "@/components";
 
 interface ChangePinFormProps {
-  onSuccess: () => void;
+  /** Puede ser async: el portal persiste el flag de sesion aqui dentro. */
+  onSuccess: () => void | Promise<void>;
 }
 
 export default function ChangePinForm({ onSuccess }: ChangePinFormProps) {
@@ -47,7 +48,10 @@ export default function ChangePinForm({ onSuccess }: ChangePinFormProps) {
     setLoading(true);
     try {
       await api.auth.changePin(currentPin, newPin);
-      onSuccess();
+      // Se espera tambien el onSuccess (async en el portal): el boton
+      // permanece en `loading` hasta que el flag de sesion persiste, sin
+      // un frame intermedio en el que el formulario quede habilitado.
+      await onSuccess();
     } catch (err) {
       const apiErr = err as ApiError;
       if (apiErr.kind === "invalid_credentials") {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Navbar, PageHeader } from "@/components";
@@ -8,11 +8,19 @@ import EstadoAccesoBadge from "@/components/EstadoAccesoBadge";
 import ChangePinForm from "@/components/ChangePinForm";
 import { api, type ApiError, type PortalResumen } from "@/lib/api";
 import { resolveSessionExit } from "@/lib/session-recovery";
+import {
+  holdSessionTraffic,
+  releaseSessionTraffic,
+  waitForSessionTrafficIdle,
+} from "@/lib/session-traffic";
 
 export default function PortalPage() {
   const { data: session, status, update } = useSession();
   const router = useRouter();
   const [pinChangeSuccess, setPinChangeSuccess] = useState(false);
+  // Marca el tramo en el que el flag `debeCambiarPin` se esta persistiendo:
+  // ver el comentario dentro del efecto del resumen.
+  const pinChangeInProgress = useRef(false);
 
   // INC-03 / INC03-POR-01..07: el portal consume `GET /portal/resumen`.
   // Identidad, estado de acceso, vencimiento y congelacion salen del
@@ -28,6 +36,18 @@ export default function PortalPage() {
       setResumen(null);
       return;
     }
+    // Mientras persiste el flag `debeCambiarPin` (flujo de cambio de PIN
+    // obligatorio) no se refresca el resumen. Motivo (E2E
+    // `cambio-pin-obligatorio.spec.ts`): Auth.js re-firma y re-emite la
+    // cookie de sesion en CADA respuesta de `GET /api/auth/session`, y
+    // `fetchApi` emite una de esas lecturas por llamada. Un refresco aqui
+    // lanzado durante el POST del `update()` genera una lectura con la
+    // cookie vieja cuyo seguimiento por el canal de difusion aterriza
+    // DESPUES del `update()` y devuelve el flag a `true` (misma clase de
+    // carrera que GAP-009 en el cierre de sesion). El resumen ya esta
+    // cargado y el PIN no altera esos datos: con el flujo en curso se
+    // conserva el dato en memoria y no se emite trafico de sesion.
+    if (pinChangeInProgress.current) return;
     let vivo = true;
     (async () => {
       try {
@@ -77,29 +97,13 @@ export default function PortalPage() {
 
   const debeCambiarPin = (session.user as { debeCambiarPin?: boolean }).debeCambiarPin;
 
-  if (debeCambiarPin && !pinChangeSuccess) {
-    return (
-      <main className="min-h-screen bg-near-black">
-        <Navbar showAuth={false} />
-        <div className="pt-24 pb-12">
-          <div className="max-w-md mx-auto px-5">
-            <PageHeader
-              title="Mi Portal"
-              description={`Bienvenido, ${session.user?.name}`}
-            />
-            <ChangePinForm
-              onSuccess={() => {
-                setPinChangeSuccess(true);
-                update({ user: { ...session.user, debeCambiarPin: false } });
-              }}
-            />
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (pinChangeSuccess && debeCambiarPin) {
+  // El estado de exito se entra solo con `pinChangeSuccess` (y no exigiendo
+  // que `debeCambiarPin` siga siendo true): con el `update()` ya persistido,
+  // la sesion del cliente puede --y debe-- quedar en false, y la pantalla
+  // "PIN Actualizado" debe mostrarse igual. Mismos textos y mismos estados
+  // que siempre; se gana determinismo (antes parpadeaba o no se llegaba a
+  // ver dependiendo de cuando aterrizaba la lectura tardia de sesion).
+  if (pinChangeSuccess) {
     return (
       <main className="min-h-screen bg-near-black">
         <Navbar showAuth={false} />
@@ -124,6 +128,59 @@ export default function PortalPage() {
                 </p>
               </div>
             </Card>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (debeCambiarPin) {
+    return (
+      <main className="min-h-screen bg-near-black">
+        <Navbar showAuth={false} />
+        <div className="pt-24 pb-12">
+          <div className="max-w-md mx-auto px-5">
+            <PageHeader
+              title="Mi Portal"
+              description={`Bienvenido, ${session.user?.name}`}
+            />
+            <ChangePinForm
+              onSuccess={async () => {
+                // Auth.js re-firma y re-emite la cookie de sesion en CADA
+                // respuesta de `GET /api/auth/session` (el mismo riesgo que
+                // GAP-009 en el cierre de sesion): una lectura aun en vuelo
+                // aterriza DESPUES del `update()` y devuelve la cookie --y el
+                // estado del cliente-- a `debeCambiarPin: true`, repintando el
+                // formulario aunque el PIN ya cambio (la carrera del E2E
+                // `cambio-pin-obligatorio.spec.ts`).
+                //
+                // La compuerta de trafico (`session-traffic.ts`) drena esas
+                // lecturas, pero RETIENE tambien el POST del `update` (mismo
+                // path `/api/auth/session`), asi que no puede sostenerse
+                // durante la escritura. Con el refresco del resumen suspendido
+                // (ver `pinChangeInProgress` en el efecto) la unica fuente de
+                // lecturas durante la escritura desaparece; el drenaje previo
+                // cubre las lecturas heredadas del cambio de PIN y se repite
+                // "drenar -> escribir" un numero acotado de veces por
+                // robustez, sin depender del timing del navegador.
+                pinChangeInProgress.current = true;
+                const MAX_INTENTOS_ESCRITURA = 3;
+                for (let intento = 0; intento < MAX_INTENTOS_ESCRITURA; intento++) {
+                  holdSessionTraffic();
+                  try {
+                    await waitForSessionTrafficIdle();
+                  } finally {
+                    releaseSessionTraffic();
+                  }
+                  await update({
+                    user: { ...session.user, debeCambiarPin: false },
+                  });
+                }
+                // El estado de exito entra solo con el flag ya persistido:
+                // entrar antes permitia navegar con el POST aun en vuelo.
+                setPinChangeSuccess(true);
+              }}
+            />
           </div>
         </div>
       </main>
