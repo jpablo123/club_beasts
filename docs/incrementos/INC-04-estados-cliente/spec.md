@@ -2,7 +2,7 @@
 
 ## Estado
 
-Estado actual: **LISTO** (puerta cumplida 2026-10-14 y sincronizada 2026-10-19).
+Estado actual: **ACEPTADO** (2026-10-19, +2 puntos certificados; evidencia y revision en `evidencia.md`).
 Contrato ratificado por `backend-developer` (2026-10-14, secciones "Contrato API
 propuesto", "Orden de evaluacion", "Matriz de transiciones ratificada", "Errores" e
 "incompatibilidades"). Puerta de entrada, hoy:
@@ -22,8 +22,9 @@ propuesto", "Orden de evaluacion", "Matriz de transiciones ratificada", "Errores
   criterios: 2 REF + 12 OK).
 
 Historial del pipeline: PROPUESTO (2026-10-14) -> **ESPECIFICADO (2026-10-14)** ->
-contrato ratificado (2026-10-14) -> **LISTO (2026-10-14, sincronizado 2026-10-19)**.
-RED habilitado (mismo gate unico que INC-03: todos los criterios comparten spec).
+contrato ratificado (2026-10-14) -> LISTO (2026-10-14, sincronizado 2026-10-19) -> RED
+(2026-10-19) -> IMPLEMENTADO (2026-10-19) -> VERIFICADO (2026-10-19) -> REVISADO
+(2026-10-19, 0 bloqueantes) -> **ACEPTADO (2026-10-19)**.
 
 ## Objetivo
 
@@ -309,8 +310,10 @@ Notas de ratificacion:
   (`TRANSICION_INVALIDA`, matriz ratificada) -> 400 (`sedeId` inexistente) / 409
   (`DUPLICATE`) -> 200. **Sin escritura** en 400/404/409. El 409 de transicion va
   **antes** de la validacion de `sedeId` porque la matriz se evalua con el estado ya
-  leido (tras el 404) y no escribe nada; `motivo` se valida en Zod (paso 400 body), no
-  aqui.
+  leido (tras el 404) y no escribe nada; `motivo` se valida **dentro del paso de 400
+  body**, antes de la 404 (implementado en la ruta tras el parseo — ver nota de la
+  incompatibilidad #10 — porque el schema aceptado debe seguir parseando `{estado}`
+  solo), no aqui.
 - **#2 ficha**: 401 (preHandler `authenticate`) -> 400 (params) -> 403 (roles en linea:
   CLIENTE self-only / rol no permitido; mensaje propio) -> 404 -> 200.
 - **#3 login**: 400 (cedula/PIN, primer error) -> 401 `AUTH_INVALID_CREDENTIALS` -> 401
@@ -326,7 +329,7 @@ Notas de ratificacion:
 Nota sobre el orden de `HU08-C03` (G14): el criterio escribe "primero formato/enum, luego
 existencia del cliente, luego permiso de rol, luego motivo"; el codigo **no** puede
 validar el rol despues de la 404 sin reescribir la arquitectura de auth (DEC-001:
-preHandler) y el motivo vive en Zod (antes de la 404). Se ratifica el orden del codigo
+preHandler) y el motivo se valida **en el paso de 400 body** (ruta, antes de la 404). Se ratifica el orden del codigo
 (= orden ya aceptado de INC-03 para el PATCH); el G14 solo **enumera** los codigos
 posibles, y **ningun** escenario Gherkin de HU-08/HU-17 cubre las combinaciones que
 discriminan los dos ordenes (`CLIENTE` + id inexistente; id inexistente + `motivo`

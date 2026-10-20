@@ -2,9 +2,10 @@
 
 ## Estado
 
-Estado actual: **VERIFICADO** (2026-10-19; revision pendiente). Historial:
+Estado actual: **ACEPTADO** (2026-10-19). Historial completo:
 PROPUESTO -> ESPECIFICADO (2026-10-14) -> LISTO (2026-10-14) -> RED (2026-10-19) ->
-IMPLEMENTADO/GREEN (2026-10-19) -> VERIFICADO (2026-10-19).
+IMPLEMENTADO/GREEN (2026-10-19) -> VERIFICADO (2026-10-19) -> REVISADO (2026-10-19,
+`code-reviewer` sin hallazgos bloqueantes) -> **ACEPTADO (2026-10-19, +2 puntos)**.
 Puerta de entrada completa: `INC04-PEND-01..08` resueltas por
 Producto (DEC-034..041 en `decisiones.md`), contrato ratificado por `backend-developer`
 (16 incompatibilidades documentadas y resueltas en el spec), `HU-17-schemas.ts` ratificado,
@@ -49,8 +50,8 @@ bullets de estado/filtro ya cobrados en HU-05/HU-06 **no** se vuelven a cobrar).
 | 18 | **GREEN** API: `routes/clientes.ts` + `services/cliente.service.ts` (motivo, historial, transiciones, exposicion), `services/auth.service.ts` + `routes/auth.ts` (`PEND-01`), `services/membresia.service.ts` (guarda 409), `routes/recepcion.ts` (`PEND-06`), `src/schemas/*` | `CLI-*`, `EST-02..05` | backend-developer | Alta | **Completada (2026-10-19)**: matriz 5x5 + transaccion cliente+historial + 401 `AUTH_CLIENTE_INACTIVO` + 409 `CLIENTE_INACTIVO` + 403 rama INACTIVO; guard `INC00_SCENARIO_COUNT` 126->153 (linea unica autorizada); API 529/529 y Gherkin 153/153; desvio documentado: el 400 de `motivo` vive en la ruta (no en `superRefine`) para no romper `cliente.schema.test.ts` aceptado, manteniendo el orden CONF-03 |
 | 19 | **GREEN** UI: campo `motivo` en `/clientes/[id]`, mensaje de login bloqueado, `classifyError` para `AUTH_CLIENTE_INACTIVO` | `EST-06`, `CLI-03/04/06` | frontend-developer | Alta | **Completada (2026-10-19)**: campo Motivo con `role="alert"`, payload con motivo condicionado (CONF-07), `classifyError` con kind `auth_cliente_inactivo`, y — con autorizacion explicita del orquestador — `src/lib/auth.ts` propaga el literal via `CredentialsSignin.code` (E2E real CLI-04 verdes); web 183/183 + build PASS |
 | 20 | **VERIFICADO**: E2E real, bateria completa (API + web + Playwright), guard de gherkin actualizado y registro en `evidencia.md` | todos | test-engineer | Alta | **Completada (2026-10-19)**: API **536/536**, Gherkin **153/153 exit 0**, web **183/183**, build PASS, migraciones **9/0 sin drift**, E2E **56/56 x2** (base 47 + 6 INC-04 + 3 cambio-pin) y 6/6 INC-04 aislados; helper E2E migrado a DEC-035; +7 tests de schema (G-02); registrado en `evidencia.md` secciones 1, 2, 4, 5 y 5.2 |
-| 21 | **Revision**: seguridad/permisos DEC-001, no duplicado (HU-05/HU-06/DEC-030), regresion de INC-03, pruebas sin aserciones vacias | todos | code-reviewer | Alta | Pendiente |
-| 22 | Actualizar `docs/producto/avance.md`, `docs/producto/mvp.md` y `docs/producto/auditoria-puntos-inc00.md` con los puntos aceptados (+2 max., solo si la revision no bloquea y los bullets cierran 4/4 y 3/3) | HU-08 + HU-17 | Orquestador (delivery-orchestrator) | Alta | Pendiente |
+| 21 | **Revision**: seguridad/permisos DEC-001, no duplicado (HU-05/HU-06/DEC-030), regresion de INC-03, pruebas sin aserciones vacias | todos | code-reviewer | Alta | **Completada (2026-10-19)**: **ACEPTA CON HALLAZGOS NO BLOQUEANTES** — REV-01..REV-12 (1 MEDIO, 9 BAJO, 2 SUGERENCIA), **0 bloqueantes**; no-duplicado confirmado; 12 criterios puntuable con evidencia + 2 REF; re-ejecucion propia 536/153/183/56 x2 (seccion 6 de `evidencia.md`) |
+| 22 | Actualizar `docs/producto/avance.md`, `docs/producto/mvp.md` y `docs/producto/auditoria-puntos-inc00.md` con los puntos aceptados (+2 max., solo si la revision no bloquea y los bullets cierran 4/4 y 3/3) | HU-08 + HU-17 | Orquestador (delivery-orchestrator) | Alta | **Completada (2026-10-19)**: **+2 certificados** (HU-08 4/4 = 1, HU-17 3/3 = 1). `avance.md` -> **43/100 (43%)** + fila INC-04 ACEPTADO + riesgos REV-01..REV-12; `mvp.md` -> bloque 2 **14/15** y total **43**; `auditoria-puntos-inc00.md` -> **seccion 10** (bullets <-> criterios <-> evidencia); `decisiones.md` -> notas CONF-03 enmendada, `actorId` de DEC-036 y **PEND-004**; REV-03/REV-07 corregidos |
 
 ## Orden recomendado
 

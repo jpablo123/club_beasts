@@ -54,7 +54,12 @@ Las `CONF-01..06` del spec de INC-03 (opciones por defecto adoptadas alli) queda
 
 ### Confirmaciones de INC-04 ratificadas por el orquestador (2026-10-14)
 
-Las `CONF-01..07` del spec de INC-04 (opciones por defecto adoptadas alli) quedan **ratificadas** al abrir la puerta LISTO: CONF-01 (la reactivacion deja el estado en `ACTIVO`, no en el anterior), CONF-02 (un PATCH sin cambio de estado es no-op y no escribe en el historial), CONF-03 (el orden de evaluacion del PATCH es: validacion Zod -> existencia -> matriz de transiciones -> motivo -> escritura atomica cliente+historial), CONF-04 (`motivo` longitud 3-200, trim, mensaje exacto en espanol), CONF-05 (el historial es observable via `ultimoCambio` en la respuesta del PATCH/GET y en la BD; **sin endpoint nuevo** de historial en este incremento; la UI visible del historial es de HU-07/HU-32), CONF-06 (la guarda de "servicios activos nuevos" vive en el servicio de cliente/membresia y se hereda a INC-05 sin crear rutas aqui), CONF-07 (un `motivo` sin `estado` en el cuerpo se ignora junto al cambio de estado, no genera 400 por esa sola razon).
+Las `CONF-01..07` del spec de INC-04 (opciones por defecto adoptadas alli) quedan **ratificadas** al abrir la puerta LISTO: CONF-01 (la reactivacion deja el estado en `ACTIVO`, no en el anterior), CONF-02 (un PATCH sin cambio de estado es no-op y no escribe en el historial), CONF-03 (el orden de evaluacion del PATCH es: 401/403 -> 400 params -> 400 body — **el `motivo` se valida dentro del paso de 400 body, antes de la 404** — -> 404 -> 409 matriz -> 400 sede/409 duplicado -> 200, con escritura atomica cliente+historial; redaccion enmendada 2026-10-19 por REV-03: la frase original "validacion Zod -> existencia -> matriz -> motivo" colocaba el motivo despues de la matriz y contradecia la incompatibilidad #10 del spec), CONF-04 (`motivo` longitud 3-200, trim, mensaje exacto en espanol), CONF-05 (el historial es observable via `ultimoCambio` en la respuesta del PATCH/GET y en la BD; **sin endpoint nuevo** de historial en este incremento; la UI visible del historial es de HU-07/HU-32), CONF-06 (la guarda de "servicios activos nuevos" vive en el servicio de cliente/membresia y se hereda a INC-05 sin crear rutas aqui), CONF-07 (un `motivo` sin `estado` en el cuerpo se ignora junto al cambio de estado, no genera 400 por esa sola razon).
+
+### Notas de implementacion y follow-up de INC-04 (orquestador, 2026-10-19)
+
+- **DEC-036, nombre del campo**: la columna se materializo como `actorId` (+ relacion `actor` en `ClienteEstadoCambio`), no `creadoPorId` (literal de la decision); el nombre fue delegado al `database-admin` y ratificado en la incompatibilidad #15 del spec INC-04. Sin cambio semantico: persiste **quien** realizo el cambio (`User.id`), y el `motivo` expuesto sigue solo a staff (DEC-041).
+- **PEND-004 (follow-up UX; NO bloquea la certificacion de INC-04)**: la UI de edicion staff envia `estado` en todo guardado, por lo que hoy **cualquier edicion de un campo suelto (p. ej. telefono) exige `motivo`** (hallazgo REV-01, MEDIO, de la revision del 2026-10-19). El contrato de API es el ratificado: un PATCH **sin** `estado` no exige motivo, y el spec documenta DEC-035 como cambio de contrato; aun asi, si Producto considera que "staff edita un campo sin motivo" es una garantia aceptada de HU-05, debe decidirse (a) enviar `estado` solo cuando cambia o (b) mantener el comportamiento y corregir el copy. Responsables: Producto + frontend. Ningun criterio de INC-04 depende de esto.
 
 ### Regla de no duplicado de puntos INC-04 (asignacion del orquestador, 2026-10-14)
 
@@ -75,8 +80,9 @@ Bloque nuevo el 2026-10-14: `INC04-PEND-01..08`, formuladas en `docs/incrementos
 | ID | Decision pendiente | Opciones | Responsable |
 |---|---|---|---|
 | PEND-003 | Campos exactos de anamnesis (ruta ya fijada en DEC-021; se resuelve al especificar el incremento de bloque 5) | Formulario minimo / formulario completo del gimnasio | Producto + Analista |
+| PEND-004 | UI de edicion staff exige `motivo` en todo guardado porque siempre envia `estado` (REV-01, 2026-10-19; follow-up, **no bloquea INC-04**) | (a) enviar `estado` solo cuando cambia / (b) mantener y corregir el copy | Producto + Frontend |
 
-Las `INC03-PEND-01..08` quedan **fuera** por resueltas (DEC-026..033, 2026-10-10); las `INC04-PEND-01..08` quedan **fuera** por resueltas (DEC-034..041, 2026-10-14); el unico pendiente de producto antes del corte del 50% es **PEND-003** (anamnesis, bloque 5).
+Las `INC03-PEND-01..08` quedan **fuera** por resueltas (DEC-026..033, 2026-10-10); las `INC04-PEND-01..08` quedan **fuera** por resueltas (DEC-034..041, 2026-10-14); el unico pendiente de producto que **bloquea** antes del corte del 50% sigue siendo **PEND-003** (anamnesis, bloque 5); `PEND-004` es un follow-up UX sin criterios dependientes.
 
 ## Reglas de resolucion
 

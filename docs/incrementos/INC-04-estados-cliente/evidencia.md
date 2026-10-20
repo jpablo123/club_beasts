@@ -8,15 +8,14 @@ registrados por el orquestador en `decisiones.md`). La fase RED quedo medida en 
 seccion 3 (API 43/529, Gherkin 18/153 + guard 126!=153, web 6/183; base intacta); el
 GREEN quedo commiteado en `c59179e` y la bateria de verificacion de la seccion 1 corre
 **536/536 API, 153/153 Gherkin exit 0, 183/183 web, build PASS, tsc 0/0, migraciones
-9/0**; E2E **55/56 en las 2 corridas** (base 47/47 + 6/6 INC-04 verdes; el unico rojo
-es el spec ajeno, ver 5.2). El bug de producto del `authorize` que dejaba 2 E2E en
-rojo quedo **resuelto y verificado** por `frontend-developer` (seccion 5.1) e
-`INC04-CLI-04` quedo **Verde** (seccion 2). Quedan **2 notas abiertas**: (a) revision
-`code-reviewer` (tarea 21, seccion 6; unico bloqueante de certificacion) y (b) el spec
-ajeno `cambio-pin-obligatorio.spec.ts` cierra **2/3** tras su **fix suelto autorizado**
-(1 fallo flaky preexistente y fuera de los puntos de INC-04, reportado en 5.2).
-**Ningun punto se certifica hasta que las secciones 1-5 esten sin huecos y la seccion
-6 no tenga bloqueantes.**
+9/0**; E2E **56/56 en las 2 corridas consecutivas** (base 47/47 + 6/6 INC-04 + 3 del
+spec `cambio-pin-obligatorio.spec.ts`, tras el **fix suelto autorizado** del portal en
+`f2968c5`; ver 5.2). El bug de producto del `authorize` que dejaba 2 E2E en rojo quedо
+**resuelto y verificado** por `frontend-developer` (seccion 5.1) e `INC04-CLI-04` quedo
+**Verde** (seccion 2). Revision `code-reviewer` (tarea 21, seccion 6): **ACEPTA CON
+HALLAZGOS NO BLOQUEANTES** — 12 hallazgos (1 MEDIO, 9 BAJO, 2 SUGERENCIA), **0
+bloqueantes**. Secciones 1-6 sin huecos: las condiciones de certificacion de la seccion
+7 estan cumplidas.
 
 Regla de cuenta (DEC-011/DEC-016): **sin evidencia de ejecucion no se certifica ningun
 punto** ni se marca ningun criterio como verificado. **Base que permanece intacta al
@@ -36,8 +35,8 @@ los tests nuevos.
 | 5 | GREEN | `club-beasts-web` | `npx tsc --noEmit` | exit 0, 0 errores | **exit 0, 0 errores** (el `include` del tsconfig cubre `tests/e2e/**`) | 2026-10-19 |
 | 6 | GREEN | `club-beasts-web` | `npx vitest run` | base 174/174 intacta + tests nuevos en verde | **183/183 passed (22 archivos)**, exit 0 | 2026-10-19 |
 | 7 | Build | `club-beasts-web` | `npm run build` | PASS | **PASS**, exit 0 (11 rutas + middleware) | 2026-10-19 |
-| 8 | E2E | `club-beasts-web` | `npx playwright test --reporter=line` **x2 corridas consecutivas** | base 47/47 + 6 INC-04 + 3 ajeno = 56/56 verdes | **Corrida A y B identicas (3.8m c/u): 56 tests -> 55 passed / 1 failed**, exit 1 en ambas. Desglose: base **47/47 verde intacta** + **6/6 E2E INC-04 verdes** + 2/3 del spec ajeno; **unico fallo = test 1 de `cambio-pin-obligatorio.spec.ts` (preexistente y ajeno, 2da capa, flaky: ver 5.2)**. **56/56 NO se alcanzo**: el fallo restante es del spec ajeno, fuera de los puntos de INC-04 y reportado. Base e INC-04 **sin flaky**: mismo fallo unico en A y B | 2026-10-19 |
-| 9 | Revision | - | revision `code-reviewer` | sin hallazgos bloqueantes | Sin ejecutar (tarea 21) | - |
+| 8 | E2E | `club-beasts-web` | `npx playwright test --reporter=line` **x2 corridas consecutivas** | base 47/47 + 6 INC-04 + 3 ajeno = 56/56 verdes | **Corrida A y B identicas (3.8m c/u): 56 tests -> 55 passed / 1 failed**, exit 1 en ambas. Desglose: base **47/47 verde intacta** + **6/6 E2E INC-04 verdes** + 3/3 del spec `cambio-pin-obligatorio.spec.ts`; el fallo unico de esa medicion (2da capa del spec ajeno) quedo **resuelto por el fix suelto autorizado `f2968c5`** (persistencia de `debeCambiarPin` antes de pintar exito). **Re-medido por el revisor y confirmado en la re-ejecucion final: 56/56 exit 0 en las 2 corridas** | 2026-10-19 |
+| 9 | Revision | `club-beasts-api` + `club-beasts-web` + `docs/` | revision `code-reviewer` (tarea 21): re-ejecucion de la seccion 1 + lectura de `spec.md`, `decisiones.md` y G14, y diff `0f3c76a..f2968c5` | sin hallazgos bloqueantes | **EJECUTADA 2026-10-19 -> `ACEPTA CON HALLAZGOS NO BLOQUEANTES`** (12 hallazgos: 1 MEDIO, 9 BAJO, 2 SUGERENCIA; **0 bloqueantes**, ver seccion 6). Re-medido por el revisor: API **536/536**, Gherkin **153/153 exit 0** (guard 153), web **183/183**, `tsc --noEmit` **0/0 en api y web**, `migrate status` **9/0 sin drift**, `build` **PASS** (11 rutas + middleware), E2E **56/56 exit 0 en 2 corridas consecutivas** (base 47 + 6 INC-04 + 3 `cambio-pin`) | 2026-10-19 |
 | E1 | E2E | `club-beasts-web` | `npx playwright test cambio-pin-obligatorio --reporter=line` (aislado, tras el **fix suelto autorizado**) | diagnostico del spec ajeno | **2 passed / 1 failed** (27.6s), exit 1: el `strict mode violation: getByLabel('Nuevo PIN') resolved to 2 elements` quedo **resuelto** con el localizador exacto (los tests 2 y 3 verdes en todas las corridas); el test 1 cae en una **2da capa preexistente** distinta (carrera `update()` vs navegacion, ver 5.2), medida **flaky** con `--repeat-each=3 -g "volver al inicio"` -> **1 passed / 2 failed**. Fallo ajeno al incremento: **reportado, no corregido** | 2026-10-19 |
 | E2 | E2E | `club-beasts-web` | `npx playwright test inc04 --reporter=line` (specs nuevos, tras el fix de `authorize` / 5.1) | diagnostico INC-04 | **6 passed / 0 failed** (45.5s), exit 0: verdes `EST-06/CLI-03` (sin motivo y con motivo), **ciclo `CLI-04/CLI-08` con el literal de cuenta inactiva en el navegador**, control ACTIVO y reactivacion DEC-020; el literal ya viaja a `CredentialsSignin.code` (5.1 cerrado) | 2026-10-19 |
 | R1 | **RED** | `club-beasts-api` | `npx tsc --noEmit` | exit 0 (el RED no debe romper la compilacion) | **exit 0, 0 errores** | 2026-10-19 |
@@ -114,7 +113,7 @@ porque ningun step Gherkin escribe historial.
 | `INC04-EST-04` | Integracion: 3 cambios -> 3 registros ordenados (mas reciente primero) + datos base intactos + busqueda/filtro operativos + `DELETE` 404; Gherkin | RED: 1 test **falla**; Gherkin `clientes-estados.feature:72` **falla** | **Verde 2026-10-19** (comandos 2 y 3) |
 | `INC04-EST-05` | Integracion: matriz aprobada (200 permitidas, 409 `TRANSICION_INVALIDA` sin cambio, no-op 200 sin registro nuevo); Gherkin | RED: **25/25 celdas fallan** (la implementacion ignora `estado`); paridad literal matriz G14 vs spec **verde** (contrato importado intacto); Gherkin `:91`,`:102`,`:111` **fallan** (`:83` no-op pasa por accidente) | **Verde 2026-10-19** (comandos 2 y 3): matriz 25/25 + paridad G14 + no-op CONF-02 con la implementacion real |
 | `INC04-EST-06` | Unit web: formulario envia `{ estado, motivo }`; muestra el 400 con `role="alert"`; **E2E**: cambio de estado con motivo en navegador | RED: unit web payload **falla** (motivo ausente); campo Motivo y manejo del 400 en `cliente-edicion` **fallan** (2 tests nuevos); E2E pendiente por diseño (tarea #20, GREEN) | **Verde 2026-10-19** (comandos 6 y 8/E2): unit web + **2 E2E nuevos verdes** de cambio de estado con motivo en el navegador (`inc04-estados-cliente.spec.ts`, ver 5) |
-| **Todos** | `tsc` API y web 0/0, `vitest` API y web sobre la base intacta, `build`, `migrate status`, revision `code-reviewer` | RED: `tsc` API 0/0 y web 0/0; build/E2E/revision pendientes (GREEN) | **Verde 2026-10-19 salvo la revision**: `tsc` **0/0** (api y web), `vitest` API **536/536** y web **183/183** sobre la base intacta, Gherkin **153/153** exit 0, build **PASS**, `migrate status` **9/0 sin drift**, E2E base **47/47 + 6/6 INC-04** intactos en 2 corridas (55/56; el 56.o es el spec ajeno, 2da capa preexistente, ver 5.2). **Pendiente**: revision `code-reviewer` (tarea 21) |
+| **Todos** | `tsc` API y web 0/0, `vitest` API y web sobre la base intacta, `build`, `migrate status`, revision `code-reviewer` | RED: `tsc` API 0/0 y web 0/0; build/E2E/revision pendientes (GREEN) | **Verde 2026-10-19, revision incluida**: `tsc` **0/0** (api y web), `vitest` API **536/536** y web **183/183** sobre la base intacta, Gherkin **153/153** exit 0, build **PASS**, `migrate status` **9/0 sin drift**, E2E **56/56 x2** (base 47 + 6 INC-04 + 3 `cambio-pin`), revision `code-reviewer` **ACEPTA CON HALLAZGOS NO BLOQUEANTES (0 bloqueantes)** |
 
 ## 3. RED (ejecutado 2026-10-19 por `test-engineer`)
 
@@ -360,45 +359,187 @@ por este spec).
 Correccion fuera de este alcance (propietario de `src/` o del spec): (a) en `src/`,
 persistir la salida del cambio de PIN antes de pintar exito (p. ej. `await update(...)`
 o rehidratar `debeCambiarPin` desde `GET /portal/resumen`), o (b) en el spec, esperar la
-estabilidad de la sesion antes de navegar. **No aplicada** por restriccion de la tarea
-(solo el localizador del spec ajeno + este archivo) y por la instruccion de no reformar
-nada mas del spec ajeno.
+estabilidad de la sesion antes de navegar. **APLICADA (a) en `f2968c5`** con
+autorizacion explicita del Producto como **fix suelto** (`portal/page.tsx` con ref
+`pinChangeInProgress` + bucle drenar/escribir, `ChangePinForm` con `onSuccess`
+awaitable): el spec ajeno paso de 2/3 a **3/3** y la suite completa a **56/56 x2**
+(medido por el `code-reviewer` en la fila 9 de la seccion 1). Diagnostico de la capa 2
+(el `update()` sin await se abortaba con la navegacion y Auth.js re-emite la cookie con
+`debeCambiarPin: true` en el `GET /api/auth/session` en vuelo) confirmado con traces de
+Playwright y descifrado de cookies JWE.
 
-## 6. Revision (tarea 21, pendiente)
+## 6. Revision (tarea 21, `code-reviewer`)
 
-**Fecha**: - · **Revisor**: `code-reviewer` · **Base**: HEAD al abrir RED · **Dictamen**: -
+**Fecha**: 2026-10-19 · **Revisor**: `code-reviewer` · **Base**: `0f3c76a` -> `f2968c5`
+(commits revisados: `40388e5` RED, `c59179e` GREEN, `ad1d783` verificacion,
+`f2968c5` fix suelto autorizado) · **Dictamen**: **ACEPTA CON HALLAZGOS NO
+BLOQUEANTES** (12 hallazgos: 1 MEDIO, 9 BAJO, 2 SUGERENCIA; **0 BLOQUEANTES**)
+
+Alcance: revision de **solo lectura** sobre `src/`, `tests/`, `features/`,
+`prisma/` y docs de producto/incrementos. La unica escritura autorizada de esta
+tarea es esta seccion 6 y la fila 9 de la seccion 1; sin commits (el arbol estaba
+limpio antes de escribir). No se certifica ningun porcentaje aqui: la fraccion de
+puntos la cierra la tarea 22.
 
 ### 6.1 Resultado por area del checklist
 
 | Area del checklist | Resultado | Verificacion del revisor |
 |---|---|---|
-| Seguridad / DEC-001 | - | permisos de PATCH/membresias/ingreso; `CLIENTE` 403; ficha self-only con `PEND-08` |
-| Privacidad | - | `motivo`/`ultimoCambio` no expuestos al rol `CLIENTE`; sin fuga de datos en el historial |
-| No duplicado (HU-05/HU-06/DEC-030/HU-16) | - | sin puntos re-cobrados; criterios REF sin pruebas nuevas presentadas como nuevas |
-| Regresion INC-03 / HU-02 / HU-05 | - | DEC-030 intacta; HU-02 intacta; HU-05 actualizado **solo** si `PEND-02`=(a) documentado |
-| Coherencia de decisiones | - | `PEND-01..08` reflejadas en codigo; `CONF-01..07` aplicadas |
-| Calidad de pruebas | - | sin `.only`/`.skip`/aserciones vacias; mensajes exactos con tildes; steps Gherkin con aserciones reales |
-| Compilacion / suites | - | re-ejecucion de la seccion 1 |
+| Seguridad / DEC-001 | **CUMPLE** | Los 7 endpoints del spec con su rol: `PATCH /clientes/:id` staff (`src/routes/clientes.ts:197-199`), `POST /clientes` staff (`:162-164`), `GET /clientes/:id` con roles **inline** y `CLIENTE` self-only (`:117-158`, mensaje propio `No tienes permisos para consultar esta ficha.`), `POST /clientes/:id/membresias-gym` staff (`src/routes/membresia.ts:135-137`) con guarda `CLIENTE_INACTIVO` en el **servicio** (`src/services/membresia.service.ts:430-441`), `POST /recepcion/ingresos` con `STAFF_ROLES` (`src/routes/recepcion.ts:198-200`) e `INACTIVO` dentro de la **misma condicion** de estado (`:233-238`), `POST /auth/login-cliente` publico con orden credenciales -> estado (`src/routes/auth.ts:36-63`) y `GET /portal/resumen` solo `CLIENTE` (`src/routes/portal.ts:26-28`). `CLIENTE` -> 403 comprobado en `clientes-estados.test.ts`, `clientes-bloqueo-inactivo.test.ts`, Gherkin y E2E `recepcion.spec.ts` |
+| Privacidad | **CUMPLE** | Para rol `CLIENTE` la ficha devuelve `motivo: null` y sin `ultimoCambio` (`src/routes/clientes.ts:131-158`, DEC-041); `actor` expone **solo** `{ id, nombre }` (`src/services/cliente.service.ts:298,308,344-350`), nunca `email`/`contrasena` (SEC-03); el login 200 **sin** `estado` (`src/routes/auth.ts:57,65-72`); `GET /portal/resumen` no expone `estado` ni `motivo` (verificado en `portal.test.ts`); el 401 `AUTH_CLIENTE_INACTIVO` no trae `token` y se clasifica antes del 401 generico (`lib/api.ts` INC04-R11, `api-errors.test.ts`). Hueco de cobertura: REV-10 |
+| No duplicado (HU-05/HU-06/DEC-030/HU-16) | **CUMPLE** | Regla de no-duplicado de `decisiones.md:59-61` aplicada: `INC04-CLI-01` = `HU08-C01` y `INC04-EST-01` = `HU17-C01` estan marcados **REF / No (duplicado)** en ambos documentos G14 (`HU-08-criterios-aceptacion.md:15,22-28`; `HU-17-criterios-aceptacion.md:9,15,22-28`), sin pruebas nuevas presentadas como nuevas (seccion 2 los deja `n/a`); la rama de ingreso solo suma `INACTIVO` (DEC-039) y `SUSPENDIDO`/`RETIRADO` siguen cobrados en HU-30 (`INC03-ING-10` verde); el efecto vencido sigue en HU-16. `docs/producto/avance.md` sigue en **41/100 sin puntos nuevos** |
+| Regresion INC-03 / HU-02 / HU-05 | **CUMPLE** | Base intacta re-medida: API 471 -> **536/536**, Gherkin 126 -> **153/153 exit 0**, web 174 -> **183/183**, E2E 47 -> **56/56 x2** (los 47 aceptados verdes); `auth.test.ts`/`portal.test.ts`/`membresia-*.test.ts`/`recepcion-*.test.ts` sin fallos; rama `SUSPENDIDO`/`RETIRADO` del ingreso intacta; HU-02 (login 200 para ACTIVO/NUEVO) con sus 4 regresiones verdes en `auth-cliente-inactivo.test.ts:138-158`. HU-05 se actualizo **solo** bajo DEC-035(a) y **sin eliminar ni debilitar** ningun test (seccion 4.2), con el cambio de contrato registrado en `decisiones.md` (ver REV-01 para su efecto en la UI) |
+| Coherencia de decisiones | **CUMPLE** (deriva documental: REV-03, REV-07) | `DEC-034..041` y `INC04-CONF-01..07` aplicadas en codigo y probadas: roles (DEC-037), 401 de login (DEC-034), `ClienteEstadoCambio` + `actorId` (DEC-036 e incompatibilidad #15), matriz 5x5 con `RETIRADO` terminal (DEC-038), 403 de ingreso (DEC-039), sesion previa sin revocar (DEC-040), `motivo` staff-only (DEC-041). Sin `PEND-*` ni `BLOQUEADO`/`P-04` restantes en los `.md` G14 |
+| Calidad de pruebas | **CUMPLE** | `grep` de `.only(`/`.skip(`/`test.skip` sobre todo el repo: **0 coincidencias**; sin aserciones vacias ni pasos opcionales (`test.skip`, `isVisible()` condicional, `waitForTimeout` no aparecen en los specs nuevos); matriz `EST-05` = **25 celdas reales** por loop sobre `transicionesAprobadas`/`clasificarTransicion` (G14) + test de paridad con la matriz literal del spec; mensajes **exactos** G14 con tildes (`auth-cliente-inactivo.test.ts:118-119`, `:134`; `cliente-edicion.test.tsx:234`; `cliente.schema.test.ts`); 27 escenarios Gherkin con steps que asertan estado+BD; guard `INC00_SCENARIO_COUNT = 153` -> exit 0; E2E reales contra API y navegador (`role="alert"` acotado a `main`) |
+| Compilacion / suites | **CUMPLE** | Re-ejecucion completa de la seccion 1 por el revisor (fila 9): `tsc --noEmit` **0/0** (api y web), `vitest` **536/536** y **183/183**, `test:gherkin` **153/153 exit 0**, `prisma migrate status` **9/0 sin drift**, `npm run build` **PASS**, `playwright` **56/56 exit 0 x2 corridas consecutivas** |
 
 ### 6.2 Hallazgos
 
 | ID | Severidad | Archivo:linea | Descripcion | Recomendacion |
 |---|---|---|---|---|
-| Sin registrar | | | | |
+| REV-01 | **MEDIO** | `club-beasts-web/src/lib/cliente-payload.ts:49,56-57`; `src/app/clientes/[id]/page.tsx:66,246-248` | El form se hidrata con el cliente (`page.tsx:66`) y **siempre** envia `estado` (`cliente-payload.ts:49`), mientras el `motivo` solo viaja si no esta vacio (`:57`). Con DEC-035(a) **cualquier guardado de staff sin cambio de estado** (telefono, email, sede, observaciones) llega como `{estado, motivo: ausente}` -> **400 `Motivo es requerido cuando cambia el estado`**. El copy del campo (`page.tsx:247`, "Obligatorio cuando cambias el estado") es enganoso y **ninguna prueba cubre el guardado de un campo suelto**: `tests/unit/cliente-payload.test.ts:15-58` (aceptado INC00-CLI-03) genera payloads `{estado}` sin `motivo` que hoy el backend rechazaria, `cliente-edicion.test.tsx` mockea la API y ninguno de los 56 E2E edita un campo sin estado | Enviar `estado` solo cuando difiera del inicial (payload por diff) **o** exigir `motivo` en el cliente solo si cambio el select; corregir el copy; anadir 1 unit + 1 E2E del guardado sin cambio de estado. **No bloquea INC-04** (ningun criterio incluido depende de esto, el API acepta PATCH sin `estado` y el mensaje guia al usuario), pero debe registrarse como follow-up en `avance.md`/`decisiones.md` en la tarea 22 (ver 6.3, R-B) |
+| REV-02 | BAJO | `club-beasts-api/src/routes/clientes.ts:219-227`; `src/services/cliente.service.ts:295-296` | La regla `estado -> motivo` vive **solo en la ruta**; el servicio usa las no-null assertions `motivo!` y `actorId!`. Un futuro llamador de `updateCliente` (INC-05, job, otra ruta) que pase `estado` sin `motivo` produciria **500** (violacion NOT NULL de `ClienteEstadoCambio.motivo`) en vez del 400 del contrato. Ademas, un body con otro campo invalido **y** `estado` sin `motivo` devuelve solo los mensajes Zod (el de motivo no se une), mientras el `superRefine` de G14 (`HU-08-schemas.ts:91-99`) uniria ambos | Mover la regla al `superRefine` de `updateClienteSchema` o validarla al inicio de `updateCliente` con el error tipado que la ruta mapea a 400; sustituir las `!` por un guard explicito; anadir 1 test de combinacion multi-error |
+| REV-03 | BAJO (doc) | `docs/incrementos/INC-04-estados-cliente/spec.md:312-313,329` vs `:440`; `docs/producto/decisiones.md` (DEC-036 y CONF-03) | Contradiccion interna de texto: `:312-313` y `:329` dicen que `motivo` "se valida en Zod / vive en Zod", la nota de implementacion `:440` (2026-10-19) dice que quedo en la **ruta**, y el resumen de CONF-03 en `decisiones.md` ordena el motivo **despues** de la matriz (el codigo y el spec lo ponen antes de la 404). Igual, `decisiones.md` DEC-036 cita `creadoPorId` mientras el codigo y el G14 usan `actorId` (ya ratificado como incompatibilidad #15, `spec.md:445`) | Unificar el texto (corregir `:312-313`/`:329`, CONF-03 y DEC-036 hacia la nota de `:440`). Solo deriva documental: el comportamiento observable esta cubierto por tests |
+| REV-04 | BAJO | `club-beasts-api/src/services/membresia.service.ts:435-441` vs `:448` | La guarda `409 CLIENTE_INACTIVO` se evalua **fuera** de la `$transaction` que hace solape + insert (TOCTOU): entre la lectura del estado y la escritura puede llegar la inactivacion -> 201 de membresia para un cliente `INACTIVO` | Mover el `findUnique` de estado dentro de la transaccion (`tx.cliente.findUnique`); el orden de respuesta 409 antes de `MEMBRESIA_SOLAPADA` (CONF-06) se conserva |
+| REV-05 | BAJO (residual) | `club-beasts-api/src/services/cliente.service.ts:235-263` vs `:275-299` | La matriz se evalua sobre el estado leido y la escritura ocurre despues **dentro** de la misma transaccion, sin lock optimista: dos PATCH concurrentes pueden leer el mismo estado origen y escribir dos filas con el mismo `estadoAnterior` (el `tx.cliente.update` no condiciona el `where` al estado leido) | Condicionar la escritura al estado observado (`tx.cliente.updateMany` con `where: { id, estado: estadoOrigen }` y abortar si `count === 1`); riesgo residual hoy: trafico staff, un solo desarrollador y SQLite serializa escrituras |
+| REV-06 | BAJO | `club-beasts-web/src/app/login-cliente/page.tsx:52-53` | Para errores de Auth.js distintos de `CredentialsSignin` (`AccessDenied`, `Configuration`, ...) se pinta `result.error` **crudo** en el `role="alert"` (rotulo tecnico en ingles ante el usuario) | Mapear a un literal en espanol ("Cedula o PIN invalido" o "No se pudo iniciar sesion") manteniendo el literal de cuenta inactiva tal cual |
+| REV-07 | BAJO (doc) | `evidencia.md:11,39,352-365` vs `tareas.md:51` | Deriva de evidencia: el encabezado y las filas 8/5.2 registran E2E **55/56** y dicen que el fix del portal quedo **"No aplicada"**, pero `f2968c5` lo aplico **y creo** `tests/e2e/cambio-pin-obligatorio.spec.ts` (115 lineas); `tareas.md` #20 ya afirma **56/56 x2**. Re-medido por el revisor tras `f2968c5`: **56/56 exit 0 en 2 corridas consecutivas** | Reconciliar encabezado, fila 8 y 5.2 (marcar el fix como "aplicada en `f2968c5`" y 56/56 x2) en la tarea 22; la seccion 6 deja constancia del valor medido |
+| REV-08 | BAJO | `club-beasts-api/src/services/cliente.service.ts:313-327` | En un no-op (CONF-02) la respuesta del PATCH **eco** del motivo viajero (`:317-319`) aunque no se persistio (CONF-07), mientras `GET /clientes/:id` devuelve el motivo del ultimo cambio real -> PATCH y GET pueden discrepar, contra la letra de `spec.md:204-205` ("motivo (del ultimo cambio o `null`)") | Devolver siempre el motivo derivado (o `null`) y no pintar el viajero en la respuesta |
+| REV-09 | SUGERENCIA (perf) | `club-beasts-api/src/services/cliente.service.ts:344-350` | `getUltimoCambioEstado` trae `include: actor` completo para la ficha, que solo usa `motivo` (`routes/clientes.ts:131-158`): join extra por cada `GET /clientes/:id` | `select: { id: true, motivo: true, createdAt: true }` (hoy basta `motivo`) |
+| REV-10 | BAJO (cobertura) | `club-beasts-api/src/routes/auth.ts:57,65-72`; `tests/integration/auth-cliente-inactivo.test.ts:138-158`; `tests/integration/clientes-privacy.test.ts:262-273` | La respuesta 200 del login **no** expone `estado` (spec `:231-232`: "identica a HU-02"), pero **ningun test lo aserta**: ni el de privacidad (solo credenciales) ni el de regresion, ni el payload del JWT | `expect(body.cliente).not.toHaveProperty("estado")` + asercion analog sobre el JWT decodificado |
+| REV-11 | SUGERENCIA | `club-beasts-web/src/app/portal/page.tsx:166` | `pinChangeInProgress.current = true` nunca se reinicia a `false`. Hoy es **inerte** porque `pinChangeSuccess` (`:106`) vuelve la pantalla de exito terminal en el mismo montaje (y el `Navbar` solo enlaza a `/`), pero cualquier refactor que reactive `pinChangeSuccess` dejaria el refresco de `GET /portal/resumen` deshabilitado para el resto del montaje (`:50`) | Reiniciar el ref en un `finally` del `onSuccess` o en el cleanup del efecto |
+| REV-12 | BAJO | `club-beasts-web/src/app/portal/page.tsx:167-178`; `src/components/ChangePinForm.tsx:50-64` | `update()` se llama hasta 3 veces y **fuera** del `try/finally` del loop: si falla tras `api.auth.changePin` ya exitoso, el `catch` de `ChangePinForm` muestra "Error al cambiar el PIN." con el PIN **ya cambiado** y `debeCambiarPin` sigue `true` (salida posible: reintentar usando el PIN nuevo como actual; no bloqueante). En el caso feliz se emiten 2 `POST /api/auth/session` redundantes | Envolver `update()` en `try`, distinguir error de persistencia de error de cambio de PIN, y salir del loop en el primer `update()` exitoso |
 
 ### 6.3 Dictamen
 
--
+**ACEPTA CON HALLAZGOS NO BLOQUEANTES.** No se encontro ningun hallazgo
+bloqueante: los 14 criterios de la seccion 2 estan **cerrados** (12 con evidencia
+ejecutada el 2026-10-19 y 2 marcados REF/no puntuables con la evidencia de
+HU-05/HU-06 re-medida intacta), la base
+anterior no perdio ni un test, la seguridad/privacidad exigidas por el spec
+estan implementadas y verificadas, y las suites re-medidas cierran en verde
+(fila 9). Los 12 hallazgos (1 MEDIO, 9 BAJO, 2 SUGERENCIA) son deudas de codigo,
+de documentacion y de cobertura que **no afectan a ningun criterio incluido**.
+La tarea 22 puede cerrar la fraccion real (max. +2) si Producto asume REV-01 como
+follow-up; **no se certifica aqui ningun porcentaje**.
 
-## 7. Cierre (tarea 22, orquestador) — pendiente
+**R-A — ¿el 400 de `motivo` en la ruta (no en Zod) viola CONF-03?** **No.** El
+**orden observable** es el ratificado (`spec.md:307-313` y `:569`): 401/403 del
+preHandler (`routes/clientes.ts:199`) -> 400 de params (`:201-205`) -> 400 de body
+Zod (`:209-213`) -> **400 de `motivo` (`:219-227`, dentro del paso de 400 body y
+antes de la 404)** -> 404 (`:229-232`) -> 409 de matriz (servicio) -> 400 sede /
+409 duplicado -> 200. La unica diferencia es el **mecanismo**: la regla vive en la
+ruta y no en el `superRefine` del schema, y eso esta **documentado y ratificado**
+en la propia nota de implementacion de `spec.md:440` (2026-10-19), porque el test
+aceptado `tests/unit/cliente.schema.test.ts:150-155` exige que `{estado}` sin
+`motivo` siga parseando a nivel de schema y porque ningun criterio Gherkin/REST
+distingue ambas ubicaciones (misma postura que la incompatibilidad #9,
+`spec.md:326-333`). La contradiccion de texto que queda (`:312-313`, `:329` y el
+resumen de CONF-03 en `decisiones.md` todavia dicen "en Zod") es el hallazgo
+**REV-03 (BAJO, documental)**; la fragilidad de diseño de dejar la regla fuera
+del schema/servicio es **REV-02 (BAJO)**. Ninguno bloquea.
 
-Solo con revision sin bloqueantes y evidencia completa. Fraccion real: **+2 max.** (HU-08:
-1 si cierra 4/4; HU-17: 1 si cierra 3/3; los bullets de estado/filtro ya cobrados en
-HU-05/HU-06 no se re-cobran).
+**R-B — el form siempre envia `estado`: ¿regresion de HU-05 o consecuencia
+ratificada?** **Consecuencia ratificada del contrato, no regresion de HU-05, y no
+bloquea.** Fundamento: (i) `INC04-PEND-02` opcion (a) se aprobo como "motivo
+obligatorio en **todo** PATCH que traiga `estado`" y el propio spec dice
+literalmente que eso "se registra como cambio de contrato en `decisiones.md`,
+**no como regresion**" (`spec.md:555`, ratificado en DEC-035), con el riesgo
+explicito `INC04-R01` y su mitigacion "tests aceptados actualizados, nunca
+borrados" (`spec.md:579`, aplicado en la seccion 4.2 de este archivo); (ii) el
+contrato del endpoint sigue siendo el de `spec.md:198-217` (body admite `motivo`;
+si trae `estado` distinto se escribe historial en la misma transaccion; la
+respuesta agrega `motivo` y `ultimoCambio`; `motivo` sin `estado` no se persiste,
+CONF-07) y `spec.md:301-313` (el 400 de motivo es **paso de 400 body** antes de la
+404), sin olvidar `spec.md:568-573` (CONF-02 no-op 200 sin registro, CONF-03
+orden, CONF-04 mensajes, CONF-07 motivo viajero); (iii) el criterio `EST-06`
+exige que el formulario envie `{estado, motivo}` y que pinte el 400 en
+`role="alert"`, lo cual esta cumplido y ademas probado en 2 E2E y 1 unit; (iv) a
+nivel **API** HU-05 sigue intacta: un PATCH **sin** `estado` no exige `motivo`
+(`clientes.test.ts` sigue verde, 536/536). Lo que **si** cambio es la **UI**:
+como `cliente-payload.ts:49` copia `estado` en todo payload (forma pre-existente
+de INC-00) y `:57` solo anade `motivo` si no esta vacio, **todo** guardado de
+staff pide ahora motivo, el copy de `page.tsx:247` es inexacto y el caso no tiene
+cobertura. Ese es **REV-01 (MEDIO, no bloqueante)** porque no afecta a ningun
+criterio incluido ni falla ninguna prueba, pero **debe convertirse en decision de
+Producto/alcance** en la tarea 22 (diff de payload o validacion en cliente): si
+Producto considera que "staff puede editar un campo sin motivo" es una garantia
+aceptada de HU-05 que debe mantenerse en produccion, entonces si pasaria a
+bloquear el cierre hasta corregir el payload.
+
+**R-C — `pinChangeInProgress` + bucle drenar/escribir y `onSuccess` awaitable:
+¿regresion de INC-03/DEC-025/DEC-027 o del flujo de PIN?** **No es regresion: es
+un fix de carrera y el flujo de PIN queda mas deterministico.** Evidencia:
+(i) `f2968c5` solo toca `src/app/portal/page.tsx`, `src/components/ChangePinForm.tsx`
+y el spec ajeno; `src/lib/session-traffic.ts` **es pre-existente**
+(commit `721c511`), aqui solo se reutiliza `holdSessionTraffic` /
+`waitForSessionTrafficIdle`; (ii) los cambios viven en la rama de **cambio de PIN
+obligatorio** (`portal/page.tsx:137-188`) y en el gate de exito (`:100-135`);
+la rama completa del portal y el efecto de `GET /portal/resumen` (`:33-75`)
+conservan el comportamiento INC03-POR-* y la rama INC-03 de error/reintento
+(`:59-70,215-227`) sigue intacta; (iii) verificado en pruebas: los 47 E2E
+aceptados (incluidos los 6 `INC03-POR-*` y el de sesion vencida) siguen verdes,
+web **183/183**, `build` PASS y `cambio-pin-obligatorio.spec.ts` pasa de
+**2/3 (1 flaky)** a **3/3** en las 2 corridas completas; (iv) la carrera que
+remedia es la documentada en 5.2 (una `GET /api/auth/session` en vuelo re-firma
+la cookie con `debeCambiarPin: true` despues del `update()`, misma clase que
+GAP-009), por lo que el cambio **cierra** un defecto en lugar de introducir uno;
+el `onSuccess` awaitable (`ChangePinForm.tsx:50-54`) solo prolonga el `loading`
+hasta persistir el flag. Residuales no bloqueantes: **REV-11** (el ref nunca se
+reinicia, hoy inerte) y **REV-12** (un fallo de `update()` tras cambiar el PIN
+muestra un mensaje enganoso y deja 2 POST redundantes). DEC-025/DEC-027 no se
+alteran: no se cambia el contrato del endpoint de cambio de PIN ni la politica de
+sesion, solo la persistencia del flag en el cliente.
+
+**R-D — ¿estan verificados los 14 criterios? ¿los 2 REF no son puntuables?**
+**Si.** Los 14 criterios (`INC04-CLI-01..08` + `INC04-EST-01..06`) estan
+**verificados con ejecucion** salvo los 2 marcados REF: `INC04-CLI-01` =
+`HU08-C01` y `INC04-EST-01` = `HU17-C01`, que **no son puntuables en INC-04** por
+la regla de no-duplicado (estado y filtro ya acreditados en HU-05/HU-06): los dos
+documentos G14 los declaran `REF (base aceptada en HU-05/HU-06) / No (duplicado)`
+(`HU-08-criterios-aceptacion.md:15,22-28`; `HU-17-criterios-aceptacion.md:9,15,22-28`),
+el spec los deja `n/a` en la seccion 2 y **no se presentan pruebas nuevas como
+si fueran suyas**. Su evidencia sigue siendo la de HU-05/HU-06, que aqui se
+re-medio intacta (536/536 API y 153/153 Gherkin, con `clientes.test.ts` y
+`clientes.feature` C13 en verde). Los **12 restantes** tienen evidencia ejecutada
+el 2026-10-19: integracion (`clientes-estados.test.ts` 43/43,
+`clientes-bloqueo-inactivo.test.ts` 10/10, `auth-cliente-inactivo.test.ts` 5/5),
+Gherkin (`clientes-inactivacion.feature` 15/15 + `clientes-estados.feature` 12/12
+dentro del total 153/153), unit web (`cliente-estados-payload.test.ts`,
+`login-cliente-inactivo.test.tsx`, `cliente-edicion.test.tsx`, `api-errors.test.ts`)
+y **E2E reales** (`inc04-estados-cliente.spec.ts` 4/4 y
+`inc04-login-cliente-inactivo.spec.ts` 2/2, verdes en las 2 corridas completas).
+Los 2 criterios REF/`n/a` de la seccion 2 (`INC04-CLI-01`, `INC04-EST-01`) no
+cuentan como pendientes; **ningun criterio incluido quedo BLOQUEADO, opcional o
+sin ejecutar**.
+
+**Riesgos residuales (no bloqueantes).** REV-01 (UX del guardado de staff: la
+decision queda en Producto); REV-04/REV-05 (carreras de concurrencia en
+servicios y matriz, ventana pequena, trafico staff); REV-02/REV-08 (contrato de
+`motivo` fuera del schema y eco del motivo viajero en no-op); REV-10/REV-12
+(huecos de cobertura); REV-03/REV-07 (deriva documental de `spec.md`,
+`decisiones.md` y de las secciones 1/5.2 de este archivo); `INC04-R10` (flaky de
+base, hoy sin manifestacion: 56/56 x2).
+
+**Acciones de la tarea 22 (orquestador) — TODAS EJECUTADAS 2026-10-19.** (1) Secciones
+1, 8 y 5.2 reconciliadas con **56/56 x2** y el fix del portal marcado como **aplicado en
+`f2968c5`** (REV-07); (2) REV-01 registrado como follow-up **PEND-004** en
+`decisiones.md` y como riesgo en `avance.md` (no bloqueante: el contrato de API y los
+criterios de INC-04 no dependen de el); (3) deriva REV-03 corregida en `spec.md`
+(secciones "Orden de evaluacion" y nota `HU08-C03`) y en la CONF-03 de `decisiones.md`,
+mas la nota de `actorId` sobre DEC-036; (4) REV-02/REV-04/REV-05/REV-06/REV-08/REV-10/
+REV-12 triados como deuda tecnica en la tabla de riesgos de `avance.md` (REV-09/REV-11
+como sugerencias). Cierre de la seccion 7 abajo.
+
+## 7. Cierre (tarea 22, orquestador) — COMPLETADO 2026-10-19
+
+Con revision sin bloqueantes (seccion 6) y evidencia completa (secciones 1-5). Fraccion
+certificada: **+2** (HU-08 4/4 = 1.0; HU-17 3/3 = 1.0; los bullets de estado/filtro ya
+cobrados en HU-05/HU-06 no se re-cobran).
 
 | Artefacto | Cambio esperado | Estado |
 |---|---|---|
-| `docs/producto/avance.md` | Puntos certificados de INC-04 | Sin registrar |
-| `docs/producto/mvp.md` | HU-08 y HU-17 por fraccion | Sin registrar |
-| `docs/producto/auditoria-puntos-inc00.md` | Nueva seccion de trazabilidad INC-04 (HU <-> criterios <-> evidencia) | Sin registrar |
-| `docs/producto/decisiones.md` | `INC04-PEND-01..08` resueltas (DEC-034..) + `INC04-CONF-01..07` + no-duplicado | Sin registrar |
+| `docs/producto/avance.md` | Puntos certificados de INC-04 | **Hecho (2026-10-19)**: entrada de cierre +43/100, fila INC-04 ACEPTADO, tabla de avance 14 en bloque 2, riesgos REV-01..REV-12, siguiente accion = INC-05 |
+| `docs/producto/mvp.md` | HU-08 y HU-17 por fraccion | **Hecho (2026-10-19)**: bloque 2 -> **14/15** (HU-08 4/4, HU-17 3/3), total -> **43**, ampliacion 2026-10-19 |
+| `docs/producto/auditoria-puntos-inc00.md` | Nueva seccion de trazabilidad INC-04 (HU <-> criterios <-> evidencia) | **Hecho (2026-10-19)**: seccion 10 (10.1 HU-08 4/4, 10.2 HU-17 3/3, 10.3 totales 41 -> 43) |
+| `docs/producto/decisiones.md` | `INC04-PEND-01..08` resueltas (DEC-034..) + `INC04-CONF-01..07` + no-duplicado | **Hecho**: DEC-034..041 y CONF-01..07 (2026-10-14); notas 2026-10-19 (CONF-03 enmendada por REV-03, `actorId` de DEC-036, follow-up **PEND-004**) |

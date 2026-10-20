@@ -28,17 +28,19 @@ Ampliacion 2026-10-08: cierre de `INC-02-congelacion-hu-15` (+3.5 puntos: HU-15 
 
 Ampliacion 2026-10-14: cierre de `INC-03-vencimiento-recepcion-portal` (+11 puntos: HU-16 4/4 = 1; bloque 4 completo 10/10 con reparto INC03-R05: HU-25 3 + HU-29 3 + HU-30 3 + HU-31 1) con evidencia en `docs/incrementos/INC-03-vencimiento-recepcion-portal/evidencia.md` (RED 2026-10-13, GREEN 471/471 + Gherkin 126/126 x2 + web 174/174 + E2E 47/47 x2, revision `code-reviewer` sin hallazgos bloqueantes) y trazabilidad en la seccion 9 de `docs/producto/auditoria-puntos-inc00.md` (incluye el no-duplicado del efecto vencido -> solo HU-16).
 
+Ampliacion 2026-10-19: cierre de `INC-04-estados-cliente` (+2 puntos: HU-08 4/4 y HU-17 3/3, bloque 2 a **14/15**) con evidencia en `docs/incrementos/INC-04-estados-cliente/evidencia.md` (RED 43 API + 18 Gherkin + 6 web en rojo; GREEN `c59179e`; verificacion API 536/536 + Gherkin 153/153 + web 183/183 + build PASS + migraciones 9/0 + E2E 56/56 x2; revision `code-reviewer` **ACEPTA CON HALLAZGOS NO BLOQUEANTES**, 0 bloqueantes) y trazabilidad en la seccion 10 de `docs/producto/auditoria-puntos-inc00.md` (incluye el no-duplicado: estado/filtro -> HU-05/HU-06, rama SUSPENDIDO/RETIRADO -> HU-30).
+
 | Bloque | Peso | HU relacionadas | Estado actual |
 |---|---:|---|---|
 | Identidad, sesiones y permisos | 10 | HU-01, HU-02, HU-03 | **10/10 aceptado**: HU-01 4/4 (guard de rol en UI cubierto por E2E `acceso-roles.spec.ts`, INC-01), HU-02 4/4, HU-03 4/4 |
-| Clientes, sedes, estados y ficha basica | 15 | HU-04, HU-05, HU-06, HU-07, HU-08, HU-17 | **12/15 aceptado**: HU-04 4/4 y HU-05 4/4 (trazabilidad asertada en respuesta y BD, INC-01), HU-06 4/4, HU-07 3/6 (transversal), HU-08 0, HU-17 0 |
+| Clientes, sedes, estados y ficha basica | 15 | HU-04, HU-05, HU-06, HU-07, HU-08, HU-17 | **14/15 aceptado**: HU-04 4/4 y HU-05 4/4 (trazabilidad asertada en respuesta y BD, INC-01), HU-06 4/4, HU-07 3/6 (transversal), HU-08 4/4 (INC-04: motivo+actor+historial, bloqueo INACTIVO y reactivacion), HU-17 3/3 (INC-04: motivo obligatorio, historial acumulable y matriz de transiciones) |
 | Vigencias de servicios y congelacion | 15 | HU-12, HU-13, HU-14, HU-15, HU-16 | **9/15 aceptado**: HU-12 4/4, HU-15 4/4 (INC-02), HU-16 4/4 (INC-03: vencimiento con efecto observable en portal, recepcion y acceso; efecto cobrado una sola vez), HU-13 0, HU-14 0 |
 | Recepcion, ingresos y portal operativo | 10 | HU-25, HU-29, HU-30, HU-31 | **10/10 aceptado (INC-03)**: HU-25 4/4 (portal con estado real), HU-29 5/5 (consulta por cedula con alertas derivadas de estado, DEC-028), HU-30 4/4 (ingresos por sede con guardas de vigencia), HU-31 3/3 (creacion rapida con `perfilPendiente`); reparto INC03-R05 en auditoria seccion 9 |
 | Anamnesis y privacidad | 12 | HU-09, HU-10, HU-11, HU-28 | Pendiente |
 | Rutinas, asignacion e historial | 18 | HU-18, HU-19, HU-20, HU-21, HU-26 | Pendiente |
 | Nutricion, asignacion e historial | 12 | HU-22, HU-23, HU-24, HU-27 | Pendiente |
 | Historial, reportes y notificaciones | 8 | HU-32, HU-33, HU-34 | Pendiente |
-| **Total** | **100** | HU-01 a HU-34 | **41 puntos aceptados (41%)** |
+| **Total** | **100** | HU-01 a HU-34 | **43 puntos aceptados (43%)** |
 
 ## Corte objetivo del 50%
 

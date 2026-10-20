@@ -342,3 +342,49 @@ Subtotal bloque 4: **10.0** (0 -> 10).
 | **Total MVP** | **30** | **+11** | **41/100 (41%)** |
 
 G7 (HU-16 sin efecto en recepcion/portal/acceso) **cerrado**. Riesgos abiertos que tocan este bloque: R-01 (concurrencia de vigencias en Postgres), REV-01 (DUENO sin sede en alta rapida, sin test propio), REV-02 (divergencia de fixtures DUENO-con-sede). Ruta al 50% restante: INC-04 (+2) + INC-05 (+6) = 49, +1 de HU-07/anamnesis (PEND-003) segun DEC-021.
+
+---
+
+## 10. Ampliacion INC-04 (2026-10-19)
+
+- **Incremento**: `INC-04-estados-cliente` (14 criterios: 12 puntuable + 2 REF; revision `code-reviewer` **ACEPTA CON HALLAZGOS NO BLOQUEANTES**, 0 bloqueantes, REV-01..REV-12).
+- **Evidencia**: `docs/incrementos/INC-04-estados-cliente/evidencia.md` (RED 2026-10-19: 43 API + 18 Gherkin + 6 web en rojo con base intacta; GREEN `c59179e`: matriz 5x5, historial `ClienteEstadoCambio`, 401 `AUTH_CLIENTE_INACTIVO`, 409 `CLIENTE_INACTIVO`, 403 rama `INACTIVO`; verificacion: API **536/536**, Gherkin **153/153 exit 0**, web **183/183**, build PASS, tsc 0/0, migraciones **9/0 sin drift**, E2E **56/56 x2**; dictamen seccion 6).
+- **Metodo**: DEC-016 (fraccion de bullets cerrados con spec + implementacion + prueba + evidencia + revision) + regla de no duplicado de `decisiones.md` (2026-10-14): el **estado y el filtro** de clientes acreditan en HU-05/HU-06, la rama `SUSPENDIDO/RETIRADO` del ingreso en HU-30 y el efecto de vencimiento en HU-16; INC-04 solo cobra sus bullets exclusivos.
+
+### 10.1 HU-08 Inactivacion (peso 1) — bloque 2
+
+| Bullet HU-08 | Criterio(s) INC-04 | Evidencia | Cerrado |
+|---|---|---|---|
+| b1 cambiar estado a inactivo | `INC04-CLI-01` (**REF**, ya pagado en HU-05/HU-06) | `clientes.test.ts` (aceptado, intacto), badge y filtro de HU-05/HU-06 | Si (heredado, sin re-cobro propio) |
+| b2 conserva el historial (sin borrado fisico) | `INC04-CLI-02` | `clientes-estados.test.ts` (acumulacion N -> N+1, `DELETE` 404), Gherkin `clientes-inactivacion.feature` | Si |
+| b3 registra actor + motivo | `INC04-CLI-03` | `clientes-estados.test.ts` (transaccion cliente+historial, `actor {id,nombre}`, DEC-041 `motivo` staff-only), E2E `inc04-estados-cliente.spec.ts` | Si |
+| b4 bloqueo de acceso hasta reactivar | `INC04-CLI-04/05/06/07/08` | `auth-cliente-inactivo.test.ts` (401), `clientes-bloqueo-inactivo.test.ts` (409 membresias + 403 ingreso), reactivacion DEC-020, E2E `inc04-login-cliente-inactivo.spec.ts` + ciclo completo | Si |
+
+Fraccion: **4/4**. Puntos: **1.0** (0 -> 1).
+
+### 10.2 HU-17 Estados generales (peso 1) — bloque 2
+
+| Bullet HU-17 | Criterio(s) INC-04 | Evidencia | Cerrado |
+|---|---|---|---|
+| b1 estados generales (nuevo/activo/suspendido/retirado/inactivo) | `INC04-EST-01` (**REF**, enum y filtro ya pagados en HU-05/HU-06) | `clienteEstadoEnum` aceptado, `clientes.test.ts`, `clientes.feature` C13 | Si (heredado, sin re-cobro propio) |
+| b2 registra motivo cuando el estado cambia | `INC04-EST-02/03/06` | `clientes-estados.test.ts` + `cliente.schema.test.ts` (+7), Gherkin `clientes-estados.feature`, UI con `role="alert"` (EST-06) | Si |
+| b3 historial no elimina lo previo + transiciones validas | `INC04-EST-04/05` | matriz **25/25** por paridad con `transicionesAprobadas` (diagonal no-op sin fila, `RETIRADO` terminal, `INACTIVO -> RETIRADO` permitida), 409 `TRANSICION_INVALIDA`, Gherkin | Si |
+
+Fraccion: **3/3**. Puntos: **1.0** (0 -> 1).
+
+- **No-duplicado aplicado**: b1 de cada HU son REF y sus evidencias son las de HU-05/HU-06 ya acreditadas; se cuentan dentro de la fraccion de su propia HU (que estaba en 0) sin cobrarlos dos veces.
+- **Sin puntos propios**: `INC04-CONF-01..07`, `DEC-034..041` son contrato/regla, no bullets (DEC-024/DEC-016).
+- **Fix suelto fuera de los puntos**: `f2968c5` (carrera `debeCambiarPin` + selector del E2E `cambio-pin-obligatorio`), autorizado por el Producto; no acredita HU ni incremento.
+
+### 10.3 Totales actualizados
+
+| Bloque | Antes (INC-03) | INC-04 | Despues |
+|---|---:|---:|---:|
+| Identidad, sesiones y permisos | 10 | 0 | 10 |
+| Clientes, sedes, estados y ficha basica | 12 | **+2** (HU-08 4/4, HU-17 3/3) | **14** |
+| Vigencias de servicios y congelacion | 9 | 0 | 9 |
+| Recepcion, ingresos y portal operativo | 10 | 0 | 10 |
+| Resto (bloques 5-8) | 0 | 0 | 0 |
+| **Total MVP** | **41** | **+2** | **43/100 (43%)** |
+
+G8 (HU-08 sin `motivo`, `loginClient` sin bloqueo INACTIVO, PEND-006) y G9 (HU-17 sin historial) **cerrados**. Riesgos abiertos del bloque: REV-01/`PEND-004` (UI staff exige motivo en toda edicion con `estado`), REV-02/REV-08 (ubicacion del 400 de motivo y eco del motivo en no-op), REV-04/REV-05 (ventanas de concurrencia), R-01/R-04 (globales). Ruta al 50% restante: INC-05 (+6) = 49, +1 de HU-07/anamnesis (PEND-003) segun DEC-021.
