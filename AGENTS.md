@@ -45,9 +45,11 @@ This file contains instructions for all agents working on this project.
 
 ## Agent Routing
 
-When a user request comes in, the default entry point is `delivery-orchestrator` for any task that affects product scope, implementation, tests, release quality, or MVP progress. The orchestrator delegates to the specialized subagents below.
+`delivery-orchestrator` is the only construction entry point, including small changes, configuration, implementation and tests. It delegates all construction to contracted specialists and maintains delivery documents itself.
 
-Simple single-domain requests can go directly to the corresponding specialist, but accepted MVP progress is only certified through the delivery protocol below.
+No direct specialist routing or specialist-to-specialist delegation is allowed. Without an orchestrator contract, return `BLOQUEADO` without building. Never invoke agents through shell or another tool to bypass this rule. Never omit the mandatory PIN or relax authentication to unblock tests.
+
+`build` is disabled; `plan` remains for analysis only and cannot delegate construction. `explore` is read-only support available only to the orchestrator; `general` is not in the delegation allowlist. Global `subagent: *` denial is refined only by the orchestrator's explicit allowlist. These are workflow controls, not an absolute security sandbox: shell access, global/nested configurations and existing sessions require review. Never use shell to bypass edit or delegation restrictions.
 
 ### Delivery Orchestration → `delivery-orchestrator`
 - Convert product goals into increments with clear specifications.
@@ -57,7 +59,7 @@ Simple single-domain requests can go directly to the corresponding specialist, b
 - Never certify percentage progress without evidence.
 - Block work when product decisions, data rules, permissions, or test isolation are undefined.
 
-When a specialist is needed, use this routing:
+Only the orchestrator uses the following delegation catalog:
 
 ### Backend Tasks → `backend-developer`
 - Create/modify API routes
@@ -109,6 +111,13 @@ When a specialist is needed, use this routing:
 - Suggest improvements
 - Verify test coverage
 
+### Navigation Audit → `ui-navigation-auditor`
+- Audit entries/exits and inicio/volver/cancelar/logout by role; direct URLs, reload and browser back.
+- Check mobile, desktop, keyboard, broken links, dead ends and redirect loops.
+- Return criterion/screen/state/entry/exit/role/test/result/evidence matrix and blockers to the orchestrator; do not edit product, tests or delivery documents.
+- Frontend fixes findings and test-engineer automates journeys, each under a separate orchestrator contract. Analyst defines navigation criteria; reviewer checks coverage and executed evidence.
+- Without browser or executed evidence, journeys remain `NO VERIFICADO`, not accepted.
+
 ## Shared Conventions
 
 ### Delivery Protocol
@@ -136,6 +145,7 @@ PROPUESTO -> ESPECIFICADO -> LISTO -> RED -> IMPLEMENTADO -> VERIFICADO -> REVIS
 - API contracts are defined before backend/frontend parallel work.
 - Test data, fixtures, and environment assumptions are explicit.
 - Required increment docs exist.
+- When navigation is affected, an approved criterion/screen/state/entry/exit/role/test/result/evidence matrix exists, including expected destinations and justified non-applicable cases. The orchestrator records applicability.
 
 #### Definition of Accepted
 - Every included criterion is verified or removed by explicit scope change.
@@ -144,6 +154,7 @@ PROPUESTO -> ESPECIFICADO -> LISTO -> RED -> IMPLEMENTADO -> VERIFICADO -> REVIS
 - Critical user flows have real E2E tests where applicable.
 - Tests do not contain empty assertions or optional steps that hide failures.
 - Review has no blocking findings.
+- When navigation applies, mandatory journeys have executed evidence across required roles, mobile/desktop/keyboard and direct URL/reload/back, with no blocking audit findings. Static inspection or compilation alone is not journey verification.
 - `docs/producto/avance.md` is updated with accepted points.
 
 #### Mandatory Task Contract
@@ -156,11 +167,14 @@ When delegating to a subagent, include:
 - Explicit non-goals and files not to touch.
 - Required final report: files changed, evidence, risks, and blockers.
 
+Every specialist must validate this contract before work and return `BLOQUEADO` if it is incomplete. Specialists report evidence to the orchestrator, which alone maintains delivery documents. No specialist launches other agents.
+
 #### Progress Accounting
 - **Implemented** means code or UI exists.
 - **Verified** means the behavior has executed evidence.
 - **Accepted** means it satisfies criteria, tests, and review.
 - Only accepted criteria count toward MVP percentage.
+- Configuration tasks such as WORKFLOW-NAV do not certify MVP points.
 - Do not close mandatory criteria as "postponed" unless the scope is explicitly changed in `docs/producto/decisiones.md` and reflected in the increment spec.
 
 ### Code Style
@@ -240,38 +254,38 @@ git reset --hard <commit-hash>
 This AGENTS.md file is loaded by opencode and injected into all agent contexts.
 When you receive a task:
 
-1. **Analyze the request**: What is the user asking for?
-2. **Identify the domain**: Is it backend, frontend, database, testing, devops, or review?
-3. **Apply the right agent**: Follow the instructions for that agent type
-4. **Follow conventions**: Use the shared conventions above
-5. **Verify your work**: Run relevant tests before completing
+1. **Enter through delivery-orchestrator** for all construction; plan may only analyze.
+2. **Orchestrator specifies and delegates** with increment, criteria, allowed areas, rules, tests/evidence and non-goals.
+3. **Specialist validates contract** or returns `BLOQUEADO`; never delegates further.
+4. **Verify assigned work** and return changes, executed evidence, risks and blockers. Configuration-only tasks use configuration checks, not product suites.
+5. **Orchestrator records evidence and decisions**; applicable navigation must satisfy LISTO and ACEPTADO gates.
 
 ## Agent Examples
 
 ### Example: User says "Create a route for fetching clients"
-→ **Agent**: backend-developer
+→ **Delegation**: delivery-orchestrator → backend-developer (mandatory contract)
 → **Action**: Create route in `src/routes/clientes.ts`, service in `src/services/cliente.service.ts`, add integration test
 
 ### Example: User says "Create a table component for clients"
-→ **Agent**: frontend-developer
+→ **Delegation**: delivery-orchestrator → frontend-developer (mandatory contract and navigation matrix)
 → **Action**: Create component in `src/components/ClientTable.tsx`, style with Tailwind using design tokens, add to clients page
 
 ### Example: User says "Write tests for the auth flow"
-→ **Agent**: test-engineer
+→ **Delegation**: delivery-orchestrator → test-engineer (mandatory contract; preserve mandatory PIN)
 → **Action**: Create integration tests in `tests/integration/auth.test.ts`, write Gherkin feature in `features/auth.feature`
 
 ### Example: User says "Deploy the backend"
-→ **Agent**: devops-engineer
+→ **Delegation**: delivery-orchestrator → devops-engineer (mandatory contract)
 → **Action**: Configure Railway deployment, set environment variables, verify health check
 
 ### Example: User says "Analiza la HU-04 de crear cliente"
-→ **Agent**: acceptance-criteria-analyst (Modo CREAR)
+→ **Delegation**: delivery-orchestrator → acceptance-criteria-analyst (Modo CREAR, mandatory contract)
 → **Action**: Genera `HU-04-criterios-aceptacion.md`, `HU-04.feature`, `HU-04-schemas.ts` en `features/acceptance-criteria/`
 
 ### Example: User says "Avancemos con el otro 15%"
-→ **Agent**: acceptance-criteria-analyst (Modo AVANZAR)
+→ **Delegation**: delivery-orchestrator → acceptance-criteria-analyst (Modo AVANZAR, mandatory contract; orchestrator alone certifies progress)
 → **Action**: Tabla de estado HU vs código vs criterios, genera lo que falte
 
 ### Example: User says "Refactoriza la validación de clientes"
-→ **Agent**: acceptance-criteria-analyst (Modo REFACTORIZAR)
+→ **Delegation**: delivery-orchestrator → acceptance-criteria-analyst (Modo REFACTORIZAR, mandatory contract)
 → **Action**: Audita `src/routes/clientes.ts` contra criterios ISTQB, reporta gaps

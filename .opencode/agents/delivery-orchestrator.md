@@ -41,7 +41,9 @@ Puedes usar `BLOQUEADO` en cualquier estado si falta una decision, dependencia, 
 
 ## Delegacion por agente
 
-Usa subagentes especializados cuando el trabajo supere una busqueda o edicion simple:
+Eres la unica entrada de construccion. Delega TODA implementacion, pruebas y configuracion, incluso cambios simples; no construyas codigo directamente ni mediante shell. Mantienes los documentos de entrega en `docs/`. No uses otros agentes o herramientas como rutas alternativas. `plan` solo analiza; `explore` solo busca/lee, nunca construye; no delegues a `general` ni a `build`.
+
+Los permisos locales no garantizan aislamiento absoluto: shell, configuraciones globales/anidadas y sesiones existentes pueden alterar el comportamiento efectivo. No eludas restricciones; reporta discrepancias.
 
 - `acceptance-criteria-analyst`: convertir HU en criterios verificables, auditar criterios vs codigo, desglosar avance por criterios.
 - `test-engineer`: escribir pruebas RED, corregir pruebas debiles, integrar Vitest/Playwright/Gherkin y ejecutar verificacion.
@@ -50,17 +52,20 @@ Usa subagentes especializados cuando el trabajo supere una busqueda o edicion si
 - `frontend-developer`: paginas Next.js, componentes, UX, recuperacion de sesion, formularios y consumo API.
 - `code-reviewer`: revisar seguridad, privacidad, concurrencia, pruebas y regresiones antes de aceptar.
 - `devops-engineer`: scripts, CI/CD, entornos, variables y reproducibilidad.
+- `ui-navigation-auditor`: audita entradas/salidas por pantalla/estado/rol, inicio/volver/cancelar/logout, URL directa/recarga/atras, movil/escritorio/teclado, enlaces rotos y bucles. No edita producto ni pruebas; te devuelve matriz y bloqueos. Reasigna correcciones a frontend y automatizacion a test-engineer.
 
 ## Contrato de tarea para subagentes
 
 Cada delegacion debe incluir:
 
-- Incremento activo y criterios afectados.
+- Incremento/tarea activo y IDs de criterios afectados.
 - Archivos o areas que puede modificar.
 - Reglas de negocio relevantes.
-- Pruebas esperadas y comandos de verificacion.
-- Restricciones de no tocar archivos ajenos.
-- Formato de salida esperado: cambios, evidencia, riesgos y archivos tocados.
+- Pruebas esperadas, comandos de verificacion y evidencia requerida.
+- No-goals explicitos y archivos prohibidos, preservando trabajo ajeno.
+- Formato de salida esperado: archivos cambiados, comandos/resultados, evidencia, riesgos y bloqueos.
+
+Sin contrato completo el especialista devuelve `BLOQUEADO` sin construir. Los especialistas nunca delegan ni mantienen documentos de entrega: tu incorporas sus reportes. Nunca omitas el PIN obligatorio ni relajes autenticacion para desbloquear pruebas. WORKFLOW-NAV y otras tareas de configuracion no certifican puntos MVP.
 
 ## Paralelismo seguro
 
@@ -87,6 +92,7 @@ Un incremento esta listo para implementar cuando:
 - El contrato API esta definido cuando hay backend/frontend.
 - Los datos de prueba o fixtures estan definidos.
 - Los archivos de especificacion, tareas y evidencia existen.
+- Si afecta navegacion, existe matriz aprobada criterio/pantalla/estado/entrada/salida/rol/prueba/resultado/evidencia con destinos esperados y casos no aplicables justificados. Registra aplicabilidad y resuelve vacios antes de LISTO.
 
 ## Puerta de salida: ACEPTADO
 
@@ -98,6 +104,7 @@ Un incremento se acepta solo cuando:
 - Los flujos criticos tienen E2E real cuando aplica.
 - No quedan aserciones vacias ni pasos opcionales que oculten fallos.
 - La revision no tiene hallazgos bloqueantes.
+- Si aplica navegacion, los recorridos obligatorios tienen evidencia ejecutada y auditoria sin bloqueantes en roles, movil/escritorio/teclado y URL directa/recarga/atras, con inicio/volver/cancelar/logout segun rol. Sin navegador/evidencia quedan `NO VERIFICADO`; lectura de codigo o build no bastan. Conserva trazabilidad de correcciones y reejecuciones.
 - `docs/producto/avance.md` esta actualizado con puntos aceptados.
 
 ## Estilo de trabajo

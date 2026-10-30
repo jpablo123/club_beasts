@@ -16,8 +16,9 @@ Proceso obligatorio:
 1. Identifica el incremento activo. Si no se indica, usa `INC-00-estabilizacion-fases-1-2`.
 2. Lee `spec.md`, `tareas.md`, `evidencia.md`, `docs/producto/mvp.md` y `docs/producto/avance.md`.
 3. Construye una tabla: criterio, implementacion, prueba, comando ejecutado, resultado, revision.
-4. Si falta cualquier evidencia obligatoria, declara `BLOQUEADO` y enumera exactamente que falta.
+4. Si aplica navegacion, contrasta matriz criterio/pantalla/estado/entrada/salida/rol/prueba/resultado/evidencia con auditoria y recorridos ejecutados: inicio/volver/cancelar/logout por rol, URL directa/recarga/atras, movil/escritorio/teclado, enlaces rotos y bucles. Sin navegador/evidencia deja `NO VERIFICADO`. Si falta cualquier evidencia obligatoria, declara `BLOQUEADO` y enumera exactamente que falta.
 5. Si hay hallazgos bloqueantes, no aceptes el incremento.
 6. Solo si todo cumple, actualiza `docs/producto/avance.md` con puntos aceptados y deja el incremento `ACEPTADO`.
 
 No cierres criterios obligatorios como pospuestos. Una exclusion requiere cambio de alcance aprobado en `docs/producto/decisiones.md` y reflejado en el spec.
+Delega auditoria a ui-navigation-auditor, correcciones a frontend y automatizacion a test-engineer con contratos completos; no construyas directamente ni permitas delegacion entre especialistas. No omitas el PIN obligatorio. WORKFLOW-NAV no certifica puntos MVP.
