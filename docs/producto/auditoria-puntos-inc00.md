@@ -351,7 +351,7 @@ G7 (HU-16 sin efecto en recepcion/portal/acceso) **cerrado**. Riesgos abiertos q
 - **Evidencia**: `docs/incrementos/INC-04-estados-cliente/evidencia.md` (RED 2026-10-19: 43 API + 18 Gherkin + 6 web en rojo con base intacta; GREEN `c59179e`: matriz 5x5, historial `ClienteEstadoCambio`, 401 `AUTH_CLIENTE_INACTIVO`, 409 `CLIENTE_INACTIVO`, 403 rama `INACTIVO`; verificacion: API **536/536**, Gherkin **153/153 exit 0**, web **183/183**, build PASS, tsc 0/0, migraciones **9/0 sin drift**, E2E **56/56 x2**; dictamen seccion 6).
 - **Metodo**: DEC-016 (fraccion de bullets cerrados con spec + implementacion + prueba + evidencia + revision) + regla de no duplicado de `decisiones.md` (2026-10-14): el **estado y el filtro** de clientes acreditan en HU-05/HU-06, la rama `SUSPENDIDO/RETIRADO` del ingreso en HU-30 y el efecto de vencimiento en HU-16; INC-04 solo cobra sus bullets exclusivos.
 
-### 10.1 HU-08 Inactivacion (peso 1) — bloque 2
+### 10.1 HU-08 Inactivacion (peso 1) ï¿½ bloque 2
 
 | Bullet HU-08 | Criterio(s) INC-04 | Evidencia | Cerrado |
 |---|---|---|---|
@@ -362,7 +362,7 @@ G7 (HU-16 sin efecto en recepcion/portal/acceso) **cerrado**. Riesgos abiertos q
 
 Fraccion: **4/4**. Puntos: **1.0** (0 -> 1).
 
-### 10.2 HU-17 Estados generales (peso 1) — bloque 2
+### 10.2 HU-17 Estados generales (peso 1) ï¿½ bloque 2
 
 | Bullet HU-17 | Criterio(s) INC-04 | Evidencia | Cerrado |
 |---|---|---|---|
@@ -388,3 +388,49 @@ Fraccion: **3/3**. Puntos: **1.0** (0 -> 1).
 | **Total MVP** | **41** | **+2** | **43/100 (43%)** |
 
 G8 (HU-08 sin `motivo`, `loginClient` sin bloqueo INACTIVO, PEND-006) y G9 (HU-17 sin historial) **cerrados**. Riesgos abiertos del bloque: REV-01/`PEND-004` (UI staff exige motivo en toda edicion con `estado`), REV-02/REV-08 (ubicacion del 400 de motivo y eco del motivo en no-op), REV-04/REV-05 (ventanas de concurrencia), R-01/R-04 (globales). Ruta al 50% restante: INC-05 (+6) = 49, +1 de HU-07/anamnesis (PEND-003) segun DEC-021.
+
+## 11. Ampliacion INC-05 (2026-10-28)
+
+- **Incremento**: `INC-05-servicios-personalizado-nutricion` (10 criterios: **8 puntuable** `INC05-PER-01..04` + `INC05-NUT-01..04`, 2 `EXCLUIDO` `PER-05`/`NUT-05` por DEC-018/019; revision `code-reviewer` inicial `NO ACEPTA` por **H-01** -> cierre con regresion DEC-047 gym -> re-revision **ACEPTA CON HALLAZGOS NO BLOQUEANTES**, 0 bloqueantes).
+- **Evidencia**: `docs/incrementos/INC-05-servicios-personalizado-nutricion/evidencia.md` (RED 2026-10-20: 84 API + 61 Gherkin + 2 web + 1 E2E en rojo con base intacta 536/153/183; GREEN 2026-10-27: rutas `servicios-personalizado|nutricion` con permisos DEC-017, filtros `tipoServicio` incompat. #1 + C1, DEC-042..047, `MembershipSection` etiquetado por tipo; C4: 3 tests + G14 HU-15 enmendados y 3 tests nuevos de rama 409; verificacion final: API **632/632**, Gherkin **214/214 exit 0** (guard 214), web **188/188**, build PASS, migraciones **9/0**, E2E **57/57 x2** + repeat-each 30/30; cierre H-01 en 4.9; dictamen secciones 5/5.6; certificacion seccion 6).
+- **Metodo**: DEC-016 (fraccion de bullets cerrados con spec + implementacion + prueba + evidencia + revision) + regla de no duplicado de `decisiones.md` ("Regla de no duplicado de puntos INC-05"): congelacion/vencimiento/guarda INACTIVO/vista unificada **no se re-cobran** (ya acreditados en HU-15/HU-16/HU-08/HU-07), PER-05/NUT-05 excluidos sin puntos y DEC-047 en gym sin puntos propios.
+
+### 11.1 HU-13 Personalizado (peso 3) -> bloque 3
+
+| Bullet HU-13 | Criterio(s) INC-05 | Evidencia | Cerrado |
+|---|---|---|---|
+| b1 creacion/renovacion con fechas validas | `INC05-PER-01` | `hu13-servicio-personalizado.test.ts` (201/400/409 solape/renovacion/404/403/409 inactivo/rama 8 `SERVICIO_CONFLICTO`/sub-rama DEC-047), features `HU13-C01` | Si |
+| b2 estados calculados (activo/vencido/congelado/no contratado) | `INC05-PER-02` + `INC05-PER-03` | GET con `NO_CONTRATADO`/`ACTIVA`/`VENCIDA`/`PROGRAMADA` (DEC-043) y `CONGELADO` con pausa vigente (INC-02), fechas relativas `getTodayBogota()` | Si |
+| b3 visible en listado y ficha del cliente | `INC05-PER-04` | listado propio 200/404/403, filas en `GET /clientes/:id` con `tipoServicio`, web `membership-tipo-servicio.test.tsx` (badges/fusion 3 fuentes), E2E `inc05-tipos-vigencia.spec.ts` | Si |
+| b4 `rutinaActiva` con vigencia ACTIVA | `INC05-PER-05` | **EXCLUIDO** (bloque 6, DEC-018; sin tests) | No (0 en INC-05) |
+
+Fraccion: **3/3**. Puntos: **3.0** (0 -> 3).
+
+### 11.2 HU-14 Nutricion (peso 3) -> bloque 3
+
+| Bullet HU-14 | Criterio(s) INC-05 | Evidencia | Cerrado |
+|---|---|---|---|
+| b1 creacion/renovacion con fechas validas | `INC05-NUT-01` | `hu14-servicio-nutricion.test.ts` (espejo HU-13 con codigos `SERVICIO_*` DEC-044, rama 8 y DEC-047), features `HU14-C01` | Si |
+| b2 estados calculados (incluye `CONGELADO`) | `INC05-NUT-02` + `INC05-NUT-03` (**incluido** por DEC-042, DEC-023 enmendada) | GET espejo + estado `CONGELADO` en nutricion (`TIPOS_CONGELABLES` = 3 tipos; fixtures F7), step nutricion Gherkin | Si |
+| b3 visible en listado y ficha del cliente | `INC05-NUT-04` | listado/ficha espejo + web etiquetada por `tipoServicio` + E2E `inc05-tipos-vigencia.spec.ts` | Si |
+| b4 `planNutricionalActivo` con vigencia ACTIVA | `INC05-NUT-05` | **EXCLUIDO** (bloque 7, DEC-019; sin tests) | No (0 en INC-05) |
+
+Fraccion: **3/3**. Puntos: **3.0** (0 -> 3).
+
+- **No-duplicado aplicado**: b2 de cada HU (congelacion observable) se acredita **dentro de la fraccion de su propia HU** (ambas en 0); la infraestructura de congelacion ya cobrada en HU-15 y el vencimiento en HU-16 **no se re-cobran** aqui (PER-03/NUT-03 solo el bullet de estado calculado propio); la guarda `CLIENTE_INACTIVO` (HU-08) y la vista unificada de 3 tipos (HU-07) tampoco.
+- **Sin puntos propios**: la **regresion DEC-047 en el `PATCH` de gym** (`dec047-parche-gym-regresion.test.ts`, 6 tests, cierre de H-01) es mitigacion de `INC05-R11` sobre codigo ya aceptado de HU-12/INC-00; `INC05-CONF-01..06`, `C1..C6` y los DEC-042..047 son contrato/regla, no bullets (DEC-024/DEC-016).
+- **Enmiendas sin perdida de puntos**: C4 enmendo 3 tests aceptados de congelacion y el G14 de HU-15 (nunca los borro; 3 tests nuevos de rama 409 por tipo); HU-13/14/15 G14 enmendados por DEC-042/043.
+- **Fixes sueltos fuera de los puntos**: estabilizacion de `inc04-estados-cliente.spec.ts` (anclado a respuesta real, 24/24) y enmienda de `congelacion.spec.ts:331` (reload determinista, aserciones mas fuertes, patron f2968c5); no acreditan HU ni incremento.
+
+### 11.3 Totales actualizados
+
+| Bloque | Antes (INC-04) | INC-05 | Despues |
+|---|---:|---:|---:|
+| Identidad, sesiones y permisos | 10 | 0 | 10 |
+| Clientes, sedes, estados y ficha basica | 14 | 0 | 14 |
+| Vigencias de servicios y congelacion | 9 | **+6** (HU-13 3/3, HU-14 3/3) | **15** |
+| Recepcion, ingresos y portal operativo | 10 | 0 | 10 |
+| Resto (bloques 5-8) | 0 | 0 | 0 |
+| **Total MVP** | **43** | **+6** | **49/100 (49%)** |
+
+G6 (HU-13/HU-14 sin codigo ni asignacion) **cerrado** en sus bullets b1..b3; b4 sigue fuera de alcance sin puntos (DEC-018/019). Deuda menor de revision (no bloqueante): H-02 (401 sin token no ejercitado en los archivos nuevos), H-03 (`tipoServicio` String sin constraint en Prisma). Ruta al 50% restante: **49 + 1 de anamnesis/HU-07** (PEND-003) segun DEC-021.
