@@ -6,17 +6,32 @@ Registrar la vigencia del servicio de nutrición (fecha inicio/fin), derivar su 
 
 **Decisiones aplicadas**: DEC-001 (roles), DEC-004 (servicios separados), DEC-005/006 (días completos America/Bogota, extremos inclusivos), DEC-007 (renovar crea periodo nuevo), DEC-008 (solapamientos rechazados, gaps permitidos), DEC-016 (fraccionable), **DEC-017** (DUENO y RECEPCIONISTA gestionan vigencias), **DEC-019** (el plan nutricional usa **plantilla simple**; aquí solo se expresa la **dependencia de vigencia**, sin implementar la estructura del plan).
 
+**Enmiendas G14 (2026-10-20, decisión de Producto)**: **DEC-043** — literal de
+congelación unificado a **`CONGELADO`** (antes `CONGELADA` en tablas/enum y
+`CONGELADO` en prosa); **DEC-042** — la congelación **sí** alcanza a `NUTRICION`
+(DEC-023 enmendada: `TIPOS_CONGELABLES = {GYM, PERSONALIZADO, NUTRICION}`), por lo
+que **C02b es factible en INC-05** (criterio `INC05-NUT-03`) y el bullet 2 de la HU
+**no** se enmienda; **DEC-046 = (a)** — el `PATCH .../:servicioId` con concurrencia
+optimista **sí** está en alcance; **DEC-047** — nueva regla del `PATCH`: mover solo
+`fechaInicio` desplaza `fechaFin` por el mismo delta conservando la duración
+inclusiva. *(La incompatibilidad #5 del spec de INC-05 no tenía frase contradictoria
+aquí: el "Qué NO cubre" de HU14-C01 nunca mencionaba la concurrencia; se deja constancia
+para trazabilidad.)*
+
 **Alcance y notas**:
-- Contrato propuesto (P-06 por confirmar): `POST/GET /clientes/:clienteId/servicios-nutricion`, `PATCH .../servicios-nutricion/:servicioId`, espejo del contrato aceptado de membresías gym (`src/routes/membresia.ts`).
+- Contrato aprobado (**P-06 resuelta por DEC-044**, 2026-10-20; ratificación técnica por `backend-developer` pendiente en INC-05): `POST/GET /clientes/:clienteId/servicios-nutricion`, `PATCH .../servicios-nutricion/:servicioId` (**incluido por DEC-046**, con regla **DEC-047**), espejo del contrato aceptado de membresías gym (`src/routes/membresia.ts`).
 - `mvp.md:54`: HU-14 **no se acepta completa solo por registrar vigencias**; el bullet 4 (dependencia plan ↔ vigencia) se cierra cuando exista la asignación del plan (bloque 7). Fracción máxima alcanzable solo con vigencias: **3/4**.
-- El estado CONGELADO depende de HU-15 → el bullet 2 se cierra en partes (C02a / C02b).
+- El estado CONGELADO **ya es factible en INC-05**: HU-15 está aceptada (INC-02) y
+  **DEC-042** (2026-10-20) enmendó DEC-023 extendiendo la congelación a
+  `NUTRICION`; el bullet 2 se cierra en partes (C02a / C02b), ambas en alcance
+  *(enmienda 2026-10-20, DEC-042/DEC-043)*.
 
 ## Tabla de trazabilidad: bullet → criterio
 
 | # | Bullet de la HU | ID criterio | Estado | Puntuable INC-05 |
 |---|-----------------|-----------|--------|------------------|
 | 1 | El sistema permite registrar fecha de inicio y fecha fin del servicio de nutricion. | HU14-C01 | LISTO para RED | Sí |
-| 2 | El sistema permite marcar el servicio como activo, vencido, congelado o no contratado. | HU14-C02a (activo/vencido/no contratado [+ prog. P-05]) + HU14-C02b (congelado) | C02a LISTO; **C02b DEPENDENCIA HU-15** | C02a sí; C02b cuando HU-15 cierre |
+| 2 | El sistema permite marcar el servicio como activo, vencido, congelado o no contratado. | HU14-C02a (activo/vencido/no contratado [+ prog. P-05]) + HU14-C02b (congelado) | C02a y C02b **LISTO para RED** *(2026-10-20: DEC-042/043)* | Sí; C02b = `INC05-NUT-03` incluido |
 | 3 | La vigencia queda visible en la ficha del cliente. | HU14-C03 | LISTO para RED | Sí |
 | 4 | El plan nutricional activo depende de la vigencia del servicio. | HU14-C04 | SPEC LISTO / **IMPLEMENTACIÓN DIFERIDA** (asignación de plan, DEC-019 bloque 7) | Cuando exista la asignación (`mvp.md:54`) |
 
@@ -29,6 +44,13 @@ Registrar la vigencia del servicio de nutrición (fecha inicio/fin), derivar su 
   - 201 con el DTO de la vigencia: `{ id, clienteId, fechaInicio, fechaFin, estado, version: 1, creadoPor: {id,nombre}, actualizadoPor: {id,nombre}, createdAt, updatedAt }`.
   - En BD: `creadoPorId`/`actualizadoPorId` = actor; auditoría CREACIÓN versión 1 (patrón `INC00-MEM-04`).
   - **Renovación (DEC-007)**: POST con `fechaInicio` ≥ `fechaFinPrevio + 1` crea periodo nuevo sin sobrescribir los anteriores.
+  - **Edición `PATCH .../:servicioId` (incluida por DEC-046 = (a), 2026-10-20)**: cuerpo
+    `{ fechaInicio?, fechaFin?, version }` con concurrencia optimista (versión vieja →
+    409 `SERVICIO_CONFLICTO`, fila 8). **Regla DEC-047 (2026-10-20)**: con **solo
+    `fechaInicio`** en el cuerpo, `fechaFin` se mueve por el **mismo delta de días** y la
+    duración inclusiva se conserva — plan de 30 días: inicio `2026-10-20` → fin
+    `2026-11-18`; inicio al 21 → fin **`2026-11-19`**; inicio de vuelta al 20 → fin
+    **`2026-11-18`**. La duración **solo** cambia si `fechaFin` viene explícito.
 - **HTTP / códigos**:
   - 201 Created.
   - 400 VALIDATION_ERROR — "Fecha de inicio es requerida" / "Fecha fin es requerida", "Fecha ... debe ser una fecha válida (YYYY-MM-DD)", "Fecha fin no puede ser anterior a fecha de inicio".
@@ -48,13 +70,13 @@ Registrar la vigencia del servicio de nutrición (fecha inicio/fin), derivar su 
   - `VENCIDA`: `hoy > fechaFin`.
   - `PROGRAMADA`: `hoy < fechaInicio` — propuesta por consistencia con gym (P-05; la HU no la nombra).
 - **HTTP / códigos**: 200 + `fechaActual`; 404 si el cliente no existe.
-- **Qué NO cubre**: CONGELADA (C02b/HU-15), extensión de vencimiento por congelación (HU-15), transiciones automáticas (HU-16).
-- **Prueba esperada**: integración con fechas fijas → NO_CONTRATADO / ACTIVA en el día final / VENCIDA al día siguiente / PROGRAMADA futuro.
+- **Qué NO cubre**: CONGELADO (C02b, ahora en alcance: DEC-042/043), extensión de vencimiento por congelación (HU-15), transiciones automáticas (HU-16).
+- **Prueba esperada**: integración con fechas fijas → NO_CONTRATADO / ACTIVA en el día final / VENCIDA al día siguiente / PROGRAMADA (literal DEC-043) futuro.
 
-### HU14-C02b — Estado congelado — **DEPENDENCIA: HU-15**
-- **Resultado esperado**: `CONGELADA` durante el periodo de congelación definido por HU-15.
-- **Estado**: no verificable hasta que exista `CONGELADO` en la API (misma deuda que HU-12 3/4). **No se cierra en INC-05 salvo que HU-15 entre en alcance.**
-- **Qué NO cubre**: fechas/motivo de congelación y extensión automática (todo HU-15).
+### HU14-C02b — Estado congelado — **factible en INC-05** *(enmienda 2026-10-20, DEC-042 + DEC-043)*
+- **Resultado esperado**: `CONGELADO` durante el periodo de congelación definido por HU-15 (literal único por **DEC-043**: antes este documento escribía `CONGELADA`).
+- **Estado**: **DEC-042** (2026-10-20) enmendó DEC-023 → `TIPOS_CONGELABLES = {GYM, PERSONALIZADO, NUTRICION}`; nutrición **sí es congelable**, la guarda `CONGELACION_NO_PERMITIDA` ya no la rechaza y el estado se calcula con la misma fuente que gym. **C02b se cierra en INC-05** (criterio `INC05-NUT-03`). *(La versión anterior decía "no verificable… No se cierra en INC-05 salvo que HU-15 entre en alcance": enmienda 2026-10-20.)*
+- **Qué NO cubre**: fechas/motivo de congelación y extensión automática (todo HU-15, ya aceptado; aquí solo se observa el estado).
 
 ### HU14-C03 — La vigencia queda visible en la ficha del cliente
 - **Condición previa**: cliente con ≥ 1 vigencia de nutrición.
@@ -72,7 +94,7 @@ Registrar la vigencia del servicio de nutrición (fecha inicio/fin), derivar su 
 - **Disparo**: consulta del plan del cliente (`GET /clientes/:id` → `planNutricionalActivo`, o el endpoint de asignación cuando exista).
 - **Resultado observable**:
   - X = `ACTIVA` → `planNutricionalActivo` se expone.
-  - X ∈ {`NO_CONTRATADO`, `VENCIDA`, `CONGELADA`} → `planNutricionalActivo` = `null` (la asignación subyacente no se borra).
+  - X ∈ {`NO_CONTRATADO`, `VENCIDA`, `CONGELADO`} → `planNutricionalActivo` = `null` (la asignación subyacente no se borra).
 - **Estado del criterio**: **SPEC listo / implementación diferida**. La plantilla simple del plan y su asignación llegan en el bloque 7 (DEC-019, HU-22/23). Este documento **solo expresa la dependencia**; no especifica la estructura del plan.
 - **HTTP / códigos**: 200 con `planNutricionalActivo` condicionado (contrato de ficha, HU-07).
 - **Qué NO cubre**: creación/editición del plan y su plantilla (HU-22), asignación (HU-23), historial de planes (HU-27).
@@ -115,13 +137,13 @@ Registrar la vigencia del servicio de nutrición (fecha inicio/fin), derivar su 
 | ≥1 | hoy < fechaInicio | PROGRAMADA (P-05) |
 | ≥1 | fechaInicio ≤ hoy ≤ fechaFin | ACTIVA |
 | ≥1 | hoy > fechaFin | VENCIDA |
-| ≥1 | periodo congelado (HU-15) | CONGELADA (C02b, dependencia) |
+| ≥1 | periodo congelado (HU-15) | CONGELADO (C02b, en alcance INC-05 por DEC-042) |
 
 ### D3 — Dependencia plan ↔ vigencia (HU14-C04, spec futuro)
 | vigencia ACTIVA | plan asignado (plantilla simple, DEC-019) | `planNutricionalActivo` |
 |---|---|---|
 | sí | sí | plan expuesto |
-| no (NO_CONTRATADO/VENCIDA/CONGELADA) | sí | `null` |
+| no (NO_CONTRATADO/VENCIDA/CONGELADO) | sí | `null` |
 | * | no | `null` |
 
 ## Transiciones de Estado
@@ -131,8 +153,8 @@ Registrar la vigencia del servicio de nutrición (fecha inicio/fin), derivar su 
 [NO_CONTRATADO] --crear vigencia futura--> [PROGRAMADA]
 [PROGRAMADA]    --llega fechaInicio (DEC-005/006)--> [ACTIVA]
 [ACTIVA]        --pasa fechaFin+1 día--> [VENCIDA]
-[ACTIVA]        --inicia congelación (HU-15)--> [CONGELADA]
-[CONGELADA]     --termina congelación (HU-15)--> [ACTIVA] (fechaFin extendida)
+[ACTIVA]        --inicia congelación (HU-15)--> [CONGELADO]
+[CONGELADO]     --termina congelación (HU-15)--> [ACTIVA] (fechaFin extendida)
 [VENCIDA]       --renovar (DEC-007: periodo nuevo)--> nueva fila [PROGRAMADA/ACTIVA]
 ```
 Transiciones **inválidas**: `VENCIDA → ACTIVA` sin periodo nuevo (DEC-007 protege el histórico); `NO_CONTRATADO → VENCIDA`; escritura manual del estado vía API (no existe endpoint).
@@ -160,6 +182,19 @@ Transiciones **inválidas**: `VENCIDA → ACTIVA` sin periodo nuevo (DEC-007 pro
 | 2 | varias vigencias | 2 periodos | 200 ambos, ordenados desc |
 | 3 | bordes de fecha | hoy = fin / fin+1 | ACTIVA / VENCIDA |
 | 4 | cliente inexistente | id inexistente | 404 NOT_FOUND |
+
+### Ruta: PATCH /api/clientes/:clienteId/servicios-nutricion/:servicioId
+*(en alcance por DEC-046 = (a); cobertura de la rama 8 y de DEC-047 — enmienda 2026-10-20)*
+| # | Escenario | Input | Resultado Esperado |
+|---|-----------|-------|-------------------|
+| 1 | Edición de fechas con `fechaFin` explícito | `{ fechaInicio, fechaFin, version }` válidos | 200, fechas actualizadas, versión +1; la duración es la pedida en el body |
+| 2 | **DEC-047**: mover solo `fechaInicio` +1 día (plan de 30 días) | inicio `2026-10-20`→`2026-10-21`, sin `fechaFin` | 200, `fechaFin` pasa de `2026-11-18` a **`2026-11-19`** (duración inclusiva de 30 días intacta) |
+| 3 | **DEC-047**: retroceder `fechaInicio` −1 día | inicio `2026-10-21`→`2026-10-20`, sin `fechaFin` | 200, `fechaFin` vuelve a **`2026-11-18`** |
+| 4 | **DEC-047**: editar `fechaFin` explícitamente | `{ fechaFin: nueva, version }` | 200, la duración cambia según lo pedido en el body |
+| 5 | versión vieja (rama 8) | `version` = N-1 | 409 `SERVICIO_CONFLICTO` |
+| 6 | fechas inconsistentes | `fechaFin` < `fechaInicio` (ambas en el body) | 400 "Fecha fin no puede ser anterior a fecha de inicio" |
+| 7 | solape tras mover el inicio | nuevo rango solapado con otro periodo del mismo tipo | 409 `SERVICIO_SOLAPADA` |
+| 8 | servicio ajeno / inexistente | `servicioId` de otro cliente | 404 `NOT_FOUND` ("Servicio no encontrado") |
 
 ## Reglas de Validación por Campo
 | Campo | Tipo | Requerido | Regex / Regla | Longitud | Valores Permitidos |
@@ -278,5 +313,5 @@ Feature: Registro de servicio de nutricion
 ## Preguntas al producto
 | ID | Pregunta | Impacto | Criterio |
 |----|----------|---------|----------|
-| **P-05** | Igual que HU-13: ¿estado para periodo futuro (`PROGRAMADA` propuesta por consistencia con gym) y literal `CONGELADO` vs `CONGELADA`? | Valores exactos a asertar en C02a/C02b. | HU14-C02a/C02b |
-| **P-06** | ¿Se aprueban los paths/códigos propuestos? `POST/GET /clientes/:clienteId/servicios-nutricion`, `PATCH .../:servicioId`, códigos `SERVICIO_SOLAPADA` / `SERVICIO_CONFLICTO`. | Fija el contrato API antes del RED de INC-05 (Definition of Ready). | HU14-C01 |
+| **P-05** | **RESUELTA 2026-10-20 (DEC-043)**: periodo futuro = `PROGRAMADA`; congelación = `CONGELADO` (G14 enmendados de `CONGELADA`). Histórico: ¿estado para periodo futuro y literal `CONGELADO` vs `CONGELADA`? | Valores exactos a asertar en C02a/C02b. | HU14-C02a/C02b |
+| **P-06** | **RESUELTA 2026-10-20 (DEC-044 = (a))**: paths/códigos propuestos aprobados (`POST/GET .../servicios-nutricion`, `PATCH .../:servicioId` con DEC-046/DEC-047, `SERVICIO_SOLAPADA`/`SERVICIO_CONFLICTO`); solo falta la ratificación técnica de `backend-developer`. | Fija el contrato API antes del RED de INC-05 (Definition of Ready). | HU14-C01 |

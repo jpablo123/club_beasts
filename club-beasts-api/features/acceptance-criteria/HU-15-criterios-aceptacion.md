@@ -38,6 +38,18 @@
 > (**0 puntos**, sin tocar la trazabilidad de `HU15-C01..C06`). Contrato fuente:
 > `INC-02/spec.md`, secciones "Descongelar", "Editar congelacion", "Regla de dias de la
 > ampliacion (DEC-024) - formula verificable" y "Fixtures" (F8..F11).
+>
+> **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: **DEC-023 queda enmendada** —
+> `TIPOS_CONGELABLES` = `{GYM, PERSONALIZADO, NUTRICION}`, es decir **NUTRICION también es
+> congelable** (200). Todos los literales de este documento que fijaban el alcance
+> pre-DEC-042 (solo `GYM` + `PERSONALIZADO`; `NUTRICION` → 409
+> `CONGELACION_NO_PERMITIDA` por tipo) quedan **enmendados sin borrar ningún criterio,
+> fila, rama ni escenario**: la guarda por tipo **se conserva como guarda genérica**
+> (aplica a tipos fuera de `TIPOS_CONGELABLES`; con el enum actual es **inalcanzable vía
+> API**; sigue existiendo en `src/services/membresia.service.ts`) y el 409
+> `CONGELACION_NO_PERMITIDA` por **rango no contenido** (DEC-022 a) **no cambia**. La
+> enmienda es de **regresión del G14 de HU-15**: **no altera trazabilidad ni conteo de
+> puntos** de HU-15. Salvedad C4 de `INC05-CONF-06`.
 
 ## Resumen
 
@@ -57,7 +69,7 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
 
 | # | Bullet de HU-15 (`historias-usuario-gimnasio.md`) | ID criterio | ID en spec INC-02 | ¿Cerrable por separado? | Estado del criterio |
 |---|---|---|---|---|---|
-| b1 | "El sistema permite congelar membresia gym, personalizado o nutricion." | `HU15-C01` | INC02-CON-01 | Sí | **Alcance enmendado (DEC-023, 2026-10-08): GYM y PERSONALIZADO → 200; NUTRICION → 409 `CONGELACION_NO_PERMITIDA` (guard exigido y probado en INC-02)** (ver "Alcance enmendado") — ABIERTO (RED/GREEN pendientes) |
+| b1 | "El sistema permite congelar membresia gym, personalizado o nutricion." | `HU15-C01` | INC02-CON-01 | Sí | **Alcance enmendado 2 veces: DEC-023 (2026-10-08) → GYM y PERSONALIZADO → 200, NUTRICION → 409 `CONGELACION_NO_PERMITIDA`; enmendado 2026-10-20 por DEC-042 (INC-05 C4) → los 3 tipos (`GYM`, `PERSONALIZADO`, `NUTRICION`) → 200** — DEC-023 queda enmendada (`TIPOS_CONGELABLES` con los 3); la guarda 409 por tipo se conserva genérica e inalcanzable con el enum actual (ver "Alcance enmendado") — ABIERTO (RED/GREEN pendientes) |
 | b2 | "La congelacion requiere fecha de inicio, fecha de fin y motivo." | `HU15-C02` | INC02-CON-02 | Sí | Abierto (RED/GREEN pendientes) |
 | b3 | "Durante la congelacion el estado cambia a congelado." | `HU15-C03` | INC02-CON-03 | Sí | Abierto |
 | b4 | "La fecha de vencimiento se extiende automaticamente por el tiempo congelado." | `HU15-C04` | INC02-CON-04 | Sí | Abierto |
@@ -84,9 +96,9 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
 | Endpoint | Body | Éxito | Errores esperados |
 |---|---|---|---|
 | `POST /clientes/:clienteId/vigencias/:vigenciaId/congelar` (genérico, DEC-004; **sin prefijo `/api`**: el servidor registra rutas sin prefijo global, `src/index.ts:23-25`) | `{ fechaInicio, fechaFin, motivo, version }` | **200** con la vigencia actualizada: `tipoServicio`, `fechaFin` extendida, `fechaFinAnterior`, `diasCongelados`, `estado: "CONGELADO"` (calculado), `version` incrementada, `creadoPor`/`actualizadoPor`/`createdAt`/`updatedAt`, historial `cambios` (incluye la fila `CONGELACION`) y bloque `congelacion` | 400 `VALIDATION_ERROR`, 401 `AUTH_TOKEN_MISSING/INVALID/EXPIRED`, 403 `AUTH_FORBIDDEN`, 404 `NOT_FOUND`, 409 `MEMBRESIA_CONFLICTO`, 409 `CONGELACION_NO_PERMITIDA`, 409 `MEMBRESIA_VENCIDA`, 409 `MEMBRESIA_SOLAPADA` |
-| Alcance del endpoint | - | Vigencias `GYM` y `PERSONALIZADO` (DEC-023) | `NUTRICION` → 409 `CONGELACION_NO_PERMITIDA` (**guard exigido y probado en INC-02**, ver abierta #12) |
-| **`POST /clientes/:clienteId/vigencias/:vigenciaId/descongelar`** (ampliación **DEC-024**; **sin prefijo `/api`**, mismo path base que congelar; preHandler `fastify.authenticateRoles(["DUENO","RECEPCIONISTA"])` (DEC-017); ownership idéntico → 404) | `{ version }` con **`motivo` opcional** (si viaja: 1-500 y no vacío tras trim; `""`/solo espacios o >500 → 400 con los mensajes existentes) — **acción `POST`, no `DELETE`**: la fila `CONGELACION` no se borra (historial inmutable, `HU15-C06`) | **200** con la vigencia: `fechaFin` reducida, `fechaFinAnterior`, **`diasDevueltos`**, `estado` recalculado **sin pausa vigente**, `version` N→N+1, `cambios` con la fila **`DESCONGELACION`**, **`congelacion: null`** | 400 `VALIDATION_ERROR` (`version`; `motivo` **si viaja**), 401 `AUTH_TOKEN_*`, 403 `AUTH_FORBIDDEN`, 404 `NOT_FOUND`, 409 `MEMBRESIA_CONFLICTO`, 409 `CONGELACION_NO_PERMITIDA` (tipo), 409 `MEMBRESIA_VENCIDA`, **409 `CONGELACION_INEXISTENTE`** (nuevo). **No evalúa `MEMBRESIA_SOLAPADA`** (decrementar nunca crea solape, DEC-008) |
-| **`PATCH /clientes/:clienteId/vigencias/:vigenciaId/congelacion`** (ampliación **DEC-024**; **sin prefijo `/api`**; mismo preHandler y ownership; recurso único por vigencia → sin `congelacionId`) | **`{ fechaInicio, fechaFin, motivo, version }` — los 4 requeridos** (reutiliza `createCongelacionSchema`: mismos mensajes + regla post-Zod `fechaFin ≥ hoy` → 400 `Fecha fin no puede ser anterior a hoy`; `version` por lock optimista INC00-MEM-03; el cliente **no** envía `fechaFin` de la vigencia ni el N) | **200**: **`fechaFin' = fechaFin − N_anterior + N_nuevo`**, `fechaFinAnterior`, `diasCongelados = N_nuevo`, **`diasCongeladosAnterior = N_anterior`**, `estado` calculado con el **rango nuevo**, `version` N→N+1, `cambios` con la fila **`EDICION_CONGELACION`**, `congelacion` con el rango editado. **Rango idéntico (`N' = N`) → igualmente 200** (escribe auditoría y `version` + 1) | 400 `VALIDATION_ERROR` (los mismos 8 de congelar, incluida la regla post-Zod `fechaFin ≥ hoy`), 401, 403, 404, 409 `MEMBRESIA_CONFLICTO`, 409 `CONGELACION_NO_PERMITIDA` (tipo **y** rango nuevo no contenido en la fila **revertida**), 409 `MEMBRESIA_VENCIDA`, **409 `CONGELACION_INEXISTENTE`**, 409 `MEMBRESIA_SOLAPADA` (solape con otra pausa) y 409 `MEMBRESIA_SOLAPADA` (choque de la nueva `fechaFin` con periodo posterior) |
+| Alcance del endpoint | - | Vigencias `GYM`, `PERSONALIZADO` y `NUTRICION` (**DEC-042**: `TIPOS_CONGELABLES` = `{GYM, PERSONALIZADO, NUTRICION}`; DEC-023 enmendada) — **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)** | Tipo fuera de `TIPOS_CONGELABLES` → 409 `CONGELACION_NO_PERMITIDA` (**guarda genérica**; pre-DEC-042 aplicaba a `NUTRICION` — antes: "guard exigido y probado en INC-02", ver abierta #12; con el enum actual ninguna vigencia legítima la alcanza) |
+| **`POST /clientes/:clienteId/vigencias/:vigenciaId/descongelar`** (ampliación **DEC-024**; **sin prefijo `/api`**, mismo path base que congelar; preHandler `fastify.authenticateRoles(["DUENO","RECEPCIONISTA"])` (DEC-017); ownership idéntico → 404) | `{ version }` con **`motivo` opcional** (si viaja: 1-500 y no vacío tras trim; `""`/solo espacios o >500 → 400 con los mensajes existentes) — **acción `POST`, no `DELETE`**: la fila `CONGELACION` no se borra (historial inmutable, `HU15-C06`) | **200** con la vigencia: `fechaFin` reducida, `fechaFinAnterior`, **`diasDevueltos`**, `estado` recalculado **sin pausa vigente**, `version` N→N+1, `cambios` con la fila **`DESCONGELACION`**, **`congelacion: null`** | 400 `VALIDATION_ERROR` (`version`; `motivo` **si viaja**), 401 `AUTH_TOKEN_*`, 403 `AUTH_FORBIDDEN`, 404 `NOT_FOUND`, 409 `MEMBRESIA_CONFLICTO`, 409 `CONGELACION_NO_PERMITIDA` (tipo — guarda genérica; **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: `NUTRICION` ya no cae aquí), 409 `MEMBRESIA_VENCIDA`, **409 `CONGELACION_INEXISTENTE`** (nuevo). **No evalúa `MEMBRESIA_SOLAPADA`** (decrementar nunca crea solape, DEC-008) |
+| **`PATCH /clientes/:clienteId/vigencias/:vigenciaId/congelacion`** (ampliación **DEC-024**; **sin prefijo `/api`**; mismo preHandler y ownership; recurso único por vigencia → sin `congelacionId`) | **`{ fechaInicio, fechaFin, motivo, version }` — los 4 requeridos** (reutiliza `createCongelacionSchema`: mismos mensajes + regla post-Zod `fechaFin ≥ hoy` → 400 `Fecha fin no puede ser anterior a hoy`; `version` por lock optimista INC00-MEM-03; el cliente **no** envía `fechaFin` de la vigencia ni el N) | **200**: **`fechaFin' = fechaFin − N_anterior + N_nuevo`**, `fechaFinAnterior`, `diasCongelados = N_nuevo`, **`diasCongeladosAnterior = N_anterior`**, `estado` calculado con el **rango nuevo**, `version` N→N+1, `cambios` con la fila **`EDICION_CONGELACION`**, `congelacion` con el rango editado. **Rango idéntico (`N' = N`) → igualmente 200** (escribe auditoría y `version` + 1) | 400 `VALIDATION_ERROR` (los mismos 8 de congelar, incluida la regla post-Zod `fechaFin ≥ hoy`), 401, 403, 404, 409 `MEMBRESIA_CONFLICTO`, 409 `CONGELACION_NO_PERMITIDA` (tipo — guarda genérica; con DEC-042 `NUTRICION` ya no cae aquí — **y** rango nuevo no contenido en la fila **revertida**), 409 `MEMBRESIA_VENCIDA`, **409 `CONGELACION_INEXISTENTE`**, 409 `MEMBRESIA_SOLAPADA` (solape con otra pausa) y 409 `MEMBRESIA_SOLAPADA` (choque de la nueva `fechaFin` con periodo posterior) |
 
 - **Ownership**: la vigencia debe existir y pertenecer al `clienteId` de la ruta; si no →
   404 `NOT_FOUND` (mismo patrón que `editarMembresia`, sin filtrar la existencia del recurso
@@ -101,7 +113,7 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
   | `AUTH_FORBIDDEN` | 403 | Rol `CLIENTE` (`HU15-C05`; código real en `src/plugins/auth.ts:59-62`) |
   | `NOT_FOUND` | 404 | Vigencia inexistente o de otro cliente |
   | `MEMBRESIA_CONFLICTO` | 409 | `version` del body ≠ versión actual de la vigencia, o carrera perdida (lock optimista INC00-MEM-03) |
-  | `CONGELACION_NO_PERMITIDA` | 409 | Servicio `NUTRICION` (DEC-023) **o** rango `[fechaInicio, fechaFin]` no contenido en la vigencia (DEC-022 a) |
+  | `CONGELACION_NO_PERMITIDA` | 409 | Tipo fuera de `TIPOS_CONGELABLES` (**Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: pre-DEC-042 era servicio `NUTRICION` según DEC-023; hoy los 3 tipos son congelables y la guarda queda genérica, inalcanzable vía API con el enum actual) **o** rango `[fechaInicio, fechaFin]` no contenido en la vigencia (DEC-022 a — **sin cambio**) |
   | `MEMBRESIA_VENCIDA` | 409 | Vigencia en estado `VENCIDA` (DEC-022, confirmada por Producto) |
   | `MEMBRESIA_SOLAPADA` | 409 | Solape del rango con otra congelación existente, **o** choque de la extensión con un periodo posterior del mismo cliente (DEC-008; ambos casos, mismo mensaje) |
   | **`CONGELACION_INEXISTENTE`** | **409** | **Ampliación DEC-024 (`HU15-C07`/`HU15-C08`): no hay congelación vigente que operar** — nunca se congeló, ya fue descongelada, o `hoy > congelacionFin`. **409 y no 404**: la vigencia sí existe y superó el ownership; lo que falta es un *estado* del recurso, y la convención de `RESPUESTAS_ERROR` clasifica como 409 los rechazos por estado. Siguió el prefijo `CONGELACION_*` de `CONGELACION_NO_PERMITIDA` |
@@ -114,7 +126,10 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
   >   "403 FORBIDDEN" del encargo es el status, no el `code`.
   > - **#12**: el guard de `NUTRICION` **se exige y se prueba en INC-02** (409
   >   `CONGELACION_NO_PERMITIDA`); DEC-023 solo mantiene fuera de alcance la congelación
-  >   *exitosa* de nutrición (INC-05).
+  >   *exitosa* de nutrición (INC-05). **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**:
+  >   DEC-023 queda enmendada (`TIPOS_CONGELABLES` con los 3 tipos) — nutrición **sí es
+  >   congelable** y el guard 409 pasa a guarda genérica para tipos fuera del set; el
+  >   requisito del INC-02 se cumplió con el alcance vigente en su momento.
   > - **#11**: no existe `CONGELACION_SOLAPADA`; el solape entre congelaciones usa
   >   `MEMBRESIA_SOLAPADA`.
 
@@ -123,7 +138,7 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
   | Condición | Status/code | Mensaje `error` |
   |---|---|---|
   | Vigencia `VENCIDA` | 409 `MEMBRESIA_VENCIDA` | `No se puede congelar una membresía vencida` |
-  | `NUTRICION` | 409 `CONGELACION_NO_PERMITIDA` | `La congelación no está permitida para este tipo de servicio` |
+  | Tipo fuera de `TIPOS_CONGELABLES` (**Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: pre-DEC-042 era `NUTRICION` por DEC-023; hoy `GYM`, `PERSONALIZADO` y `NUTRICION` → 200) | 409 `CONGELACION_NO_PERMITIDA` | `La congelación no está permitida para este tipo de servicio` (mensaje **sin cambio**; único por `code`, hoy solo alcanzable con un tipo fuera del set) |
   | Rango no contenido en la vigencia | 409 `CONGELACION_NO_PERMITIDA` | `El rango de congelación debe estar dentro de la vigencia` |
   | Solape con otra congelación **o** choque con periodo posterior | 409 `MEMBRESIA_SOLAPADA` | `Las fechas se solapan con un período existente` |
   | `version` desactualizada / carrera perdida | 409 `MEMBRESIA_CONFLICTO` | `Los datos fueron modificados por otro usuario. Recargue e intente nuevamente.` |
@@ -144,7 +159,7 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
   `fechaFin ≥ hoy` → 404 (vigencia inexistente o de otro cliente) → **409** en este orden:
   1. `MEMBRESIA_CONFLICTO` (`version` desactualizada; se evalúa junto a la carga, antes que
      las reglas de negocio) →
-  2. `CONGELACION_NO_PERMITIDA` (tipo `NUTRICION`) →
+  2. `CONGELACION_NO_PERMITIDA` (tipo; guarda genérica — **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: `NUTRICION` ya no cae aquí, los 3 tipos son congelables) →
   3. `MEMBRESIA_VENCIDA` (estado de la vigencia) →
   4. `CONGELACION_NO_PERMITIDA` (rango no contenido) →
   5. `MEMBRESIA_SOLAPADA` (solape con otra congelación) →
@@ -156,7 +171,7 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
   - **`POST .../descongelar`**: 401/403 (preHandler) → **400** por Zod (`version`; `motivo` si
     viaja; **sin regla post-Zod de fechas**: el body no trae fechas) → 404 → **409** en este
     orden: 1. `MEMBRESIA_CONFLICTO` (version; patrón INC00-MEM-03, junto a la carga) →
-    2. `CONGELACION_NO_PERMITIDA` (tipo `NUTRICION`) → 3. `MEMBRESIA_VENCIDA` →
+    2. `CONGELACION_NO_PERMITIDA` (tipo; guarda genérica — **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: `NUTRICION` ya no cae aquí, los 3 tipos son congelables) → 3. `MEMBRESIA_VENCIDA` →
     4. **`CONGELACION_INEXISTENTE`** (no hay pausa vigente). Los tres primeros 409 son los
     **mismos guards de congelar en el mismo orden** (paridad); **`MEMBRESIA_SOLAPADA` no se
     evalúa**.
@@ -177,8 +192,10 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
     **400 `VALIDATION_ERROR` "Fecha fin no puede ser anterior a hoy"** (regla post-Zod, fuera
     del schema porque `hoy` es dinámica); el `fechaInicio` **puede ser retroactivo** mientras el
     rango siga abierto (`fechaFin ≥ hoy`);
-  - servicio **dentro de alcance** (`GYM`/`PERSONALIZADO`) → `NUTRICION` → 409
-    `CONGELACION_NO_PERMITIDA` (DEC-023, guard exigido en INC-02);
+  - servicio **dentro de alcance** (`GYM`/`PERSONALIZADO`/`NUTRICION` — **Enmendado
+    2026-10-20 por DEC-042 (INC-05 C4)**: DEC-023 enmendada, `TIPOS_CONGELABLES` con los
+    3 tipos) → tipo fuera de `TIPOS_CONGELABLES` → 409 `CONGELACION_NO_PERMITIDA`
+    (guarda genérica; pre-DEC-042 aplicaba a `NUTRICION`, guard exigido en INC-02);
   - la extensión suma los días del rango en **días completos inclusivos**, zona
     `America/Bogota` (DEC-005/DEC-006).
 - **`version` va en el body** (lock optimista INC00-MEM-03, patrón del `PATCH` existente):
@@ -199,12 +216,22 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
 
 ## Criterios (detalle)
 
-### `HU15-C01` — Congelar GYM y PERSONALIZADO; rechazar NUTRICION (alcance enmendado, DEC-023)
+### `HU15-C01` — Congelar GYM, PERSONALIZADO y NUTRICION (alcance enmendado por DEC-042 sobre DEC-023)
 
-- **Alcance**: la congelación está **permitida** para **membresía `GYM`** y **servicio
-  `PERSONALIZADO`** (DEC-023, 2026-10-08). **`NUTRICION` se rechaza con 409
-  `CONGELACION_NO_PERMITIDA`** y ese guard **se exige y se prueba en INC-02** (spec INC-02,
-  "Riesgo de alcance": el límite debe ser una regla, no un hueco — abierta #12 resuelta).
+> **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: DEC-023 queda enmendada —
+> `TIPOS_CONGELABLES` = `{GYM, PERSONALIZADO, NUTRICION}`. El alcance pre-DEC-042 ("GYM y
+> PERSONALIZADO → 200; NUTRICION → 409") se conserva como historial en las secciones
+> "Alcance enmendado (2026-10-08)" y "Riesgo de alcance del bullet b1"; **ningún elemento
+> del criterio se elimina**.
+
+- **Alcance**: la congelación está **permitida** para **membresía `GYM`**, **servicio
+  `PERSONALIZADO`** y **servicio `NUTRICION`** (**DEC-042, 2026-10-20**, enmienda de DEC-023:
+  `TIPOS_CONGELABLES` = `{GYM, PERSONALIZADO, NUTRICION}`). **Ningún tipo del enum se rechaza
+  por tipo**; el 409 `CONGELACION_NO_PERMITIDA` por tipo queda como **guarda genérica** para
+  valores fuera de `TIPOS_CONGELABLES` (con el enum actual es **inalcanzable vía API**;
+  pre-DEC-042 aplicaba a `NUTRICION` y ese guard **se exigió y se probó en INC-02** — spec
+  INC-02, "Riesgo de alcance": el límite debe ser una regla, no un hueco — abierta #12
+  resuelta con el alcance vigente entonces).
 - **Condición pre**: existe una vigencia del cliente solicitado; fixtures fijados en el spec
   INC-02 (sección "Fixtures"): `GYM` → **F1** (alta por API/seed), `PERSONALIZADO` → **F2**
   (fixture **directa en BD**, DEC-012/DEC-013, porque su alta por API llega en INC-05),
@@ -215,16 +242,26 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
   - `GYM` → **200**, `estado: "CONGELADO"` y `fechaFin` extendida (fixture F1);
   - `PERSONALIZADO` → **200**, ídem sobre el **mismo endpoint** (fixture F2): el camino es
     reutilizable por tipo de servicio para que INC-05 (HU-13) no reescriba la regla;
-  - `NUTRICION` → **409 `CONGELACION_NO_PERMITIDA`** con mensaje `La congelación no está
-    permitida para este tipo de servicio`; la vigencia **no cambia** (fixture F3).
+  - `NUTRICION` → **200**, `estado: "CONGELADO"` y `fechaFin` extendida (fixture F3) —
+    **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: antes el literal decía **409
+    `CONGELACION_NO_PERMITIDA`** con mensaje `La congelación no está permitida para este tipo
+    de servicio` y la vigencia **no cambiaba**; esa rama 409 se conserva únicamente como
+    guarda genérica (ver "Errores esperados") y **no se borra ningún escenario**: los que la
+    cubrían quedan enmendados a 200 o reencuadrados sobre un tipo fuera del set.
 - **Errores esperados**: mismos códigos que los demás criterios (400/401/403/404/409); ningún
-  tipo incluido (`GYM`/`PERSONALIZADO`) puede devolver "tipo no soportado" ni 409 por tipo.
+  tipo incluido (`GYM`/`PERSONALIZADO`/`NUTRICION`) puede devolver "tipo no soportado" ni 409
+  por tipo; el 409 `CONGELACION_NO_PERMITIDA` por tipo solo queda para un valor **fuera de
+  `TIPOS_CONGELABLES`** (guarda genérica, hoy no representable con el enum; mensaje sin
+  cambio).
 - **Qué NO cubre**: el registro/alta de vigencias de personalizado y nutrición (HU-13/HU-14 →
-  INC-05); la UI de esos servicios; la asignación de rutina/plan; la **congelación exitosa
+  INC-05); la UI de esos servicios; la asignación de rutina/plan. ~~la **congelación exitosa
   (200) de `NUTRICION`**, que sigue fuera de alcance hasta que el Producto lo reabra en
-  INC-05 (DEC-023).
-- **Estado**: **alcance enmendado por DEC-023 (2026-10-08)**; criterio ABIERTO (RED/GREEN
-  pendientes). El bullet b1 de HU-15 no se elimina: se cierra con este alcance enmendado.
+  INC-05 (DEC-023)~~ **ya no es hueco: DEC-042 la incluye en alcance (resolución de
+  `INC05-PEND-01`; regresión C4 de INC-05, sin puntos nuevos para HU-15)**.
+- **Estado**: **alcance enmendado dos veces: DEC-023 (2026-10-08) y DEC-042 (2026-10-20,
+  INC-05 C4)**; criterio ABIERTO (RED/GREEN pendientes). El bullet b1 de HU-15 no se elimina:
+  se cierra con este alcance enmendado; la enmienda **no altera trazabilidad ni conteo de
+  puntos**.
 
 ### `HU15-C02` — Requiere fecha de inicio, fecha de fin y motivo (más `version`)
 
@@ -251,7 +288,9 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
     `fechaInicio` retroactivo sigue permitido mientras `fechaFin ≥ hoy`.
 - **Qué NO cubre**: reglas de solape de vigencias (HU-12/DEC-008, ya acreditadas); el cálculo
   de días (C04); la validación de permisos (C05); las **reglas de negocio de DEC-022/DEC-023
-  que dependen del recurso** (rango contenido, vigencia `VENCIDA`, servicio `NUTRICION`, y que
+  que dependen del recurso** (rango contenido, vigencia `VENCIDA`, tipo fuera de
+  `TIPOS_CONGELABLES` — pre-DEC-042: servicio `NUTRICION`, **Enmendado 2026-10-20 por
+  DEC-042 (INC-05 C4)** —, y que
   `version` coincida con la actual) — esas responden **409** y viven en `HU15-C01`/`HU15-C04`.
 - **Nota**: `fechaFin ≥ hoy` no puede vivir en el schema Zod porque `hoy` es dinámica
   (`getTodayBogota()`); se evalúa en la ruta/servicio justo después del schema, con el mismo
@@ -293,13 +332,18 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
 ### `HU15-C04` — Extensión automática de `fechaFin` y reglas de rango (DEC-022)
 
 - **Condición pre**: vigencia con `fechaFin` actual (incluye extensiones previas) de tipo
-  `GYM`/`PERSONALIZADO` (DEC-023); rango de congelación válido (`cInicio ≤ cFin`).
+  `GYM`/`PERSONALIZADO`/`NUTRICION` (**Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**:
+  DEC-023 enmendada, los 3 tipos son congelables); rango de congelación válido
+  (`cInicio ≤ cFin`).
 - **Reglas exigidas, en el orden de evaluación fijado por el contrato INC-02**:
   1. `version` del body = versión actual de la vigencia → si no, 409 `MEMBRESIA_CONFLICTO`
      (lock optimista INC00-MEM-03; se evalúa junto a la carga, antes que las reglas de
      negocio);
-  2. servicio **dentro de alcance** (`GYM`/`PERSONALIZADO`) → `NUTRICION` rechazado con 409
-     `CONGELACION_NO_PERMITIDA` (DEC-023, guard exigido en INC-02);
+  2. servicio **dentro de alcance** (`GYM`/`PERSONALIZADO`/`NUTRICION`; **Enmendado
+     2026-10-20 por DEC-042 (INC-05 C4)**: DEC-023 enmendada, `TIPOS_CONGELABLES` con los
+     3) → tipo fuera de `TIPOS_CONGELABLES` rechazado con 409
+     `CONGELACION_NO_PERMITIDA` (guarda genérica; pre-DEC-042 el rechazado era
+     `NUTRICION`, guard exigido en INC-02);
   3. vigencia **no `VENCIDA`** → si está vencida, 409 `MEMBRESIA_VENCIDA` (confirmado por
      Producto: no se congela una vigencia ya vencida);
   4. rango **contenido** en la vigencia (`vigencia.fechaInicio ≤ cInicio ≤ cFin ≤
@@ -330,7 +374,9 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
     extensión se aplica una única vez por congelación, dentro de la transacción).
 - **Errores esperados**: 400 `VALIDATION_ERROR` "Fecha fin no puede ser anterior a hoy"
   (`fechaFin < hoy`, regla post-Zod, `HU15-C02`); 409 `CONGELACION_NO_PERMITIDA` (rango no
-  contenido en la vigencia, o servicio `NUTRICION` — DEC-022/DEC-023); 409 `MEMBRESIA_VENCIDA`
+  contenido en la vigencia — DEC-022 a —, **o tipo fuera de `TIPOS_CONGELABLES`** — guarda
+  genérica; **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: el literal pre-DEC-042 decía
+  "servicio `NUTRICION` — DEC-022/DEC-023"); 409 `MEMBRESIA_VENCIDA`
   (vigencia `VENCIDA` — DEC-022); 409 `MEMBRESIA_CONFLICTO` (`version` desactualizada o
   carrera perdida, patrón lock optimista INC00-MEM-03); 409 `MEMBRESIA_SOLAPADA` (rangos de
   congelación que se cruzan, o extensión que haría solapar la vigencia con un periodo
@@ -386,8 +432,9 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
   `hoy ≤ congelacionFin` (`America/Bogota`). Fixtures del spec INC-02: **F8** (pausa en
   curso), **F9** (pausa futura), **F10** (ya descongelada → no vigente), **F11** (terminada
   por calendario → no vigente), **F1 sin congelar** (nunca congelada → no vigente). Vigencia
-  de tipo `GYM`/`PERSONALIZADO` (DEC-023), **no `VENCIDA`**, con la `version` actual enviada
-  en el body.
+  de tipo `GYM`/`PERSONALIZADO`/`NUTRICION` (**Enmendado 2026-10-20 por DEC-042 (INC-05
+  C4)**: DEC-023 enmendada; pre-DEC-042 decía `GYM`/`PERSONALIZADO`), **no `VENCIDA`**, con
+  la `version` actual enviada en el body.
 - **Disparo**: `POST /clientes/:clienteId/vigencias/:vigenciaId/descongelar` (**sin prefijo
   `/api`**; preHandler `["DUENO", "RECEPCIONISTA"]`, DEC-017; ownership → 404 `NOT_FOUND`
   idéntico al de congelar) con body **`{ version }` + `motivo` opcional**.
@@ -410,7 +457,7 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
   (`fechaFinAnterior − fechaFinNueva`), sin columna nueva.
 - **Errores esperados** (orden determinista, ajuste #4): 401/403 → 400 Zod (`version`;
   `motivo` **si viaja**; sin regla post-Zod de fechas) → 404 → 409: **1.**
-  `MEMBRESIA_CONFLICTO` → **2.** `CONGELACION_NO_PERMITIDA` (tipo `NUTRICION`) → **3.**
+  `MEMBRESIA_CONFLICTO` → **2.** `CONGELACION_NO_PERMITIDA` (tipo; guarda genérica — **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: `NUTRICION` ya no cae aquí, los 3 tipos son congelables) → **3.**
   `MEMBRESIA_VENCIDA` → **4. `CONGELACION_INEXISTENTE`** con mensaje exacto
   `No hay una congelación vigente en esta membresía` (nunca se congeló / ya se descongeló /
   `hoy > congelacionFin`). **`MEMBRESIA_SOLAPADA` no aplica** (decrementar `fechaFin` nunca
@@ -429,7 +476,7 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
   | `motivo` (opcional) | Ausente → 200 (`motivo: null` en la fila); 1-500 no vacío → 200 y se persiste | sin campo; `"Retorno anticipado"` | Presente y `""`/solo espacios → 400 "Motivo es requerido"; >500 → 400 "…exceder 500 caracteres" | `""`, `"   "`, 501 caracteres |
   | Rol actor | `DUENO`, `RECEPCIONISTA` | `DUENO` | `CLIENTE` → 403; sin/expirado → 401 | `CLIENTE` |
   | `vigenciaId` | Existe y pertenece al `clienteId` | id válido | Inexistente o de otro cliente → 404 | `uid-xxx` |
-  | `tipoServicio` | `GYM`, `PERSONALIZADO` (DEC-023) | `GYM` | `NUTRICION` → 409 `CONGELACION_NO_PERMITIDA` | F3 |
+  | `tipoServicio` | `GYM`, `PERSONALIZADO`, `NUTRICION` (**Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: DEC-023 enmendada; antes solo `GYM`/`PERSONALIZADO`) | `GYM` | Tipo fuera de `TIPOS_CONGELABLES` → 409 `CONGELACION_NO_PERMITIDA` (guarda genérica; antes: `NUTRICION` → 409) | F3 → 200 (enmendado); tipo extraño al set → 409 |
   | Estado de la vigencia | `ACTIVA`, `PROGRAMADA` | `ACTIVA` | `VENCIDA` → 409 `MEMBRESIA_VENCIDA` | F4 |
 - **Valores límite**:
 
@@ -458,7 +505,7 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
   | D12 | Ownership | `vigenciaId` inexistente o de otro cliente | 404 `NOT_FOUND` |
   | D13 | Autenticación | sin token / inválido / expirado | 401 `AUTH_TOKEN_MISSING` / `INVALID` / `EXPIRED` |
   | D14 | Rol no autorizado | token de `CLIENTE` | 403 `AUTH_FORBIDDEN` |
-  | D15 | Servicio fuera de alcance | vigencia `NUTRICION` (F3) con fila de pausa directa en BD y `version` actual | 409 `CONGELACION_NO_PERMITIDA` |
+  | D15 | Servicio fuera de `TIPOS_CONGELABLES` (**Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: antes "Servicio fuera de alcance" = `NUTRICION` → 409) | vigencia con tipo **extraño al set** creada directa en BD (p. ej. `OTRO`) con fila de pausa directa en BD y `version` actual; en regresión, `NUTRICION` (F3) ahora → **200** | 409 `CONGELACION_NO_PERMITIDA` (guarda genérica) |
   | D16 | Vigencia vencida | `hoy > fechaFin` (F4) | 409 `MEMBRESIA_VENCIDA` |
   | D17 | Orden de 409: la `version` gana | `version` desactualizada **y** pausa no vigente | 409 `MEMBRESIA_CONFLICTO` (no `CONGELACION_INEXISTENTE`) |
   | D18 | Concurrencia | dos `descongelar` simultáneos con la misma `version` | exactamente una 200; la otra 409 `MEMBRESIA_CONFLICTO` |
@@ -481,7 +528,9 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
 
 - **Condición pre**: mismo guard de "congelación vigente" que `HU15-C07` (última fila de la
   secuencia de pausa `CONGELACION`/`EDICION_CONGELACION` con `hoy ≤ congelacionFin`; fixtures
-  **F8**, **F9**, **F10**, **F11**, **F1 sin congelar**), vigencia `GYM`/`PERSONALIZADO` no
+  **F8**, **F9**, **F10**, **F11**, **F1 sin congelar**), vigencia
+  `GYM`/`PERSONALIZADO`/`NUTRICION` (**Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**:
+  DEC-023 enmendada; pre-DEC-042 decía `GYM`/`PERSONALIZADO`) no
   `VENCIDA`, con la `version` actual en el body.
 - **Disparo**: `PATCH /clientes/:clienteId/vigencias/:vigenciaId/congelacion` (**sin prefijo
   `/api`**; preHandler `["DUENO", "RECEPCIONISTA"]`, DEC-017; ownership → 404; recurso único
@@ -531,7 +580,7 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
   | `N_nuevo` vs `N_anterior` | `N' > N` (extiende), `N' < N` (retracta), `N' = N` → **200 en los tres** | 20 / 2 / 10 sobre N = 10 | Solape con otra pausa o choque con periodo posterior → 409 `MEMBRESIA_SOLAPADA` | F6, F5 |
   | `motivo` | **Requerido**, 1-500 no vacío | `"Cambio de viaje"` | Ausente/vacío/solo espacios → 400; >500 → 400 | `""`, 501 caracteres |
   | `version` | Entero positivo = versión actual | `2` | Malformada → 400; ≠ actual → 409 `MEMBRESIA_CONFLICTO` | `0` (400); `99` (409) |
-  | Rol / ownership / tipo / estado de la vigencia | igual que `HU15-C07` | `DUENO` | 401/403/404; `NUTRICION` → 409 tipo; `VENCIDA` → 409 | F3, F4 |
+  | Rol / ownership / tipo / estado de la vigencia | igual que `HU15-C07` | `DUENO` | 401/403/404; tipo fuera de `TIPOS_CONGELABLES` → 409 (**Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: pre-DEC-042 era `NUTRICION` → 409); `VENCIDA` → 409 | F3 → 200 (enmendado), F4 |
 - **Valores límite**:
 
   | Campo | Tipo | Mín | Máx | Mín-1 | Máx+1 |
@@ -559,7 +608,7 @@ inclusivos, zona `America/Bogota`). La operación queda auditada.
   | E11 | Ownership | `vigenciaId` inexistente o de otro cliente | 404 `NOT_FOUND` |
   | E12 | Autenticación / rol | sin token / token inválido / `CLIENTE` | 401 `AUTH_TOKEN_*` / 403 `AUTH_FORBIDDEN` |
   | E13 | `version` desactualizada | `version` ≠ actual (tras otra operación) | 409 `MEMBRESIA_CONFLICTO` (primer 409 del orden) |
-  | E14 | Servicio fuera de alcance | `NUTRICION` con pausa vigente (F3 + fila directa) | 409 `CONGELACION_NO_PERMITIDA` |
+  | E14 | Servicio fuera de `TIPOS_CONGELABLES` (**Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: antes = `NUTRICION` → 409) | tipo extraño al set (p. ej. `OTRO`) con pausa vigente creada directa en BD; en regresión `NUTRICION` (F3 + fila directa) ahora → **200** | 409 `CONGELACION_NO_PERMITIDA` (guarda genérica) |
   | E15 | Vigencia vencida | `hoy > fechaFin` (F4) | 409 `MEMBRESIA_VENCIDA` |
   | E16 | Rango nuevo no contenido en la fila revertida | `hoy-2..hoy+40` con `fechaFin − N = hoy+30` | 409 `CONGELACION_NO_PERMITIDA` ("El rango de congelación debe estar dentro de la vigencia") |
   | E17 | Solape con otra pausa (F6) | dos pausas disjuntas; editar la vigente a un rango que cruce la otra | 409 `MEMBRESIA_SOLAPADA` ("Las fechas se solapan con un período existente") |
@@ -642,7 +691,7 @@ o `hoy > congelacionFin`, **no hay congelación vigente** → **409 `CONGELACION
 | version (lock optimista, INC00-MEM-03) | Entero positivo **igual a la `version` actual de la vigencia** | `1` (fixture F1) | Ausente / no entero / no positivo → 400; entero ≠ versión actual → 409 `MEMBRESIA_CONFLICTO` | ausente, `0`, `-1`, `1.5` (400); `99` (409) |
 | vigenciaId | Existe y pertenece al `clienteId` de la ruta | `uid-vig-1` | Inexistente o de otro cliente | `uid-xxx` |
 | estado de la vigencia | `ACTIVA`, `PROGRAMADA` | `ACTIVA` | `VENCIDA` → 409 `MEMBRESIA_VENCIDA` (DEC-022) | `VENCIDA` |
-| tipoServicio (alcance de congelación) | `GYM`, `PERSONALIZADO` (DEC-023) | `GYM` | `NUTRICION` → 409 `CONGELACION_NO_PERMITIDA` (guard exigido en INC-02) | `NUTRICION` |
+| tipoServicio (alcance de congelación) | `GYM`, `PERSONALIZADO`, `NUTRICION` (**Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: DEC-023 enmendada; antes solo `GYM`/`PERSONALIZADO`) | `NUTRICION` | Tipo fuera de `TIPOS_CONGELABLES` → 409 `CONGELACION_NO_PERMITIDA` (guarda genérica; antes: `NUTRICION` → 409, guard exigido en INC-02) | valor extraño al enum con fixture directa en BD (p. ej. `OTRO`) |
 | tipoServicio (respuesta de la vigencia) | `GYM`, `PERSONALIZADO`, `NUTRICION` (enum del modelo, DEC-004) | `GYM` | — | - |
 | rol actor | `DUENO`, `RECEPCIONISTA` | `DUENO` | `CLIENTE`, sin/expirado token | `CLIENTE` |
 | rango vs otras congelaciones | Disjunto o con gap | `[02-01..02-10]` y `[02-12..02-15]` | Solapado | `[02-01..02-10]` y `[02-09..02-12]` |
@@ -666,10 +715,11 @@ o `hoy > congelacionFin`, **no hay congelación vigente** → **409 `CONGELACION
 
 Orden de evaluación (fijado en el contrato INC-02): 401/403 → 400 (schema Zod y después la
 regla post-Zod `fechaFin ≥ hoy`) → 404 → 409: `version` (`MEMBRESIA_CONFLICTO`) → tipo
-`NUTRICION` → `VENCIDA` → rango no contenido → solape con otra congelación → choque con
+fuera de `TIPOS_CONGELABLES` (pre-DEC-042: `NUTRICION`; **Enmendado 2026-10-20 por DEC-042
+(INC-05 C4)**) → `VENCIDA` → rango no contenido → solape con otra congelación → choque con
 periodo posterior. Columnas = requisitos que deben cumplirse, en ese orden; `*` = no aplica.
 
-| Rol autorizado | Body Zod válido (incl. `version`) | `fechaFin ≥ hoy` (post-Zod) | Vigencia existe (y del cliente) | `version` vigente (INC00-MEM-03) | Tipo congelable (DEC-023) | Vigencia no `VENCIDA` (DEC-022) | Rango ⊆ vigencia (DEC-022) | Sin solape de congelaciones | Extensión sin chocar con periodo posterior | Acción |
+| Rol autorizado | Body Zod válido (incl. `version`) | `fechaFin ≥ hoy` (post-Zod) | Vigencia existe (y del cliente) | `version` vigente (INC00-MEM-03) | Tipo congelable (DEC-023 enmendada por DEC-042: los 3 tipos) | Vigencia no `VENCIDA` (DEC-022) | Rango ⊆ vigencia (DEC-022) | Sin solape de congelaciones | Extensión sin chocar con periodo posterior | Acción |
 |---|---|---|---|---|---|---|---|---|---|---|
 | true | true | true | true | true | true | true | true | true | true | **200**: `CONGELADO` + `fechaFin` extendida + `version` N→N+1 + auditoría |
 | false (CLIENTE) | * | * | * | * | * | * | * | * | * | 403 `AUTH_FORBIDDEN` |
@@ -678,7 +728,7 @@ periodo posterior. Columnas = requisitos que deben cumplirse, en ese orden; `*` 
 | true | true | false (`fechaFin < hoy`) | * | * | * | * | * | * | * | 400 `VALIDATION_ERROR` "Fecha fin no puede ser anterior a hoy" (ajuste #7) |
 | true | true | true | false | * | * | * | * | * | * | 404 `NOT_FOUND` |
 | true | true | true | true | false (desactualizada) | * | * | * | * | * | 409 `MEMBRESIA_CONFLICTO` |
-| true | true | true | true | true | false (`NUTRICION`) | * | * | * | * | 409 `CONGELACION_NO_PERMITIDA` (guard exigido en INC-02, DEC-023) |
+| true | true | true | true | true | false (tipo fuera de `TIPOS_CONGELABLES`; **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: antes `NUTRICION`) | * | * | * | * | 409 `CONGELACION_NO_PERMITIDA` (guarda genérica; guard exigido en INC-02 con el alcance pre-DEC-042) |
 | true | true | true | true | true | true | false (`VENCIDA`) | * | * | * | 409 `MEMBRESIA_VENCIDA` (DEC-022) |
 | true | true | true | true | true | true | true | false | * | * | 409 `CONGELACION_NO_PERMITIDA` (rango no contenido) |
 | true | true | true | true | true | true | true | true | false | * | 409 `MEMBRESIA_SOLAPADA` |
@@ -705,7 +755,7 @@ Orden de evaluación (fijado en el spec INC-02, sección "Descongelar"): 401/403
 → `CONGELACION_NO_PERMITIDA` (tipo) → `MEMBRESIA_VENCIDA` → **`CONGELACION_INEXISTENTE`**.
 **`MEMBRESIA_SOLAPADA` no se evalúa** (decrementar nunca crea solape). `*` = no aplica.
 
-| Rol autorizado | Body Zod válido (`version`; `motivo` opcional si viaja) | Vigencia existe (y del cliente) | `version` vigente | Tipo congelable (DEC-023) | Vigencia no `VENCIDA` | **Pausa vigente** (última fila de pausa + `hoy ≤ congelacionFin`) | Acción |
+| Rol autorizado | Body Zod válido (`version`; `motivo` opcional si viaja) | Vigencia existe (y del cliente) | `version` vigente | Tipo congelable (DEC-023 enmendada por DEC-042: los 3 tipos) | Vigencia no `VENCIDA` | **Pausa vigente** (última fila de pausa + `hoy ≤ congelacionFin`) | Acción |
 |---|---|---|---|---|---|---|---|
 | true | true | true | true | true | true | true | **200**: `fechaFin − diasDevueltos` + fila `DESCONGELACION` + `version` N→N+1 + `congelacion: null` |
 | false (CLIENTE) | * | * | * | * | * | * | 403 `AUTH_FORBIDDEN` |
@@ -713,7 +763,7 @@ Orden de evaluación (fijado en el spec INC-02, sección "Descongelar"): 401/403
 | true | false | * | * | * | * | * | 400 `VALIDATION_ERROR` |
 | true | true | false | * | * | * | * | 404 `NOT_FOUND` |
 | true | true | true | false (desactualizada) | * | * | * | 409 `MEMBRESIA_CONFLICTO` |
-| true | true | true | true | false (`NUTRICION`) | * | * | 409 `CONGELACION_NO_PERMITIDA` |
+| true | true | true | true | false (tipo fuera de `TIPOS_CONGELABLES`; antes `NUTRICION`, **Enmendado 2026-10-20 por DEC-042**) | * | * | 409 `CONGELACION_NO_PERMITIDA` |
 | true | true | true | true | true | false (`VENCIDA`) | * | 409 `MEMBRESIA_VENCIDA` |
 | true | true | true | true | true | true | false (nunca congelada / descongelada / `hoy > congelacionFin`) | **409 `CONGELACION_INEXISTENTE`** |
 
@@ -725,7 +775,7 @@ de congelar) y después post-Zod `fechaFin ≥ hoy` → 404 → 409: `MEMBRESIA_
 `CONGELACION_NO_PERMITIDA` (rango ⊆ fila **revertida**) → `MEMBRESIA_SOLAPADA` (×2). La
 contención y los solapes se evalúan con la fila revertida `fechaFin − N_anterior`.
 
-| Rol | Body Zod válido (4 campos) | `fechaFin ≥ hoy` (post-Zod) | Vigencia existe | `version` vigente | Tipo congelable | Vigencia no `VENCIDA` | Pausa vigente | Rango nuevo ⊆ fila revertida | Sin solape con otra pausa | Nueva `fechaFin` sin choque con periodo posterior | Acción |
+| Rol | Body Zod válido (4 campos) | `fechaFin ≥ hoy` (post-Zod) | Vigencia existe | `version` vigente | Tipo congelable (DEC-042) | Vigencia no `VENCIDA` | Pausa vigente | Rango nuevo ⊆ fila revertida | Sin solape con otra pausa | Nueva `fechaFin` sin choque con periodo posterior | Acción |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | true | true | true | true | true | true | true | true | true | true | true | **200**: `fechaFin − N_anterior + N_nuevo` + fila `EDICION_CONGELACION` + `version` N→N+1 (`N' = N` → también 200, `fechaFin` sin cambio) |
 | false (CLIENTE) | * | * | * | * | * | * | * | * | * | * | 403 `AUTH_FORBIDDEN` |
@@ -734,7 +784,7 @@ contención y los solapes se evalúan con la fila revertida `fechaFin − N_ante
 | true | true | false (nuevo `fechaFin < hoy`) | * | * | * | * | * | * | * | * | 400 `VALIDATION_ERROR` "Fecha fin no puede ser anterior a hoy" |
 | true | true | true | false | * | * | * | * | * | * | * | 404 `NOT_FOUND` |
 | true | true | true | true | false | * | * | * | * | * | * | 409 `MEMBRESIA_CONFLICTO` |
-| true | true | true | true | true | false (`NUTRICION`) | * | * | * | * | * | 409 `CONGELACION_NO_PERMITIDA` |
+| true | true | true | true | true | false (tipo fuera de `TIPOS_CONGELABLES`; antes `NUTRICION`, **Enmendado 2026-10-20 por DEC-042**) | * | * | * | * | * | 409 `CONGELACION_NO_PERMITIDA` |
 | true | true | true | true | true | true | false (`VENCIDA`) | * | * | * | * | 409 `MEMBRESIA_VENCIDA` |
 | true | true | true | true | true | true | true | false (nunca / descongelada / terminada) | * | * | * | **409 `CONGELACION_INEXISTENTE`** |
 | true | true | true | true | true | true | true | true | false | * | * | 409 `CONGELACION_NO_PERMITIDA` (rango no contenido en la fila revertida) |
@@ -807,7 +857,7 @@ contención y los solapes se evalúan con la fila revertida `fechaFin − N_ante
 | 9b | `version` ausente / no entera / no positiva | sin campo, `1.5`, `0` | 400 "Versión es requerida" / "Versión debe ser un entero" / "Versión debe ser positiva" (ajuste #2) |
 | 10 | Vigencia inexistente | id aleatorio | 404 `NOT_FOUND` |
 | 11 | Vigencia de otro cliente | id de otro cliente | 404 `NOT_FOUND` (sin filtrar) |
-| 12 | Servicio fuera de alcance | vigencia `NUTRICION` (fixture F3) | 409 `CONGELACION_NO_PERMITIDA`, **guard exigido y probado en INC-02** (DEC-023) |
+| 12 | Guarda genérica por tipo (**Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**; antes "Servicio fuera de alcance" con `NUTRICION` → 409, **guard exigido y probado en INC-02**) | vigencia con tipo **fuera de `TIPOS_CONGELABLES`** creada directa en BD (p. ej. `OTRO`); pre-DEC-042 el input era `NUTRICION` (fixture F3) | 409 `CONGELACION_NO_PERMITIDA` — con DEC-042 F3 ya **no** produce este 409 (`NUTRICION` → 200, ver fila 31) |
 | 13 | Vigencia VENCIDA | `hoy > fechaFin` de la vigencia (fixture F4) | 409 `MEMBRESIA_VENCIDA` (DEC-022) |
 | 14 | Rango fuera de la vigencia | `2026-07-01..2026-07-05` sobre vigencia a `03-31` | 409 `CONGELACION_NO_PERMITIDA` |
 | 15 | `fechaFin` de la congelación anterior a hoy | `hoy = 2026-02-05`, rango `2026-01-05..2026-01-10` sobre vigencia `01-01..03-31` | **400 `VALIDATION_ERROR` "Fecha fin no puede ser anterior a hoy"** (regla post-Zod, ajuste #7) |
@@ -825,8 +875,8 @@ contención y los solapes se evalúan con la fila revertida `fechaFin − N_ante
 | 27 | Estado durante el rango | `hoy ∈ [cInicio, cFin]` | API y ficha: `CONGELADO` + badge |
 | 28 | Precedencia sobre VENCIDA | **prueba unitaria de `calcularEstado`** con fixture F7 (vigencia `VENCIDA` + fila `CONGELACION` creada directa en BD que cubre hoy; **no es un caso de endpoint**) | `CONGELADO` |
 | 29 | Después del rango | `hoy > cFin` | `ACTIVA` con `fechaFin` extendida |
-| 30 | Tipos congelables | `GYM` (fixture F1), `PERSONALIZADO` (fixture F2, alta directa en BD) | 200 en cada tipo (DEC-023) |
-| 31 | Nutrición rechazada | `NUTRICION` (fixture F3) | 409 `CONGELACION_NO_PERMITIDA`, **escenario ejecutable en INC-02** (DEC-023, ajuste #6) |
+| 30 | Tipos congelables | `GYM` (fixture F1), `PERSONALIZADO` (fixture F2, alta directa en BD), `NUTRICION` (fixture F3) — **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: los 3 tipos | 200 en cada tipo (DEC-023 **enmendada por DEC-042**) |
+| 31 | Nutrición congelable (**Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**; antes "Nutrición rechazada") | `NUTRICION` (fixture F3) | **200** `CONGELADO` con `fechaFin` extendida; el 409 `CONGELACION_NO_PERMITIDA` queda solo en la guarda genérica de la fila 12 (pre-DEC-042: 409, **escenario ejecutable en INC-02**, DEC-023, ajuste #6) |
 | 32 | `version` desactualizada | body con `version` ≠ versión actual (tras otra congelación o un `PATCH`) | 409 `MEMBRESIA_CONFLICTO` (primer 409 del orden del contrato) |
 
 ## Reglas de Validación por Campo
@@ -840,7 +890,7 @@ contención y los solapes se evalúan con la fila revertida `fechaFin − N_ante
 | motivo | string | sí | no vacío tras `.trim()` | 1-500 | texto libre |
 | version | number | sí | entero (`.int()`) positivo (`.positive()`) | - | = `version` actual de la vigencia (lock optimista INC00-MEM-03); si difiere → 409 `MEMBRESIA_CONFLICTO` |
 | estado (respuesta) | enum | - | - | - | `PROGRAMADA`, `ACTIVA`, `VENCIDA`, `CONGELADO` |
-| tipoServicio (respuesta) | enum | - | - | - | `GYM`, `PERSONALIZADO`, `NUTRICION` (congelación permitida solo para `GYM`/`PERSONALIZADO`, DEC-023) |
+| tipoServicio (respuesta) | enum | - | - | - | `GYM`, `PERSONALIZADO`, `NUTRICION` (congelación permitida para los **3 tipos** — **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: antes "solo para `GYM`/`PERSONALIZADO`, DEC-023"; `TIPOS_CONGELABLES` = los 3) |
 | diasCongelados (respuesta) | int | - | - | ≥ 1 | `(cFin − cInicio) + 1` |
 | cambios (respuesta) | array | sí | fila `CREACION`/`EDICION`/`CONGELACION` del historial | ≥ 1 | la fila `CONGELACION` recién escrita incluye `motivo`, `congelacionInicio`, `congelacionFin` (ajuste #8) |
 | **motivo (body de `descongelar`)** | string | **no** (opcional) | si **viaja**: no vacío tras `.trim()` (misma rama Zod que congelar) | ausente → OK; si viaja, 1-500 | `""`/solo espacios → 400 "Motivo es requerido"; >500 → 400; **ausente → 200** con `motivo: null` en la fila (DEC-024) |
@@ -979,8 +1029,10 @@ Feature: Congelacion de vigencias (HU-15)
     Then la respuesta tiene estado 200
     And la fecha fin es "2026-04-27" con 27 dias congelados
 
-  # HU15-C01/C03 — tipos de servicio (alcance enmendado DEC-023; guard NUTRICION exigido y
-  # probado en INC-02 — ajuste #6). "ninguno" en codigoError = respuesta 200 sin cuerpo de error.
+  # HU15-C01/C03 — tipos de servicio (alcance enmendado DEC-023 y luego DEC-042; guard de
+  # tipo exigido y probado en INC-02 — ajuste #6. Enmendado 2026-10-20 por DEC-042
+  # (INC-05 C4): los 3 tipos congelan; la guarda 409 por tipo queda genérica).
+  # "ninguno" en codigoError = respuesta 200 sin cuerpo de error.
   Scenario Outline: Congelar segun el tipo de servicio con fixture "<fixture>"
     Given existe una vigencia "<tipo>" del cliente "CLIENTE-1" en estado "ACTIVA" con fixture "<fixture>"
     When congelo la vigencia "<tipo>" desde "2026-02-01" hasta "2026-02-10" con motivo "Pausa"
@@ -992,18 +1044,22 @@ Feature: Congelacion de vigencias (HU-15)
       | tipo | fixture | status | codigoError | estadoResultante |
       | GYM | F1 | 200 | ninguno | CONGELADO |
       | PERSONALIZADO | F2 | 200 | ninguno | CONGELADO |
-      | NUTRICION | F3 | 409 | CONGELACION_NO_PERMITIDA | ACTIVA |
+      | NUTRICION | F3 | 200 | ninguno | CONGELADO |
 
-  @DEC-023
-  Scenario: Nutricion se rechaza con CONGELACION_NO_PERMITIDA y no modifica la vigencia
+  @DEC-023 @DEC-042
+  Scenario: Nutricion se congela con exito (Enmendado 2026-10-20 por DEC-042 (INC-05 C4); antes: se rechazaba con CONGELACION_NO_PERMITIDA)
     # Guard exigido en INC-02 (spec INC-02, "Riesgo de alcance": el limite debe ser una
-    # regla, no un hueco). La congelacion exitosa de nutricion sigue fuera de alcance
-    # hasta INC-05 (HU-14) si el Producto reabre DEC-023.
+    # regla, no un hueco). Enmendado 2026-10-20 por DEC-042 (INC-05 C4): DEC-023 queda
+    # enmendada -> TIPOS_CONGELABLES = {GYM, PERSONALIZADO, NUTRICION}. La congelacion
+    # exitosa de nutricion, antes "fuera de alcance hasta INC-05 (HU-14) si el Producto
+    # reabre DEC-023", ya esta en alcance (INC05-NUT-03). El escenario NO se borra: se
+    # enmienda a 200. La guarda 409 por tipo se conserva para tipos fuera del set (ver
+    # fila 12 / D15) y su mensaje no cambia.
     Given existe una vigencia "NUTRICION" del cliente "CLIENTE-1" en estado "ACTIVA" con fixture "F3"
     When congelo la vigencia "NUTRICION" desde "2026-02-01" hasta "2026-02-10" con motivo "Pausa"
-    Then la respuesta tiene estado 409 con codigo "CONGELACION_NO_PERMITIDA"
-    And el mensaje es "La congelación no está permitida para este tipo de servicio"
-    And la vigencia conserva su fecha fin original
+    Then la respuesta tiene estado 200
+    And la vigencia "NUTRICION" tiene estado "CONGELADO"
+    And la respuesta incluye el historial "cambios" con una accion "CONGELACION"
 
   # HU15-C03 — estado durante el rango
   Scenario: El estado es CONGELADO durante el rango congelado
@@ -1209,7 +1265,7 @@ Feature: Descongelar y editar la congelacion de una vigencia (HU-15, ampliacion 
     Examples:
       | precondicion | status | codigoError |
       | la version del body esta desactualizada y la pausa no esta vigente | 409 | MEMBRESIA_CONFLICTO |
-      | existe una vigencia "NUTRICION" con una congelacion vigente con fixture "F3" | 409 | CONGELACION_NO_PERMITIDA |
+      | existe una vigencia con tipo fuera de "TIPOS_CONGELABLES" creada directa en BD (antes: "NUTRICION" con fixture "F3"; Enmendado 2026-10-20 por DEC-042 (INC-05 C4)) | 409 | CONGELACION_NO_PERMITIDA |
       | existe una vigencia "VENCIDA" con fixture "F4" | 409 | MEMBRESIA_VENCIDA |
 
   # D18 — concurrencia: exactamente una gana
@@ -1344,7 +1400,7 @@ Feature: Descongelar y editar la congelacion de una vigencia (HU-15, ampliacion 
 
     Examples:
       | precondicion | inicio | fin | status | codigoError | mensaje |
-      | existe una vigencia "NUTRICION" con una congelacion vigente con fixture "F3" | hoy - 1 | hoy + 3 | 409 | CONGELACION_NO_PERMITIDA | La congelación no está permitida para este tipo de servicio |
+      | existe una vigencia con tipo fuera de "TIPOS_CONGELABLES" creada directa en BD (antes: "NUTRICION" con fixture "F3"; Enmendado 2026-10-20 por DEC-042 (INC-05 C4)) | hoy - 1 | hoy + 3 | 409 | CONGELACION_NO_PERMITIDA | La congelación no está permitida para este tipo de servicio |
       | existe una vigencia "VENCIDA" con fixture "F4" | hoy - 1 | hoy + 3 | 409 | MEMBRESIA_VENCIDA | No se puede congelar una membresía vencida |
       | la vigencia del cliente "CLIENTE-1" esta congelada de "hoy - 2" a "hoy + 7" con fixture "F8" | hoy - 2 | hoy + 40 | 409 | CONGELACION_NO_PERMITIDA | El rango de congelación debe estar dentro de la vigencia |
       | la vigencia del cliente "CLIENTE-1" tiene dos congelaciones disjuntas con fixture "F6" y edito la ultima a un rango que cruza la primera | hoy - 11 | hoy - 4 | 409 | MEMBRESIA_SOLAPADA | Las fechas se solapan con un período existente |
@@ -1391,7 +1447,8 @@ Feature: Descongelar y editar la congelacion de una vigencia (HU-15, ampliacion 
 | DEC-016 (fraccionable con spec+impl+prueba+evidencia+revisión) | Tabla de trazabilidad: cada bullet = un criterio cerrable |
 | DEC-017 (`DUENO`/`RECEPCIONISTA` gestionan vigencias) | `HU15-C05` |
 | DEC-022 (reglas de rango: contenido, no VENCIDA, `fechaFin ≥ hoy`, inicio retroactivo, extensión inclusiva `America/Bogota`) | `HU15-C04` (reglas 3-5), `HU15-C02` (`fechaFin ≥ hoy` → 400), Tabla A, Transiciones, Cobertura #13-#18, escenarios "reglas de rango" |
-| DEC-023 (alcance de congelación: GYM + PERSONALIZADO; nutrición rechazada) | `HU15-C01`, Outline de tipos (fixtures F1/F2/F3), Tabla A, Cobertura #12/#30/#31 |
+| DEC-023 (alcance de congelación: GYM + PERSONALIZADO; nutrición rechazada) — **enmendada por DEC-042** | `HU15-C01`, Outline de tipos (fixtures F1/F2/F3), Tabla A, Cobertura #12/#30/#31 (literales actualizados por la enmienda de abajo) |
+| **DEC-042** (2026-10-20: congelación también en `NUTRICION`; DEC-023 enmendada, `TIPOS_CONGELABLES` = `{GYM, PERSONALIZADO, NUTRICION}`) | **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)** → **`HU15-C01`** (alcance y resultado de F3 → 200), `HU15-C04`/`HU15-C07`/`HU15-C08` (condición pre por tipo), Outline de tipos (fila `NUTRICION` → 200), Tablas A/C/D (columna "Tipo congelable"), Cobertura #12/#30/#31, D15/E14, partición de equivalencia y Gherkin (escenario `@DEC-042`); la guarda `CONGELACION_NO_PERMITIDA` por tipo queda **genérica** y **sin cambio** el 409 por rango no contenido (DEC-022 a) |
 | **DEC-024** (descongelar y editar congelación dentro de INC-02, **0 puntos**; días restantes en descongelar, diferencia completa en editar) | **`HU15-C07`, `HU15-C08`**, sección "Regla de días de la ampliación", Tablas C/D, Transiciones (pausa), Cobertura D/E, Gherkin de la ampliación, fixtures F8..F11, código `CONGELACION_INEXISTENTE`; cierra **abierto #7** |
 | **DEC-025** (durante la congelación el cliente **conserva el acceso**; sin bloqueo) | **`HU15-C03`** (expectativa verificable, **0 puntos**), nota DEC-025 del contrato y de Transiciones, escenario `@DEC-025`; cierra **abierto #8** |
 | INC00-MEM-04 (auditoría en la misma transacción) | `HU15-C06` |
@@ -1430,6 +1487,12 @@ Feature: Descongelar y editar la congelacion de una vigencia (HU-15, ampliacion 
 
 ## Alcance enmendado (2026-10-08 — DEC-023 + DEC-022)
 
+> **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: esta sección es **historial** del alcance
+> pre-DEC-042 (GYM + PERSONALIZADO; nutrición fuera de alcance). DEC-042 enmendó DEC-023 →
+> `TIPOS_CONGELABLES` = `{GYM, PERSONALIZADO, NUTRICION}`; el estado vigente del alcance está
+> en la cabecera de este documento y en `HU15-C01`. **No se borró ningún literal de esta
+> sección** (procedencia histórica del alcance original).
+
 - **Fecha**: 2026-10-08. **Decisiones aplicadas**: **DEC-023** (alcance de la congelación) y
   **DEC-022** (reglas de rango), ambas aprobadas y registradas en
   `docs/producto/decisiones.md`. **DEC-017** (permisos) ya estaba aplicado: `HU15-C05` no cambia.
@@ -1462,6 +1525,12 @@ Feature: Descongelar y editar la congelacion de una vigencia (HU-15, ampliacion 
 
 ## Riesgo de alcance del bullet b1 (RESUELTO — DEC-023, 2026-10-08)
 
+> **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: el riesgo heredado a INC-05 indicado
+> abajo ("HU-14 b2 pide estado 'congelado' de nutrición") **queda cerrado**: DEC-042 extiende
+> la congelación a `NUTRICION` (recomendación (a) de `INC05-PEND-01`) y DEC-023 queda
+> enmendada. Los literales de esta sección se conservan como historial pre-DEC-042; la
+> congelación *exitosa* de nutrición **ya no está fuera de alcance**.
+
 Resuelto por decisión del Producto (**DEC-023**): la congelación aplica a **GYM y
 PERSONALIZADO**; **nutrición queda fuera de alcance**. Consecuencias operativas para INC-02:
 
@@ -1487,7 +1556,7 @@ Resueltos en la refactorización de alcance (2026-10-08):
 
 | # | Abierto (antes) | Resolución |
 |---|---|---|
-| 1 | Riesgo de alcance de b1 (3 tipos vs cierre parcial GYM) | **RESUELTO — DEC-023**: GYM + PERSONALIZADO → 200; NUTRICION → 409 guard ejecutado en INC-02; congelación exitosa de nutrición → INC-05 |
+| 1 | Riesgo de alcance de b1 (3 tipos vs cierre parcial GYM) | **RESUELTO — DEC-023**: GYM + PERSONALIZADO → 200; NUTRICION → 409 guard ejecutado en INC-02; congelación exitosa de nutrición → INC-05. **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: los 3 tipos → 200 y la congelación exitosa de nutrición queda **incluida en INC-05** (`INC05-NUT-03`) |
 | 2 | ¿Rango contenido en la vigencia? | **RESUELTO — DEC-022a**: sí; si no → 409 `CONGELACION_NO_PERMITIDA` |
 | 3 | ¿No congelar vigencia `VENCIDA`? | **RESUELTO — DEC-022 (confirmada por Producto)**: no → 409 `MEMBRESIA_VENCIDA` |
 
@@ -1501,7 +1570,7 @@ Resueltos con el contrato final de INC-02 (2026-10-08, ajustes #1..#10 del spec)
 | 9 | Código de error para "`fechaFin` de la congelación anterior a hoy": ¿409 `CONGELACION_NO_PERMITIDA` o 400 `VALIDATION_ERROR`? | **RESUELTO — contrato INC-02**: **400 `VALIDATION_ERROR`** (regla post-Zod, orden de evaluación paso 2). Aplicado en `HU15-C02`, Tabla A, Transiciones, Cobertura #15 y Gherkin |
 | 10 | Nomenclatura 403: `FORBIDDEN` (brief) vs `AUTH_FORBIDDEN` (código) | **RESUELTO — contrato INC-02**: **`AUTH_FORBIDDEN`** (`src/plugins/auth.ts:59-62`), "403 FORBIDDEN" es solo el status |
 | 11 | Un solo código de solape: ¿`CONGELACION_SOLAPADA` para solape entre congelaciones? | **RESUELTO — contrato INC-02**: **`MEMBRESIA_SOLAPADA`** para ambos casos, con el mensaje único `Las fechas se solapan con un período existente`; no existe `CONGELACION_SOLAPADA` (ajuste #3) |
-| 12 | ¿Se exige el guard 409 de `NUTRICION` en INC-02 o solo `@fuera-de-alcance`? | **RESUELTO — spec INC-02 + ajuste #6**: **guard 409 exigido y probado en INC-02** (cobertura #12/#31, outline de tipos con fixture F3, tag `@DEC-023` sin `@fuera-de-alcance`) |
+| 12 | ¿Se exige el guard 409 de `NUTRICION` en INC-02 o solo `@fuera-de-alcance`? | **RESUELTO — spec INC-02 + ajuste #6**: **guard 409 exigido y probado en INC-02** (cobertura #12/#31, outline de tipos con fixture F3, tag `@DEC-023` sin `@fuera-de-alcance`). **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: el guard se cumplió en INC-02 con el alcance de entonces; con DEC-042 la guarda 409 por tipo queda **genérica** (inalcanzable con el enum actual) y la cobertura #12/#31 se reencuadra **sin borrar filas** |
 
 Resueltos con la ampliación **DEC-024 + DEC-025** (2026-10-08; ajustes #6, #7 y #8 de "Ajustes
 pendientes de criterios (ampliacion DEC-024)"):
@@ -1512,7 +1581,9 @@ pendientes de criterios (ampliacion DEC-024)"):
 | **8** | ¿Bloquear el acceso del cliente **durante** la congelación? "Sin bullet en HU-15 (el bloqueo por vencimiento es HU-16)" | **RESUELTO — DEC-025**: **no hay bloqueo**; el cliente **conserva el acceso** (autenticarse y usar portal/servicio) durante `CONGELADO`; INC-02 **no implementa ningún bloqueo** por congelación (`CONGELADO` no deniega ingreso ni portal). Expectativa verificable en `HU15-C03` (login del cliente + ausencia de denegación por `CONGELADO`) y escenario `@DEC-025`. Bloqueo por vencimiento → HU-16/INC-03; por `INACTIVO` → HU-08/INC-04 |
 
 **Pendientes: ninguno.** Tras DEC-023/DEC-022/DEC-024/DEC-025 no queda ningún abierto de
-alcance, reglas, modelo, paths, códigos ni mensajes.
+alcance, reglas, modelo, paths, códigos ni mensajes. **Enmendado 2026-10-20 por DEC-042
+(INC-05 C4)**: la enmienda de DEC-023 tampoco abre pendientes en HU-15 — es **regresión sin
+puntos nuevos** (`HU15-C01..C08` conservan trazabilidad, fichas de criterio y conteo).
 
 **BLOQUEADO?** No. DEC-023/DEC-022/DEC-024/DEC-025 y el contrato final de INC-02 (incluida la
 ampliación con `HU15-C07`/`HU15-C08`) cierran alcance, reglas, modelo, paths, códigos y

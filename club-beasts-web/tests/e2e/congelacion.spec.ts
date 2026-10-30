@@ -368,9 +368,39 @@ test.describe("Congelación de vigencias (INC-02 / HU-15) — DUENO", () => {
     ).toHaveCount(1);
     await expect(page.getByRole("heading", { name: "Congelar membresía" })).toBeVisible();
     await expect(page.getByRole("status")).toHaveCount(0);
-    // La operacion rechazada no dejo pausa: la fila conserva sus acciones.
-    await expect(page.getByRole("button", { name: "Congelar", exact: true })).toHaveCount(1);
-    await expect(page.getByRole("button", { name: "Descongelar", exact: true })).toHaveCount(0);
+    // La operacion rechazada no aplico la pausa del formulario. El snapshot
+    // previo al refresh podia mostrar legitimamente `Descongelar` (la pausa de
+    // la API ya existe y la fila la refleja al re-renderizar) o aun `Congelar`
+    // mientras `loadMembresias()` refresca (reactStrictMode + merge de 3
+    // fuentes de INC-05): carrera de render, no de negocio. Tras recargar
+    // (patron R-10) el estado post-409 es determinista.
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Membresías" })).toBeVisible();
+    await expect(page.getByText(CARGANDO)).toHaveCount(0);
+
+    // La fila refleja la pausa de la API (hoy-2 .. hoy+7, "Viaje de trabajo"):
+    // badge Congelado, linea de pausa y acciones de pausa vigente (DEC-024).
+    const filaPausaApi = filaPorRango(
+      page,
+      vigencia.fechaInicio,
+      sumarDias(vigencia.fechaFin, 10)
+    );
+    await expect(filaPausaApi).toHaveCount(1);
+    await expect(filaPausaApi.getByText("Congelado", { exact: true })).toHaveCount(1);
+    await expect(filaPausaApi).toContainText(
+      `Pausa: ${fechaLarga(sumarDias(hoy, -2))} — ${fechaLarga(sumarDias(hoy, 7))} · Viaje de trabajo`
+    );
+    await expect(page.getByRole("button", { name: "Descongelar", exact: true })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Congelar", exact: true })).toHaveCount(0);
+
+    // La pausa del formulario (hoy .. hoy+5, "Cambio de planes") no existe:
+    // ni como rango de pausa ni como motivo visible en la pagina.
+    await expect(
+      page.getByText(
+        `Pausa: ${fechaLarga(hoy)} — ${fechaLarga(sumarDias(hoy, 5))} · Cambio de planes`
+      )
+    ).toHaveCount(0);
+    await expect(page.getByText("Cambio de planes")).toHaveCount(0);
   });
 });
 

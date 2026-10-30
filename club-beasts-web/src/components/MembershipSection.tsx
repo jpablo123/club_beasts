@@ -23,6 +23,12 @@ interface Membresia {
   fechaInicio: string;
   fechaFin: string;
   estado: EstadoMembresia;
+  /**
+   * INC-05 / DEC-045 (b): GYM | PERSONALIZADO | NUTRICION (campo aditivo del
+   * DTO, `INC05-CONF-04`). Opcional en el tipo porque los DTO mas antiguos no
+   * lo traen; al pintar se asume GYM (mismo default que el backend).
+   */
+  tipoServicio?: string;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -33,6 +39,12 @@ interface Membresia {
 
 interface MembresiasResponse {
   membresias: Membresia[];
+  fechaActual: string;
+}
+
+/** Respuesta de `GET .../servicios-personalizado` y `.../servicios-nutricion` (#2/#5). */
+interface ServiciosResponse {
+  servicios: Membresia[];
   fechaActual: string;
 }
 
@@ -58,6 +70,21 @@ const estadoConfig: Record<
   // royal del design system (mismo tono que "Programada", sin rojo de alarma).
   CONGELADO: { badge: "royal", label: "Congelado" },
 };
+
+/**
+ * INC05-PER-04 / INC05-NUT-04 (DEC-045 = (b)): etiqueta visible de cada fila
+ * segun su `tipoServicio`, para no pintar un personalizado ni una nutricion
+ * como si fueran membresia gym (incompatibilidad #1 del spec INC-05).
+ */
+const tipoServicioLabel: Record<string, string> = {
+  GYM: "Gym",
+  PERSONALIZADO: "Personalizado",
+  NUTRICION: "Nutrición",
+};
+
+function etiquetaTipoServicio(m: Membresia): string {
+  return tipoServicioLabel[m.tipoServicio ?? "GYM"] ?? "Gym";
+}
 
 const PLANES = [
   { label: "Personalizado", value: "personalizado", dias: null },
@@ -156,11 +183,54 @@ export default function MembershipSection({
   /** Hoy en America/Bogota: lo fija el listado (`fechaActual`) o el reloj. */
   const hoy = fechaActual || hoyBogotaISO();
 
+  /**
+   * INC-05 (contrato #2/#4/#8 + DEC-045 = (b)): la ficha pinta los tres tipos
+   * de vigencia. Fuente primaria `GET .../membresias-gym` (#7): hoy devuelve
+   * todas las filas del cliente sin filtrar; cuando el backend GREEN la filtra
+   * por `tipoServicio: "GYM"` (incompatibilidad #1), las filas
+   * PERSONALIZADO / NUTRICION llegan de los listados propios (#2/#5, con su
+   * `tipoServicio` filtrado server-side). Las fuentes secundarias son
+   * opcionales: si faltan o fallan (p. ej. los endpoints aun desplegados),
+   * solo degrada el pintado de ese tipo; la fuente primaria sigue gobernando
+   * el manejo de sesion y de errores, como antes.
+   */
   const loadMembresias = useCallback(async () => {
     try {
-      const data = (await api.membresias.list(clienteId)) as unknown as MembresiasResponse;
-      setMembresias(data.membresias);
-      setFechaActual(data.fechaActual);
+      const [gym, personalizado, nutricion] = await Promise.allSettled([
+        api.membresias.list(clienteId),
+        api.servicios?.personalizado?.(clienteId),
+        api.servicios?.nutricion?.(clienteId),
+      ]);
+
+      if (gym.status !== "fulfilled" || !gym.value) {
+        const apiErr = gym.status === "rejected" ? (gym.reason as ApiError) : undefined;
+        if (apiErr?.kind === "session_expired") return;
+        setMembresias([]);
+        return;
+      }
+
+      const base = gym.value as unknown as MembresiasResponse;
+      const filas: Membresia[] = [...base.membresias];
+      let fecha = base.fechaActual;
+
+      for (const fuente of [personalizado, nutricion]) {
+        if (fuente.status !== "fulfilled" || !fuente.value) continue;
+        const data = fuente.value as unknown as ServiciosResponse;
+        if (!Array.isArray(data?.servicios)) continue;
+        filas.push(...data.servicios);
+        if (!fecha) fecha = data.fechaActual;
+      }
+
+      // Sin duplicados (mientras `membresias-gym` no filtra por tipo, la misma
+      // fila puede llegar de dos fuentes) y con el orden `fechaInicio desc` de
+      // la API.
+      const unicas = Array.from(new Map(filas.map((m) => [m.id, m])).values());
+      unicas.sort((a, b) =>
+        a.fechaInicio < b.fechaInicio ? 1 : a.fechaInicio > b.fechaInicio ? -1 : 0
+      );
+
+      setMembresias(unicas);
+      setFechaActual(fecha);
     } catch (err) {
       const apiErr = err as ApiError;
       if (apiErr.kind === "session_expired") return;
@@ -286,6 +356,11 @@ export default function MembershipSection({
 
   const checkOverlap = (inicio: string, fin: string, excludeId?: string): boolean => {
     return membresias.some((m) => {
+      // INC-05 / DEC-008: el solape se evalua por `tipoServicio`, nunca entre
+      // tipos distintos. El formulario crea vigencias GYM (POST
+      // .../membresias-gym), asi que una fila PERSONALIZADO / NUTRICION
+      // solapada no bloquea un periodo gym valido.
+      if ((m.tipoServicio ?? "GYM") !== "GYM") return false;
       if (excludeId && m.id === excludeId) return false;
       return m.fechaInicio <= fin && m.fechaFin >= inicio;
     });
@@ -472,6 +547,11 @@ export default function MembershipSection({
           {membresias.map((m) => {
             const cfg = estadoConfig[m.estado];
             const pausa = pausaVigente(m.cambios, hoy);
+            // INC-05 / DEC-045 (b): las acciones de gestion son solo de las
+            // vigencias GYM (editan via PATCH .../membresias-gym/:id). Las
+            // filas PERSONALIZADO / NUTRICION se pintan etiquetadas, sin
+            // acciones: gestionarlas queda fuera del pintado minimo.
+            const esGym = (m.tipoServicio ?? "GYM") === "GYM";
             return (
               <div
                 key={m.id}
@@ -481,6 +561,10 @@ export default function MembershipSection({
                   <div className="flex items-center gap-3 mb-1">
                     <Badge variant={cfg.badge} size="sm">
                       {cfg.label}
+                    </Badge>
+                    {/* INC05-PER-04 / INC05-NUT-04: etiqueta del tipo de vigencia. */}
+                    <Badge variant="gray" size="sm">
+                      {etiquetaTipoServicio(m)}
                     </Badge>
                     <span className="text-white text-sm font-medium">
                       {formatDate(m.fechaInicio)} — {formatDate(m.fechaFin)}
@@ -498,7 +582,7 @@ export default function MembershipSection({
                 </div>
                 <div className="flex items-center gap-2">
                   {/* DEC-017: las acciones de pausa son solo de DUENO/RECEPCIONISTA. */}
-                  {canManage &&
+                  {canManage && esGym &&
                     (pausa ? (
                       <>
                         <Button size="sm" onClick={() => abrirPausa("descongelar", m.id)}>
@@ -519,7 +603,10 @@ export default function MembershipSection({
                         </Button>
                       )
                     ))}
-                  {m.estado !== "VENCIDA" && (
+                  {/* Editar fechas: solo filas GYM (el PATCH es de la ruta
+                      .../membresias-gym; para los servicios nuevos ese mismo
+                      boton devolveria 404 Servicio no encontrado). */}
+                  {esGym && m.estado !== "VENCIDA" && (
                     <Button size="sm" variant="ghost" onClick={() => openEdit(m)}>
                       Editar
                     </Button>

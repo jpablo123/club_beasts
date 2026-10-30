@@ -709,7 +709,13 @@ describe("POST .../descongelar — 404 y 409 en orden determinista (HU15-C07)", 
     expect(body.error).toBe("Membresía no encontrada");
   });
 
-  it("D15 una vigencia NUTRICION con pausa vigente responde 409 CONGELACION_NO_PERMITIDA (DEC-023)", async () => {
+  // Enmendado 2026-10-20 por DEC-042 (INC-05 C4): DEC-023 queda enmendada y
+  // `TIPOS_CONGELABLES = {GYM, PERSONALIZADO, NUTRICION}`, asi que una
+  // vigencia NUTRICION con pausa vigente ya NO recibe 409: `descongelar`
+  // devuelve 200, devuelve los dias restantes y deja la fila en version 3
+  // (antes: 409 CONGELACION_NO_PERMITIDA). La rama por tipo queda cubierta
+  // con un tipo fuera del set en `membresia-congelacion.test.ts`.
+  it("D15 una vigencia NUTRICION con pausa vigente responde 200 con los dias devueltos (Enmendado 2026-10-20 por DEC-042 (INC-05 C4))", async () => {
     const cliente = await crearCliente();
     const vigenciaId = await crearVigenciaDirecta(cliente.id, {
       fechaInicio: dia(-30),
@@ -720,10 +726,67 @@ describe("POST .../descongelar — 404 y 409 en orden determinista (HU15-C07)", 
 
     const res = await descongelar(cliente.id, vigenciaId, bodyValido({ version: 2 }));
 
+    expect(res.statusCode).toBe(200);
+    const body = parseBody(res);
+    const validacion = descongelarResponseSchema.safeParse(body);
+    expect(
+      validacion.success,
+      JSON.stringify(validacion.success ? null : validacion.error.issues)
+    ).toBe(true);
+
+    expect(body.tipoServicio).toBe("NUTRICION");
+    expect(body.fechaFinAnterior).toBe(dia(40));
+    // Formula DEC-024: la pausa empezo hace 2 dias, esos dias ya consumidos
+    // permanecen descontados -> 8 dias restantes (mismo caso limite que D1).
+    expect(body.diasDevueltos).toBe(8);
+    expect(body.fechaFin).toBe(dia(32));
+    expect(body.estado).toBe("ACTIVA");
+    expect(body.version).toBe(3);
+    expect(body.congelacion).toBeNull();
+
+    const fila = await prisma.membresiaGym.findUniqueOrThrow({
+      where: { id: vigenciaId },
+    });
+    expect(fila.version).toBe(3);
+    expect(fila.fechaFin).toBe(dia(32));
+
+    const descons = await prisma.membresiaGymCambio.count({
+      where: { membresiaId: vigenciaId, accion: "DESCONGELACION" },
+    });
+    expect(descons).toBe(1);
+  });
+
+  // Enmendado 2026-10-20 por DEC-042 (INC-05 C4): la rama por TIPO se
+  // conserva REENCUADRADA con un `tipoServicio` fuera de
+  // `TIPOS_CONGELABLES = {GYM, PERSONALIZADO, NUTRICION}` (el campo es
+  // `String` sin constraint en `prisma/schema.prisma`), sin pausa previa, lo
+  // que ademas fija el orden tipo -> CONGELACION_INEXISTENTE.
+  it("D15 una vigencia con tipoServicio fuera de TIPOS_CONGELABLES responde 409 CONGELACION_NO_PERMITIDA antes de CONGELACION_INEXISTENTE (guarda generica DEC-023)", async () => {
+    const cliente = await crearCliente();
+    const vigenciaId = await crearVigenciaDirecta(cliente.id, {
+      fechaInicio: dia(-30),
+      fechaFin: dia(30),
+      tipoServicio: "SERVICIO_EXTERNO",
+    });
+
+    const res = await descongelar(cliente.id, vigenciaId, bodyValido({ version: 1 }));
+
     expect(res.statusCode).toBe(409);
     const body = parseBody(res);
     expect(body.code).toBe("CONGELACION_NO_PERMITIDA");
     expect(body.error).toBe("La congelación no está permitida para este tipo de servicio");
+
+    const fila = await prisma.membresiaGym.findUniqueOrThrow({
+      where: { id: vigenciaId },
+    });
+    expect(fila.version).toBe(1);
+    expect(fila.fechaFin).toBe(dia(30));
+    expect(fila.fechaInicio).toBe(dia(-30));
+
+    const cambios = await prisma.membresiaGymCambio.count({
+      where: { membresiaId: vigenciaId },
+    });
+    expect(cambios).toBe(1);
   });
 
   it("D16 una vigencia VENCIDA responde 409 MEMBRESIA_VENCIDA antes de CONGELACION_INEXISTENTE (DEC-022)", async () => {

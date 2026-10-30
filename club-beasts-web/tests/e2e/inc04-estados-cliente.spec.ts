@@ -60,13 +60,36 @@ async function abrirFicha(page: Page, clienteId: string): Promise<void> {
 /** Editar -> estado + motivo -> Guardar (flujo staff real de la ficha). */
 async function cambiarEstadoEnFicha(
   page: Page,
+  clienteId: string,
   estado: "NUEVO" | "ACTIVO" | "SUSPENDIDO" | "RETIRADO" | "INACTIVO",
   motivo: string
 ): Promise<void> {
   await page.getByRole("button", { name: "Editar" }).click();
   await page.getByLabel("Estado").selectOption(estado);
   await page.getByLabel("Motivo").fill(motivo);
+
+  // R-10: la recarga de la ficha tras guardar viaja por `fetchApi`, que
+  // espera a `getSession()` antes de cada llamada (traza: ~2.5s antes del
+  // PATCH y ~2.5s antes del GET de recarga). Esperar la respuesta de la
+  // recarga en vez de asumir la ventana de 5s del badge evita que la
+  // asercion posterior se agote justo antes de que el GET llegue
+  // (traza observada: GET de recarga en 21586ms vs fin del expect 21573ms).
+  const recarga = page.waitForResponse((res) => {
+    if (res.request().method() !== "GET") return false;
+    try {
+      return new URL(res.url()).pathname === `/clientes/${clienteId}`;
+    } catch {
+      return false;
+    }
+  });
+
   await page.getByRole("button", { name: "Guardar" }).click();
+
+  const respuesta = await recarga;
+  expect(
+    respuesta.status(),
+    "la recarga de la ficha tras guardar debe responder 200"
+  ).toBe(200);
 }
 
 /** Ficha del cliente por la API staff (estado + `ultimoCambio` derivado). */
@@ -132,7 +155,7 @@ test.describe("INC04-EST-06 / INC04-CLI-03: cambio de estado con motivo en la fi
 
     await loginComoDueno(page);
     await abrirFicha(page, cliente.id);
-    await cambiarEstadoEnFicha(page, "INACTIVO", MOTIVO_INACTIVAR);
+    await cambiarEstadoEnFicha(page, cliente.id, "INACTIVO", MOTIVO_INACTIVAR);
 
     // INC04-EST-06: el modo edicion se cierra y el estado pintado es el nuevo.
     await expect(page.getByRole("button", { name: "Editar" })).toBeVisible();
@@ -159,7 +182,7 @@ test.describe("INC-04: ciclo completo HU-08 (inactivar -> bloqueo -> reactivar)"
     // ── 1) Staff inactiva el cliente con motivo.
     await loginComoDueno(page);
     await abrirFicha(page, cliente.id);
-    await cambiarEstadoEnFicha(page, "INACTIVO", MOTIVO_INACTIVAR);
+    await cambiarEstadoEnFicha(page, cliente.id, "INACTIVO", MOTIVO_INACTIVAR);
     await expect(badgeEstado(page)).toHaveText("INACTIVO");
 
     // ── 2) El login del cliente quedo bloqueado con el literal aprobado.
@@ -173,7 +196,7 @@ test.describe("INC-04: ciclo completo HU-08 (inactivar -> bloqueo -> reactivar)"
     // ── 3) Staff reactiva al cliente (DEC-020) con su motivo.
     await loginComoDueno(page);
     await abrirFicha(page, cliente.id);
-    await cambiarEstadoEnFicha(page, "ACTIVO", MOTIVO_REACTIVAR);
+    await cambiarEstadoEnFicha(page, cliente.id, "ACTIVO", MOTIVO_REACTIVAR);
     await expect(badgeEstado(page)).toHaveText("ACTIVO");
     const reactivado = await fichaApi(request, cliente.id);
     expect(reactivado.estado).toBe("ACTIVO");
@@ -199,7 +222,7 @@ test.describe("INC-04: ciclo completo HU-08 (inactivar -> bloqueo -> reactivar)"
     // Staff reactiva al cliente desde la ficha (UI real).
     await loginComoDueno(page);
     await abrirFicha(page, cliente.id);
-    await cambiarEstadoEnFicha(page, "ACTIVO", MOTIVO_REACTIVAR);
+    await cambiarEstadoEnFicha(page, cliente.id, "ACTIVO", MOTIVO_REACTIVAR);
     await expect(badgeEstado(page)).toHaveText("ACTIVO");
 
     const reactivado = await fichaApi(request, cliente.id);

@@ -6,17 +6,30 @@ Registrar la vigencia del servicio de entrenamiento personalizado (fecha inicio/
 
 **Decisiones aplicadas**: DEC-001 (roles), DEC-004 (servicios separados: gym, personalizado, nutrición), DEC-005/006 (días completos America/Bogota, extremos inclusivos), DEC-007 (renovar crea periodo nuevo), DEC-008 (solapamientos rechazados, gaps permitidos), DEC-016 (fraccionable), **DEC-017** (DUENO y RECEPCIONISTA gestionan vigencias — prevalece sobre el "Como dueno" narrativo de la HU), **DEC-018** (la rutina personalizada usará estructura macro-meso-micro; aquí solo se expresa la **dependencia de vigencia**, sin implementar la estructura de rutinas).
 
+**Enmiendas G14 (2026-10-20, decisión de Producto)**: **DEC-043** — literal de estado
+de congelación unificado a **`CONGELADO`** (antes `CONGELADA` en tablas/enum y
+`CONGELADO` en prosa: inconsistencia interna corregida); **DEC-046 = (a)** — el
+`PATCH .../:servicioId` con concurrencia optimista **sí** está en alcance de INC-05
+(se corrigió la frase "Qué NO cubre" de HU13-C01); **DEC-047** — nueva regla de
+negocio del `PATCH`: mover solo `fechaInicio` desplaza `fechaFin` por el mismo
+delta conservando la duración inclusiva; **DEC-042** (vía INC-05) — HU-15 ya está
+aceptada (INC-02) y la congelación alcanza a `PERSONALIZADO`, por lo que **C02b sí
+es factible en INC-05** (nota de alcance actualizada).
+
 **Alcance y notas**:
-- Contrato propuesto (P-06 por confirmar): `POST/GET /clientes/:clienteId/servicios-personalizado`, `PATCH .../servicios-personalizado/:servicioId`, espejo del contrato ya aceptado de membresías gym (`src/routes/membresia.ts`).
+- Contrato aprobado (**P-06 resuelta por DEC-044**, 2026-10-20; ratificación técnica por `backend-developer` pendiente en INC-05): `POST/GET /clientes/:clienteId/servicios-personalizado`, `PATCH .../servicios-personalizado/:servicioId` (**incluido por DEC-046**, con regla **DEC-047**), espejo del contrato ya aceptado de membresías gym (`src/routes/membresia.ts`).
 - `mvp.md:54`: HU-13 **no se acepta completa solo por registrar vigencias**; el bullet 4 (dependencia rutina ↔ vigencia) se cierra cuando exista la asignación de rutina (bloque 6). Fracción máxima alcanzable solo con vigencias: **3/4**.
-- El estado CONGELADO depende de HU-15 (aún sin implementar) → el bullet 2 se cierra en partes (C02a / C02b).
+- El estado CONGELADO **ya es factible en INC-05** (HU-15 aceptada en INC-02, 4/4,
+  con `PERSONALIZADO` en su alcance; literal `CONGELADO` por DEC-043) → el bullet 2
+  se cierra en partes (C02a / C02b), ambas en alcance de INC-05 *(enmienda
+  2026-10-20, DEC-042/DEC-043)*.
 
 ## Tabla de trazabilidad: bullet → criterio
 
 | # | Bullet de la HU | ID criterio | Estado | Puntuable INC-05 |
 |---|-----------------|-----------|--------|------------------|
 | 1 | El sistema permite registrar fecha de inicio y fecha fin del servicio personalizado. | HU13-C01 | LISTO para RED | Sí |
-| 2 | El sistema permite marcar el servicio como activo, vencido, congelado o no contratado. | HU13-C02a (activo/vencido/no contratado [+ prog. P-05]) + HU13-C02b (congelado) | C02a LISTO; **C02b DEPENDENCIA HU-15** | C02a sí; C02b cuando HU-15 cierre |
+| 2 | El sistema permite marcar el servicio como activo, vencido, congelado o no contratado. | HU13-C02a (activo/vencido/no contratado [+ prog. P-05]) + HU13-C02b (congelado) | C02a y C02b **LISTO para RED** *(2026-10-20: DEC-042/043)* | Sí; C02b verificable en INC-05 |
 | 3 | La vigencia queda visible en la ficha del cliente. | HU13-C03 | LISTO para RED | Sí |
 | 4 | La rutina personalizada solo puede considerarse activa si el servicio personalizado esta vigente. | HU13-C04 | SPEC LISTO / **IMPLEMENTACIÓN DIFERIDA** (asignación de rutina, DEC-018 bloque 6) | Cuando exista la asignación (`mvp.md:54`) |
 
@@ -29,6 +42,14 @@ Registrar la vigencia del servicio de entrenamiento personalizado (fecha inicio/
   - 201 con el DTO de la vigencia: `{ id, clienteId, fechaInicio, fechaFin, estado, version: 1, creadoPor: {id,nombre}, actualizadoPor: {id,nombre}, createdAt, updatedAt }`.
   - En BD: `creadoPorId` y `actualizadoPorId` = actor; registro de auditoría CREACIÓN con version 1 (patrón `INC00-MEM-04`).
   - **Renovación (DEC-007)**: un POST posterior con `fechaInicio` ≥ `fechaFinPrevio + 1` crea un periodo **nuevo** sin sobrescribir los anteriores (GET devuelve ambos).
+  - **Edición `PATCH .../:servicioId` (incluida por DEC-046 = (a), 2026-10-20)**: cuerpo
+    `{ fechaInicio?, fechaFin?, version }` con concurrencia optimista (versión vieja →
+    409 `SERVICIO_CONFLICTO`, fila 8). **Regla DEC-047 (2026-10-20)**: si el cuerpo trae
+    **solo `fechaInicio`**, `fechaFin` se mueve automáticamente por el **mismo delta de
+    días**, conservando la duración inclusiva exacta del plan — ejemplo con plan de 30
+    días: inicio `2026-10-20` → fin `2026-11-18`; mover el inicio al 21 → fin
+    **`2026-11-19`**; volver el inicio al 20 → fin **`2026-11-18`**. La duración **solo**
+    cambia si `fechaFin` viene explícitamente en el cuerpo.
 - **HTTP / códigos**:
   - 201 Created.
   - 400 VALIDATION_ERROR — "Fecha de inicio es requerida" / "Fecha fin es requerida" (vacías o ausentes), "Fecha de inicio debe ser una fecha válida (YYYY-MM-DD)" (formato o día inexistente), "Fecha fin no puede ser anterior a fecha de inicio".
@@ -36,7 +57,7 @@ Registrar la vigencia del servicio de entrenamiento personalizado (fecha inicio/
   - 404 NOT_FOUND — cliente inexistente.
   - 403 AUTH_FORBIDDEN — rol CLIENTE.
   - 409 CLIENTE_INACTIVO — cliente INACTIVO (guard de HU-08, HU08-C04b).
-- **Qué NO cubre**: congelación de la vigencia (HU-15), vencimiento automático por job (HU-16), estructura de la rutina (DEC-018/HU-19), edición con control de concurrencia (ver rama 8).
+- **Qué NO cubre**: congelación de la vigencia (operación HU-15, ya aceptada en INC-02 — aquí solo se observa su efecto en C02b), vencimiento automático por job (HU-16), estructura de la rutina (DEC-018/HU-19). **Sí cubre** la edición `PATCH` con control de concurrencia (rama 8) y la regla DEC-047 de duración inclusiva, ambos **en alcance de INC-05 por DEC-046/DEC-047** *(enmienda 2026-10-20: la versión anterior de esta frase decía "edición con control de concurrencia (ver rama 8)", contradiciendo la propia fila 8)*.
 - **Prueba esperada**: integración `hu13-servicio-personalizado.test.ts` → creación 201, fechas límite, solape 409, renovación crea periodo nuevo, 404/403/409 cliente inactivo.
 
 ### HU13-C02a — Estado: activo, vencido, no contratado (+ programada, P-05)
@@ -48,13 +69,13 @@ Registrar la vigencia del servicio de entrenamiento personalizado (fecha inicio/
   - `VENCIDA`: `hoy > fechaFin`.
   - `PROGRAMADA`: `hoy < fechaInicio` — **propuesta** por consistencia con `calcularEstado` de gym (ver P-05: la HU no la nombra).
 - **HTTP / códigos**: 200 con `fechaActual` además de los estados; 404 si el cliente no existe.
-- **Qué NO cubre**: CONGELADA (→ C02b, depende de HU-15), extensión automática de la fecha fin por congelación (HU-15), cambio de estado persistido por job (HU-16).
-- **Prueba esperada**: integración con fechas fijas → "sin vigencias → NO_CONTRATADO", "hoy == fechaFin → ACTIVA (inclusivo)", "hoy == fechaFin + 1 → VENCIDA", "hoy < fechaInicio → PROGRAMADA (o el valor de P-05)".
+- **Qué NO cubre**: CONGELADO (→ C02b, ahora también en alcance: DEC-042/043), extensión automática de la fecha fin por congelación (HU-15), cambio de estado persistido por job (HU-16).
+- **Prueba esperada**: integración con fechas fijas → "sin vigencias → NO_CONTRATADO", "hoy == fechaFin → ACTIVA (inclusivo)", "hoy == fechaFin + 1 → VENCIDA", "hoy < fechaInicio → PROGRAMADA (literal fijado por DEC-043)".
 
-### HU13-C02b — Estado congelado — **DEPENDENCIA: HU-15**
-- **Resultado esperado**: `CONGELADA` cuando la vigencia esté en periodo de congelación definido por HU-15.
-- **Estado**: no verificable hasta que exista el estado `CONGELADO` en la API (auditoría: "HU-12 3/4, falta estado congelado" — misma deuda). **No se cierra en INC-05 salvo que HU-15 entre en alcance.**
-- **Qué NO cubre**: fechas de congelación, motivo de congelación, extensión del vencimiento (todo HU-15).
+### HU13-C02b — Estado congelado — **factible en INC-05** *(enmienda 2026-10-20, DEC-042 + DEC-043)*
+- **Resultado esperado**: `CONGELADO` cuando la vigencia esté en periodo de congelación definido por HU-15 (literal único por **DEC-043**: antes este documento escribía `CONGELADA`).
+- **Estado**: HU-15 **ya está aceptada** (INC-02, 4/4) con alcance `GYM + PERSONALIZADO` (DEC-023) y **DEC-042 enmendó DEC-023** (2026-10-20) dejando `TIPOS_CONGELABLES = {GYM, PERSONALIZADO, NUTRICION}`; el estado `CONGELADO` existe en la API desde INC-02. **C02b se cierra en INC-05** (criterio `INC05-PER-03`). *(La versión anterior decía "no verificable… No se cierra en INC-05 salvo que HU-15 entre en alcance": HU-15 ya está en alcance — enmienda 2026-10-20.)*
+- **Qué NO cubre**: fechas de congelación, motivo de congelación, extensión del vencimiento (todo HU-15, ya aceptado; aquí solo se observa el estado).
 
 ### HU13-C03 — La vigencia queda visible en la ficha del cliente
 - **Condición previa**: cliente con ≥ 1 vigencia de personalizado.
@@ -72,7 +93,7 @@ Registrar la vigencia del servicio de entrenamiento personalizado (fecha inicio/
 - **Disparo**: consulta del estado de rutina del cliente (`GET /clientes/:id` → `rutinaActiva`, o el endpoint de asignación cuando exista).
 - **Resultado observable**:
   - Si X = `ACTIVA` → `rutinaActiva` se expone como activa.
-  - Si X ∈ {`NO_CONTRATADO`, `VENCIDA`, `CONGELADA`} → `rutinaActiva` se expone `null` (la rutina no cuenta como activa), sin borrar la asignación subyacente.
+  - Si X ∈ {`NO_CONTRATADO`, `VENCIDA`, `CONGELADO`} → `rutinaActiva` se expone `null` (la rutina no cuenta como activa), sin borrar la asignación subyacente.
 - **Estado del criterio**: **SPEC listo / implementación diferida**. La estructura de la rutina personalizada (macro-meso-micro) y su asignación llegan en el bloque 6 (DEC-018, HU-19/HU-20). Este documento **solo expresa la dependencia**; no implementa ni especifica bloques de rutina.
 - **HTTP / códigos**: 200 con `rutinaActiva` condicionado (contrato de ficha, HU-07).
 - **Qué NO cubre**: creación/estructura de rutinas (HU-18/HU-19), asignación (HU-20), historial de rutinas (HU-26), edición de la rutina (HU-21).
@@ -116,13 +137,13 @@ Registrar la vigencia del servicio de entrenamiento personalizado (fecha inicio/
 | ≥1 | hoy < fechaInicio | PROGRAMADA (P-05) |
 | ≥1 | fechaInicio ≤ hoy ≤ fechaFin | ACTIVA |
 | ≥1 | hoy > fechaFin | VENCIDA |
-| ≥1 | en periodo congelado (HU-15) | CONGELADA (C02b, dependencia) |
+| ≥1 | en periodo congelado (HU-15) | CONGELADO (C02b, en alcance INC-05) |
 
 ### D3 — Dependencia rutina ↔ vigencia (HU13-C04, spec futuro)
 | vigencia ACTIVA | rutina asignada | `rutinaActiva` |
 |---|---|---|
 | sí | sí | rutina activa expuesta |
-| no (NO_CONTRATADO/VENCIDA/CONGELADA) | sí | `null` |
+| no (NO_CONTRATADO/VENCIDA/CONGELADO) | sí | `null` |
 | * | no | `null` (independiente) |
 
 ## Transiciones de Estado
@@ -132,8 +153,8 @@ Registrar la vigencia del servicio de entrenamiento personalizado (fecha inicio/
 [NO_CONTRATADO] --crear vigencia futura--> [PROGRAMADA]
 [PROGRAMADA]    --llega fechaInicio (DEC-005/006)--> [ACTIVA]
 [ACTIVA]        --pasa fechaFin+1 día--> [VENCIDA]
-[ACTIVA]        --inicia congelación (HU-15)--> [CONGELADA]
-[CONGELADA]     --termina congelación (HU-15)--> [ACTIVA] (fechaFin extendida)
+[ACTIVA]        --inicia congelación (HU-15)--> [CONGELADO]
+[CONGELADO]     --termina congelación (HU-15)--> [ACTIVA] (fechaFin extendida)
 [VENCIDA]       --renovar (DEC-007: periodo nuevo)--> nueva fila [PROGRAMADA/ACTIVA]
 ```
 Transiciones **inválidas**: `VENCIDA → ACTIVA` sin crear periodo nuevo (no se reescribe el histórico, DEC-007); `NO_CONTRATADO → VENCIDA` (sin vigencia no hay estado calculado); alteración manual de un estado calculado vía API (no existe endpoint de escritura de estado).
@@ -161,6 +182,19 @@ Transiciones **inválidas**: `VENCIDA → ACTIVA` sin crear periodo nuevo (no se
 | 2 | varias vigencias | 2 periodos (renovación) | 200 ambos, ordenados por fechaInicio desc |
 | 3 | bordes de fecha | hoy = fin / fin+1 | ACTIVA / VENCIDA (inclusivos) |
 | 4 | cliente inexistente | id inexistente | 404 NOT_FOUND |
+
+### Ruta: PATCH /api/clientes/:clienteId/servicios-personalizado/:servicioId
+*(en alcance por DEC-046 = (a); cobertura de la rama 8 y de DEC-047 — enmienda 2026-10-20)*
+| # | Escenario | Input | Resultado Esperado |
+|---|-----------|-------|-------------------|
+| 1 | Edición de fechas con `fechaFin` explícito | `{ fechaInicio, fechaFin, version }` válidos | 200, fechas actualizadas, versión +1; la duración es la pedida en el body |
+| 2 | **DEC-047**: mover solo `fechaInicio` +1 día (plan de 30 días) | inicio `2026-10-20`→`2026-10-21`, sin `fechaFin` | 200, `fechaFin` pasa de `2026-11-18` a **`2026-11-19`** (duración inclusiva de 30 días intacta) |
+| 3 | **DEC-047**: retroceder `fechaInicio` −1 día | inicio `2026-10-21`→`2026-10-20`, sin `fechaFin` | 200, `fechaFin` vuelve a **`2026-11-18`** |
+| 4 | **DEC-047**: editar `fechaFin` explícitamente | `{ fechaFin: nueva, version }` | 200, la duración cambia según lo pedido en el body |
+| 5 | versión vieja (rama 8) | `version` = N vieja | 409 `SERVICIO_CONFLICTO` |
+| 6 | fechas inconsistentes | `fechaFin` < `fechaInicio` (ambas en el body) | 400 "Fecha fin no puede ser anterior a fecha de inicio" |
+| 7 | solape tras mover el inicio | nuevo rango solapado con otro periodo del mismo tipo | 409 `SERVICIO_SOLAPADA` |
+| 8 | servicio ajeno / inexistente | `servicioId` de otro cliente | 404 `NOT_FOUND` ("Servicio no encontrado") |
 
 ## Reglas de Validación por Campo
 | Campo | Tipo | Requerido | Regex / Regla | Longitud | Valores Permitidos |
@@ -279,5 +313,5 @@ Feature: Registro de servicio personalizado
 ## Preguntas al producto
 | ID | Pregunta | Impacto | Criterio |
 |----|----------|---------|----------|
-| **P-05** | ¿Cómo se nombra el estado de un periodo **futuro** en personalizado/nutrición? Propuesta: `PROGRAMADA` (consistente con `calcularEstado` de gym, `membresia.service.ts:18-26`); la HU solo nombra activo/vencido/congelado/no contratado. ¿Y el literal del enum de congelación: `CONGELADO` o `CONGELADA`? | Define los valores exactos que deben asertar las pruebas de C02a/C02b. | HU13-C02a/C02b |
-| **P-06** | ¿Se aprueban los paths/códigos propuestos? `POST/GET /clientes/:clienteId/servicios-personalizado`, `PATCH .../:servicioId`, códigos `SERVICIO_SOLAPADA` / `SERVICIO_CONFLICTO` (hoy solo existen los equivalentes `MEMBRESIA_*`). | Fija el contrato API antes del RED de INC-05 (Definition of Ready). | HU13-C01 |
+| **P-05** | **RESUELTA 2026-10-20 (DEC-043)**: estado de periodo futuro = `PROGRAMADA`; literal de congelación = `CONGELADO` (los G14 se enmendaron de `CONGELADA`). Queda como histórico la pregunta original: ¿cómo se nombra el estado de un periodo **futuro** en personalizado/nutrición? (la HU solo nombra activo/vencido/congelado/no contratado). | Define los valores exactos que deben asertar las pruebas de C02a/C02b. | HU13-C02a/C02b |
+| **P-06** | **RESUELTA 2026-10-20 (DEC-044 = (a))**: se aprueban `POST/GET /clientes/:clienteId/servicios-personalizado`, `PATCH .../:servicioId` (este, con DEC-046/DEC-047) y códigos `SERVICIO_SOLAPADA` / `SERVICIO_CONFLICTO`. Queda pendiente solo la **ratificación técnica** por `backend-developer` en INC-05. | Fija el contrato API antes del RED de INC-05 (Definition of Ready). | HU13-C01 |

@@ -10,6 +10,10 @@ import { z } from "zod";
  * RECEPCIONISTA gestionan vigencias), DEC-018 (rutina con estructura
  * macro-meso-micro: aquí solo la dependencia de vigencia, HU13-C04).
  *
+ * Enmiendas G14 2026-10-20 (INC-05): DEC-043 (literal `CONGELADO`),
+ * DEC-044 (paths/códigos `SERVICIO_*` aprobados), DEC-046 (`PATCH` en
+ * alcance), DEC-047 (desplazamiento de `fechaFin` al mover `fechaInicio`).
+ *
  * Autónomo: solo depende de `zod` (patrón de HU-04/HU-05-schemas.ts).
  * Es la contraparte de `src/schemas/membresia.schema.ts` para el nuevo
  * recurso; NO importa nada de `src/` para no crear dependencias inexistentes.
@@ -64,8 +68,15 @@ export const createServicioPersonalizadoSchema = z
 
 /**
  * PATCH /clientes/:clienteId/servicios-personalizado/:servicioId
- * (edición con control de concurrencia optimista, patrón INC00-MEM-03).
+ * (edición con control de concurrencia optimista, patrón INC00-MEM-03;
+ * en alcance por DEC-046 = (a), 2026-10-20).
  * Las fechas son opcionales, pero si vienen no pueden ser vacías ni inválidas.
+ *
+ * DEC-047 (regla de negocio, sin validación de schema nueva): si el cuerpo trae
+ * SOLO `fechaInicio`, el servicio desplaza `fechaFin` por el mismo delta de días
+ * conservando la duración inclusiva (plan 30 días: 2026-10-20..2026-11-18;
+ * inicio al 21 -> fin 2026-11-19; volver al 20 -> fin 2026-11-18). La duración
+ * solo cambia si `fechaFin` viene explícito en el cuerpo.
  */
 export const updateServicioPersonalizadoSchema = z
   .object({
@@ -109,13 +120,15 @@ export const servicioPersonalizadoParamsSchema = z.object({
  * - NO_CONTRATADO: sin vigencias.
  * - PROGRAMADA/ACTIVA/VENCIDA: calculados con America/Bogota e inclusivos
  *   (DEC-005/006), igual que `calcularEstado` de gym.
- *   ⚠ P-05: PROGRAMADA no aparece en la letra de la HU (propuesta por
- *   consistencia) y CONGELADA depende de HU-15 — confirmar literal.
+ * - CONGELADO: literal único fijado por DEC-043 (2026-10-20); antes este
+ *   archivo escribía "CONGELADA" — enmienda G14 #2 de INC-05. La congelación
+ *   del personalizado ya existe desde INC-02 (HU-15 aceptada, DEC-023).
+ *   P-05 queda resuelta: PROGRAMADA (futuro) + CONGELADO (pausa), DEC-043.
  */
 export const servicioPersonalizadoEstadoEnum = z.enum([
   "NO_CONTRATADO",
   "PROGRAMADA",
-  "CONGELADA",
+  "CONGELADO",
   "ACTIVA",
   "VENCIDA",
 ]);

@@ -9,6 +9,11 @@ import {
   listarMembresias,
 } from "../services/membresia.service.js";
 import {
+  crearServicio,
+  editarServicio,
+  listarServicios,
+} from "../services/servicio.service.js";
+import {
   createCongelacionSchema,
   createMembresiaSchema,
   descongelarSchema,
@@ -18,6 +23,13 @@ import {
   membresiaParamsSchema,
   vigenciaParamsSchema,
 } from "../schemas/membresia.schema.js";
+import {
+  createServicioSchema,
+  servicioParamsSchema,
+  TIPOS_SERVICIO,
+  updateServicioSchema,
+  type TipoServicioPropio,
+} from "../schemas/servicio.schema.js";
 import {
   esErrorPrismaClient,
   internalPrismaErrorBody,
@@ -115,6 +127,71 @@ function responderError(
 
   if (esErrorPrismaClient(error)) {
     request.log.error({ err: error }, "Error de Prisma sin mapeo en membresia");
+    return { status: 500, body: internalPrismaErrorBody() };
+  }
+
+  return null;
+}
+
+// ── INC-05 (HU-13/HU-14, DEC-044/046) ────────────────────────────────────────
+// Mapa PROPIO de las rutas de servicio personalizado / nutricion: los codes
+// `SERVICIO_SOLAPADA` / `SERVICIO_CONFLICTO` desambiguan el recurso (DEC-044)
+// y el `RESPUESTAS_ERROR` de gym no se exporta ni se modifica. Un `code` = un
+// unico status; los mensajes son los literales del contrato ratificado.
+
+const RESPUESTAS_ERROR_SERVICIO: Record<
+  string,
+  { status: number; error: string; code: string }
+> = {
+  NOT_FOUND: {
+    status: 404,
+    error: "Servicio no encontrado",
+    code: "NOT_FOUND",
+  },
+  SERVICIO_CONFLICTO: {
+    status: 409,
+    error: "Los datos fueron modificados por otro usuario. Recargue e intente nuevamente.",
+    code: "SERVICIO_CONFLICTO",
+  },
+  SERVICIO_SOLAPADA: {
+    status: 409,
+    error: "Las fechas se solapan con un período existente",
+    code: "SERVICIO_SOLAPADA",
+  },
+  // Guarda heredada de HU-08 b4 / CONF-06 (solo POST, antes del solape).
+  CLIENTE_INACTIVO: {
+    status: 409,
+    error:
+      "El cliente está inactivo. Reactíveolo antes de asignar servicios nuevos.",
+    code: "CLIENTE_INACTIVO",
+  },
+  VALIDATION_ERROR: {
+    status: 400,
+    error: "Fecha fin no puede ser anterior a fecha de inicio",
+    code: "VALIDATION_ERROR",
+  },
+};
+
+/** Mapea error de negocio (o Prisma) de las rutas de servicio; null si debe propagarse. */
+function responderErrorServicio(
+  error: unknown,
+  request: FastifyRequest
+): { status: number; body: { error: string; code: string } } | null {
+  const code =
+    typeof error === "object" && error !== null
+      ? (error as { message?: unknown }).message
+      : undefined;
+
+  if (typeof code === "string" && RESPUESTAS_ERROR_SERVICIO[code]) {
+    const respuesta = RESPUESTAS_ERROR_SERVICIO[code];
+    return { status: respuesta.status, body: { error: respuesta.error, code: respuesta.code } };
+  }
+
+  const prismaError = mapPrismaError(error);
+  if (prismaError) return prismaError;
+
+  if (esErrorPrismaClient(error)) {
+    request.log.error({ err: error }, "Error de Prisma sin mapeo en servicio");
     return { status: 500, body: internalPrismaErrorBody() };
   }
 
@@ -378,4 +455,174 @@ export default async function membresiaRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  // ── INC-05 (HU-13 + HU-14, contrato ratificado 2026-10-20) ─────────────────
+  // `POST/GET /clientes/:clienteId/servicios-{personalizado|nutricion}` y
+  // `PATCH .../:servicioId` (DEC-044 paths, DEC-046 PATCH). Viven aqui (y no
+  // en un archivo de rutas nuevo) porque el servidor de produccion solo
+  // registra los modulos ya montados en `src/index.ts`; el espejo de
+  // `membresia.ts` es deliberado (permisos DEC-017, errores `{ error, code }`,
+  // fechas America/Bogota). Divergencias ratificadas (C6): el GET y el PATCH
+  // chequean 404 `Cliente no encontrado` (el espejo gym devuelve `200 []`) y
+  // la clave de respuesta del listado es `servicios`.
+  async function registrarRutasServicio(
+    servidor: FastifyInstance,
+    configuracion: { sufijo: string; tipoServicio: TipoServicioPropio }
+  ) {
+    const { sufijo, tipoServicio } = configuracion;
+    const preHandler = [
+      servidor.authenticateRoles(["DUENO", "RECEPCIONISTA"]),
+    ];
+
+    servidor.get(
+      `/clientes/:clienteId/${sufijo}`,
+      { preHandler },
+      async (request, reply) => {
+        const paramsResult = servicioParamsSchema.safeParse(request.params);
+        if (!paramsResult.success) {
+          return reply.status(400).send({
+            error: paramsResult.error.errors[0].message,
+            code: "VALIDATION_ERROR",
+          });
+        }
+
+        const cliente = await servidor.prisma.cliente.findUnique({
+          where: { id: paramsResult.data.clienteId },
+          select: { id: true },
+        });
+        if (!cliente) {
+          return reply.status(404).send({
+            error: "Cliente no encontrado",
+            code: "NOT_FOUND",
+          });
+        }
+
+        return listarServicios(paramsResult.data.clienteId, tipoServicio);
+      }
+    );
+
+    servidor.post(
+      `/clientes/:clienteId/${sufijo}`,
+      { preHandler },
+      async (request, reply) => {
+        const paramsResult = servicioParamsSchema.safeParse(request.params);
+        if (!paramsResult.success) {
+          return reply.status(400).send({
+            error: paramsResult.error.errors[0].message,
+            code: "VALIDATION_ERROR",
+          });
+        }
+
+        const bodyResult = createServicioSchema.safeParse(request.body);
+        if (!bodyResult.success) {
+          return reply.status(400).send({
+            error: bodyResult.error.errors[0].message,
+            code: "VALIDATION_ERROR",
+          });
+        }
+
+        const { clienteId } = paramsResult.data;
+        const { fechaInicio, fechaFin } = bodyResult.data;
+        const actorId = (request.user as any).id;
+
+        try {
+          const cliente = await servidor.prisma.cliente.findUnique({
+            where: { id: clienteId },
+            select: { id: true },
+          });
+          if (!cliente) {
+            return reply.status(404).send({
+              error: "Cliente no encontrado",
+              code: "NOT_FOUND",
+            });
+          }
+
+          const servicio = await crearServicio(
+            clienteId,
+            tipoServicio,
+            fechaInicio,
+            fechaFin,
+            actorId
+          );
+          return reply.status(201).send(servicio);
+        } catch (error: any) {
+          const respuesta = responderErrorServicio(error, request);
+          if (respuesta) {
+            return reply.status(respuesta.status).send(respuesta.body);
+          }
+          throw error;
+        }
+      }
+    );
+
+    servidor.patch(
+      `/clientes/:clienteId/${sufijo}/:servicioId`,
+      { preHandler },
+      async (request, reply) => {
+        const paramsResult = servicioParamsSchema.safeParse(request.params);
+        if (!paramsResult.success) {
+          return reply.status(400).send({
+            error: paramsResult.error.errors[0].message,
+            code: "VALIDATION_ERROR",
+          });
+        }
+
+        const bodyResult = updateServicioSchema.safeParse(request.body);
+        if (!bodyResult.success) {
+          return reply.status(400).send({
+            error: bodyResult.error.errors[0].message,
+            code: "VALIDATION_ERROR",
+          });
+        }
+
+        const { clienteId, servicioId } = paramsResult.data;
+        if (!servicioId) {
+          return reply.status(400).send({
+            error: "servicioId es requerido",
+            code: "VALIDATION_ERROR",
+          });
+        }
+
+        const actorId = (request.user as any).id;
+
+        try {
+          const cliente = await servidor.prisma.cliente.findUnique({
+            where: { id: clienteId },
+            select: { id: true },
+          });
+          if (!cliente) {
+            return reply.status(404).send({
+              error: "Cliente no encontrado",
+              code: "NOT_FOUND",
+            });
+          }
+
+          const servicio = await editarServicio(
+            clienteId,
+            servicioId,
+            tipoServicio,
+            bodyResult.data,
+            actorId
+          );
+          return servicio;
+        } catch (error: any) {
+          const respuesta = responderErrorServicio(error, request);
+          if (respuesta) {
+            return reply.status(respuesta.status).send(respuesta.body);
+          }
+          throw error;
+        }
+      }
+    );
+  }
+
+  for (const tipoServicio of TIPOS_SERVICIO) {
+    await registrarRutasServicio(fastify, {
+      sufijo:
+        tipoServicio === "PERSONALIZADO"
+          ? "servicios-personalizado"
+          : "servicios-nutricion",
+      tipoServicio,
+    });
+  }
 }

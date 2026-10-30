@@ -127,6 +127,48 @@ export function hasOverlap(
   });
 }
 
+/**
+ * Regla de negocio **DEC-047** (ratificada 2026-10-20; orden C2) para el
+ * `PATCH` de vigencias: resuelve las fechas **EFECTIVas** de una edicion a
+ * partir de las persistidas y del cuerpo.
+ *
+ * - las dos fechas explicitas -> manda lo explicito (Zod ya valido el orden);
+ * - solo `fechaFin` -> manda y se valida contra el inicio persistido;
+ * - solo `fechaInicio` -> `400` si `nuevoInicio > finPersistido` (validacion
+ *   ANTES de desplazar, correccion C2); si no, `fechaFin` se desplaza por el
+ *   MISMO delta de dias conservando la duracion inclusiva exacta (DEC-047);
+ * - ninguna -> sin cambio.
+ *
+ * Se usa en el `PATCH` de gym (regresion `INC05-R11`) y en el de los
+ * servicios nuevos (INC-05). **No** aplica a `PATCH .../congelacion`
+ * (DEC-024 conserva su formula `fechaFinTrasEdicion`).
+ *
+ * Lanza `Error("VALIDATION_ERROR")` cuando el orden de fechas no se cumple.
+ */
+export function calcularFechasEdicion(
+  inicioPersistido: string,
+  finPersistido: string,
+  data: { fechaInicio?: string; fechaFin?: string }
+): { fechaInicio: string; fechaFin: string } {
+  if (data.fechaInicio !== undefined && data.fechaFin !== undefined) {
+    if (data.fechaInicio > data.fechaFin) throw new Error("VALIDATION_ERROR");
+    return { fechaInicio: data.fechaInicio, fechaFin: data.fechaFin };
+  }
+  if (data.fechaFin !== undefined) {
+    if (data.fechaFin < inicioPersistido) throw new Error("VALIDATION_ERROR");
+    return { fechaInicio: inicioPersistido, fechaFin: data.fechaFin };
+  }
+  if (data.fechaInicio !== undefined) {
+    if (data.fechaInicio > finPersistido) throw new Error("VALIDATION_ERROR");
+    const delta = diasCalendario(inicioPersistido, data.fechaInicio);
+    return {
+      fechaInicio: data.fechaInicio,
+      fechaFin: sumarDias(finPersistido, delta),
+    };
+  }
+  return { fechaInicio: inicioPersistido, fechaFin: finPersistido };
+}
+
 // ─── Secuencia de pausa de una vigencia (INC-02 / DEC-024) ───────────────────
 
 type RangoPausa = { congelacionInicio: string; congelacionFin: string };
@@ -282,13 +324,99 @@ export function resolverEstadoAcceso(
   };
 }
 
-/** Tipos de servicio congelables (DEC-023): NUTRICION queda fuera. */
+// ─── INC-06 (DEC-048 + ratificacion R1/R2/R10): acceso completo a la app ─────
+
+/**
+ * Tipos de servicio con vigencia (DEC-004/DEC-042): GYM, PERSONALIZADO,
+ * NUTRICION. La resolucion de acceso de INC-06 evalua los 3 tipos.
+ */
+const TIPOS_SERVICIO_ACCESO = ["GYM", "PERSONALIZADO", "NUTRICION"] as const;
+
+export type ResultadoAccesoApp = {
+  /**
+   * R1 (formula corregida 2026-10-29): `true` cuando NO existe ninguna
+   * vigencia (3 tipos) cuyo estado CALCULADO sea `ACTIVA` o `CONGELADO`.
+   * Solo vigencias: el estado general del cliente NO entra en este flag
+   * (un `SUSPENDIDO` con GYM `ACTIVA` responde `false`).
+   */
+  sinMembresiaActiva: boolean;
+  /**
+   * Bloque GYM derivado del MISMO snapshot (R10): selector ratificado INC-03
+   * (`tipoServicio = "GYM"`, `fechaFin desc, fechaInicio desc, id desc`).
+   */
+  gym: ResultadoEstadoAcceso;
+};
+
+/**
+ * INC-06 / DEC-048 (`resolverAccesoApp`, R2) — fuente unica del flag
+ * `sinMembresiaActiva` que expone `GET /portal/resumen` (R3).
+ *
+ * - Un SOLO `findMany` de los 3 tipos con `cambios` incluidos (R2/R10): el
+ *   flag y el bloque GYM derivan del mismo snapshot (sin divergencia posible
+ *   ante escritura concurrente, INC06-R10).
+ * - Por fila reutiliza `resolverEstadoAcceso` (R2): NO se duplica
+ *   `calcularEstado` ni `pausasActivas` (fuente unica VEN-05, INC06-CONF-01).
+ * - R1: `PROGRAMADA`/`VENCIDA` caen solos en `true` (sin rama especial);
+ *   `CONGELADO` conserva acceso (DEC-025); el estado general del cliente no
+ *   se consulta aqui (sigue siendo guarda propia de ingreso/login).
+ */
+export async function resolverAccesoApp(
+  clienteId: string,
+  hoy: string
+): Promise<ResultadoAccesoApp> {
+  const filas = await prisma.membresiaGym.findMany({
+    where: { clienteId, tipoServicio: { in: [...TIPOS_SERVICIO_ACCESO] } },
+    orderBy: [{ fechaFin: "desc" }, { fechaInicio: "desc" }, { id: "desc" }],
+    include: {
+      cambios: {
+        select: {
+          accion: true,
+          version: true,
+          congelacionInicio: true,
+          congelacionFin: true,
+        },
+        orderBy: { version: "asc" as const },
+      },
+    },
+  });
+
+  // Cada fila se resuelve UNA sola vez con la fuente unica de estado (R2).
+  const resultados = filas.map((fila) => ({
+    tipoServicio: fila.tipoServicio,
+    acceso: resolverEstadoAcceso(fila, fila.cambios, hoy),
+  }));
+
+  // Selector GYM ratificado (INC-03): primera fila GYM del orden
+  // `fechaFin desc, fechaInicio desc, id desc` (equivale al `take: 1`).
+  const gym =
+    resultados.find((resultado) => resultado.tipoServicio === "GYM")?.acceso ??
+    resolverEstadoAcceso(null, undefined, hoy);
+
+  const sinMembresiaActiva = !resultados.some(
+    (resultado) =>
+      resultado.acceso.estadoAccesoGym === "ACTIVA" ||
+      resultado.acceso.estadoAccesoGym === "CONGELADO"
+  );
+
+  return { sinMembresiaActiva, gym };
+}
+
+/**
+ * Tipos de servicio congelables.
+ *
+ * DEC-023 (2026-10-08) dejaba NUTRICION fuera; **DEC-042 (2026-10-20,
+ * INC-05)** enmendo DEC-023: `TIPOS_CONGELABLES` = `{GYM, PERSONALIZADO,
+ * NUTRICION}`. La guarda `CONGELACION_NO_PERMITIDA` (tipo) se conserva como
+ * guarda generica inalcanzable via API con el enum actual.
+ */
 const TIPOS_CONGELABLES: ReadonlySet<string> = new Set([
   "GYM",
   "PERSONALIZADO",
+  "NUTRICION",
 ]);
 
-interface MembresiaDTO {
+/** DTO de vigencia compartido por gym y por los servicios nuevos (INC-05). */
+export interface MembresiaDTO {
   id: string;
   clienteId: string;
   tipoServicio: string;
@@ -316,7 +444,7 @@ interface MembresiaDTO {
   }>;
 }
 
-function toDTO(m: any, hoy: string): MembresiaDTO {
+export function toDTO(m: any, hoy: string): MembresiaDTO {
   const cambios: FilaCambio[] = m.cambios ?? [];
   return {
     id: m.id,
@@ -349,7 +477,7 @@ function toDTO(m: any, hoy: string): MembresiaDTO {
   };
 }
 
-const includeCompleto = {
+export const includeCompleto = {
   creadoPor: { select: { id: true, nombre: true } },
   actualizadoPor: { select: { id: true, nombre: true } },
   cambios: {
@@ -404,8 +532,11 @@ async function registrarCambio(
 export async function listarMembresias(clienteId: string) {
   const hoy = getTodayBogota();
 
+  // INC-05 (incompatibilidad #1): el listado GYM filtra por tipo para no
+  // contaminarse con filas PERSONALIZADO/NUTRICION que empieza a escribir
+  // INC-05 sobre la misma tabla (DEC-004: servicios separados).
   const membresias = await prisma.membresiaGym.findMany({
-    where: { clienteId },
+    where: { clienteId, tipoServicio: "GYM" },
     include: includeCompleto,
     orderBy: { fechaInicio: "desc" },
   });
@@ -446,8 +577,11 @@ export async function crearMembresia(
   // restriccion de integridad) y aborta, de modo que nunca quedan dos periodos
   // solapados persistidos.
   return prisma.$transaction(async (tx) => {
+    // INC-05 (incompatibilidad #1): el solape de gym se evalua SOLO contra
+    // vigencias GYM del cliente (DEC-004: servicios separados); un solape
+    // cruzado contra PERSONALIZADO/NUTRICION no rechaza creaciones validas.
     const existentes = await tx.membresiaGym.findMany({
-      where: { clienteId },
+      where: { clienteId, tipoServicio: "GYM" },
       select: { fechaInicio: true, fechaFin: true },
     });
 
@@ -507,13 +641,21 @@ export async function editarMembresia(
       select: {
         id: true,
         clienteId: true,
+        tipoServicio: true,
         fechaInicio: true,
         fechaFin: true,
         version: true,
       },
     });
 
-    if (!existente || existente.clienteId !== clienteId) {
+    // INC-05 (incompatibilidad #1): la pertenencia de una vigencia GYM
+    // incluye el tipo — una fila PERSONALIZADO/NUTRICION del mismo cliente
+    // no es editable por esta ruta (404, divergencia ratificada C6).
+    if (
+      !existente ||
+      existente.clienteId !== clienteId ||
+      existente.tipoServicio !== "GYM"
+    ) {
       throw new Error("NOT_FOUND");
     }
 
@@ -521,17 +663,20 @@ export async function editarMembresia(
       throw new Error("MEMBRESIA_CONFLICTO");
     }
 
-    const nuevasFechas = {
-      fechaInicio: data.fechaInicio ?? existente.fechaInicio,
-      fechaFin: data.fechaFin ?? existente.fechaFin,
-    };
+    // DEC-047 (regresion aceptada INC05-R11, orden C2): resolver fechas
+    // efectivas — mover solo `fechaInicio` desplaza `fechaFin` por el mismo
+    // delta conservando la duracion inclusiva; la validacion de orden
+    // (400) ocurre ANTES de desplazar.
+    const nuevasFechas = calcularFechasEdicion(
+      existente.fechaInicio,
+      existente.fechaFin,
+      data
+    );
 
-    if (nuevasFechas.fechaInicio > nuevasFechas.fechaFin) {
-      throw new Error("VALIDATION_ERROR");
-    }
-
+    // INC-05 (incompatibilidad #1): el solape se evalua SOLO contra otras
+    // vigencias GYM del cliente.
     const otrosPeriodos = await tx.membresiaGym.findMany({
-      where: { clienteId, id: { not: membresiaId } },
+      where: { clienteId, tipoServicio: "GYM", id: { not: membresiaId } },
       select: { fechaInicio: true, fechaFin: true },
     });
 
@@ -769,8 +914,15 @@ export async function congelarVigencia(
 
     // DEC-008: la extension no puede hacer chocar la vigencia con un periodo
     // posterior del mismo cliente (se evalua antes de escribir nada: atomico).
+    // INC-05 (correccion C1): el choque se evalua SOLO contra periodos del
+    // MISMO tipo de servicio — con un cliente mixto (GYM + PERSONALIZADO/
+    // NUTRICION) el filtro evita un 409 MEMBRESIA_SOLAPADA espurio.
     const otrosPeriodos = await tx.membresiaGym.findMany({
-      where: { clienteId, id: { not: vigenciaId } },
+      where: {
+        clienteId,
+        tipoServicio: vigencia.tipoServicio,
+        id: { not: vigenciaId },
+      },
       select: { fechaInicio: true, fechaFin: true },
     });
     if (hasOverlap(otrosPeriodos, vigencia.fechaInicio, fechaFinNueva)) {
@@ -935,8 +1087,15 @@ export async function editarCongelacion(
 
     const fechaFinNueva = sumarDias(fechaFinRev, diasNuevos);
 
+    // INC-05 (correccion C1): el choque se evalua SOLO contra periodos del
+    // MISMO tipo de servicio — con un cliente mixto (GYM + PERSONALIZADO/
+    // NUTRICION) el filtro evita un 409 MEMBRESIA_SOLAPADA espurio.
     const otrosPeriodos = await tx.membresiaGym.findMany({
-      where: { clienteId, id: { not: vigenciaId } },
+      where: {
+        clienteId,
+        tipoServicio: vigencia.tipoServicio,
+        id: { not: vigenciaId },
+      },
       select: { fechaInicio: true, fechaFin: true },
     });
     if (hasOverlap(otrosPeriodos, vigencia.fechaInicio, fechaFinNueva)) {

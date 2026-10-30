@@ -94,6 +94,13 @@ export interface PortalResumen {
   /** Solo presente con `estadoAccesoGym = CONGELADO` (HU25-C04). */
   congelacion: RangoCongelacion | null;
   fechaActual: string;
+  /**
+   * INC-06 (DEC-048, R3): `true` cuando el cliente no tiene NINGUNA vigencia
+   * `ACTIVA`/`CONGELADO` en GYM/PERSONALIZADO/NUTRICION (R1: solo vigencias;
+   * el estado general del cliente no entra en este flag). Campo top-level
+   * unico nuevo, aditivo sobre G14 (HU-25).
+   */
+  sinMembresiaActiva: boolean;
 }
 
 /** Alerta operativa no sensible derivada del estado (DEC-028). */
@@ -384,6 +391,15 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify(data),
       }),
+  },
+  // INC-05 (contrato #2/#5, ratificado 2026-10-20): listados propios de cada
+  // servicio, con `tipoServicio` filtrado server-side. Respuesta
+  // `{ servicios, fechaActual }` (clave `servicios`, correccion C6(iii)).
+  servicios: {
+    personalizado: (clienteId: string) =>
+      fetchApi(`/clientes/${clienteId}/servicios-personalizado`),
+    nutricion: (clienteId: string) =>
+      fetchApi(`/clientes/${clienteId}/servicios-nutricion`),
   },
   // INC-03 (endpoint #1): resumen del portal del cliente, sesion CLIENTE.
   portal: {

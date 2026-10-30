@@ -19,11 +19,18 @@ import { z } from "zod";
  * - #4: rama nueva **`MEMBRESIA_VENCIDA`** (409) para vigencias `VENCIDA`.
  * - #5: orden de evaluación fijado: 401/403 → 400 (Zod y después post-Zod
  *   `fechaFin >= hoy`) → 404 → 409: `MEMBRESIA_CONFLICTO` (`version`) →
- *   `CONGELACION_NO_PERMITIDA` (tipo `NUTRICION`) → `MEMBRESIA_VENCIDA` →
+ *   `CONGELACION_NO_PERMITIDA` (tipo; guarda genérica — **Enmendado 2026-10-20 por
+ *   DEC-042 (INC-05 C4)**: `NUTRICION` ya no cae aquí) → `MEMBRESIA_VENCIDA` →
  *   `CONGELACION_NO_PERMITIDA` (rango) → `MEMBRESIA_SOLAPADA` (solape) →
  *   `MEMBRESIA_SOLAPADA` (choque con periodo posterior).
- * - #6: `GYM` y `PERSONALIZADO` → 200; **`NUTRICION` → 409
- *   `CONGELACION_NO_PERMITIDA`** (guard exigido y probado en INC-02, DEC-023).
+ * - #6: (texto pre-DEC-042) `GYM` y `PERSONALIZADO` → 200; `NUTRICION` → 409
+ *   `CONGELACION_NO_PERMITIDA` (guard exigido y probado en INC-02, DEC-023).
+ *   **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: DEC-023 queda enmendada →
+ *   `TIPOS_CONGELABLES` = {GYM, PERSONALIZADO, NUTRICION}: **los 3 tipos → 200**; la
+ *   guarda `CONGELACION_NO_PERMITIDA` por tipo se conserva como guarda genérica de
+ *   `src/services/membresia.service.ts` (inalcanzable vía API con el enum actual) y el
+ *   409 por rango no contenido (DEC-022 a) **no cambia**. El schema no valida el tipo:
+ *   esa regla vive en la ruta/servicio (409).
  * - #7: **`fechaFin < hoy` → 400 `VALIDATION_ERROR`** (regla post-Zod, ver
  *   `MENSAJE_FECHA_FIN_NO_ANTERIOR_A_HOY`); no es un 409.
  * - #8: la respuesta 200 es el DTO completo (`tipoServicio`, `creadoPor`,
@@ -84,7 +91,11 @@ export function isValidDate(valor: string): boolean {
   );
 }
 
-/** DEC-004: servicios separados. */
+/**
+ * DEC-004: servicios separados. **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: los
+ * 3 tipos son congelables — DEC-023 enmendada, `TIPOS_CONGELABLES` = {GYM, PERSONALIZADO,
+ * NUTRICION}. Pre-DEC-042 solo GYM/PERSONALIZADO congelaban (`NUTRICION` → 409).
+ */
 export const tipoServicioSchema = z.enum(["GYM", "PERSONALIZADO", "NUTRICION"]);
 
 /** Estados posibles de una vigencia (CONGELADO se agrega en HU-15). */
@@ -428,8 +439,12 @@ export const congelacionErrorSchema = z.object({
     // Nomenclatura 409 fijada en el contrato INC-02 (ajustes #3 y #4):
     // MEMBRESIA_VENCIDA -> vigencia VENCIDA (DEC-022)
     "MEMBRESIA_VENCIDA",
-    // CONGELACION_NO_PERMITIDA -> tipo NUTRICION (DEC-023) o rango no contenido
-    // en la vigencia (DEC-022 a)
+    // CONGELACION_NO_PERMITIDA -> tipo fuera de TIPOS_CONGELABLES o rango no contenido
+    // en la vigencia (DEC-022 a). Enmendado 2026-10-20 por DEC-042 (INC-05 C4): DEC-023
+    // enmendada -> TIPOS_CONGELABLES = {GYM, PERSONALIZADO, NUTRICION}; la rama por tipo
+    // ya no rechaza a NUTRICION (se conserva como guarda generica de src, hoy
+    // inalcanzable via API con el enum actual) y el mensaje "La congelación no está
+    // permitida para este tipo de servicio" queda sin cambio.
     "CONGELACION_NO_PERMITIDA",
     // MEMBRESIA_SOLAPADA -> solape de congelaciones o choque de la extension con
     // un periodo posterior (DEC-008); unico codigo de solape, sin

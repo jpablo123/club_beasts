@@ -6,7 +6,8 @@
  * `features/acceptance-criteria/HU-15-criterios-aceptacion.md` + la expectativa
  * **DEC-025** (la congelacion no bloquea el acceso del cliente).
  * Decisiones: DEC-017 (permisos), DEC-022 (post-Zod `fechaFin >= hoy`,
- * `MEMBRESIA_VENCIDA`, rango contenido), DEC-023 (`NUTRICION` rechazado),
+ * `MEMBRESIA_VENCIDA`, rango contenido), DEC-023 (`NUTRICION` rechazado;
+ * **Enmendado 2026-10-20 por DEC-042 (INC-05 C4)**: `NUTRICION` congelable),
  * DEC-008 (solapes), DEC-005/DEC-006 (`America/Bogota`, dias inclusivos),
  * DEC-012/DEC-013 (SQLite aislado por ejecucion + fechas dinamicas).
  *
@@ -786,12 +787,59 @@ describe("POST .../congelar — 404 y 409 en orden determinista (HU15-C01/C04)",
     expect(body.error).toBe("Membresía no encontrada");
   });
 
-  it("filas 12/31 una vigencia NUTRICION responde 409 CONGELACION_NO_PERMITIDA y no cambia (DEC-023)", async () => {
+  // Enmendado 2026-10-20 por DEC-042 (INC-05 C4): DEC-023 queda enmendada y
+  // `TIPOS_CONGELABLES = {GYM, PERSONALIZADO, NUTRICION}`, asi que una
+  // vigencia NUTRICION ya NO recibe 409: se congela con 200 y el estado
+  // calculado es CONGELADO (antes: 409 CONGELACION_NO_PERMITIDA sin cambios).
+  it("filas 12/31 una vigencia NUTRICION responde 200 con estado CONGELADO y la extension aplicada (Enmendado 2026-10-20 por DEC-042 (INC-05 C4))", async () => {
     const cliente = await crearCliente();
     const vigenciaId = await crearVigenciaDirecta(cliente.id, {
       fechaInicio: dia(-30),
       fechaFin: dia(30),
       tipoServicio: "NUTRICION",
+    });
+
+    const res = await congelar(cliente.id, vigenciaId, bodyValido());
+
+    expect(res.statusCode).toBe(200);
+    const body = parseBody(res);
+    const validacion = congelacionResponseSchema.safeParse(body);
+    expect(
+      validacion.success,
+      JSON.stringify(validacion.success ? null : validacion.error.issues)
+    ).toBe(true);
+
+    expect(body.tipoServicio).toBe("NUTRICION");
+    expect(body.fechaInicio).toBe(dia(-30));
+    expect(body.fechaFinAnterior).toBe(dia(30));
+    expect(body.fechaFin).toBe(dia(40));
+    expect(body.diasCongelados).toBe(10);
+    expect(body.estado).toBe("CONGELADO");
+    expect(body.version).toBe(2);
+
+    const fila = await prisma.membresiaGym.findUniqueOrThrow({
+      where: { id: vigenciaId },
+    });
+    expect(fila.version).toBe(2);
+    expect(fila.fechaFin).toBe(dia(40));
+    expect(fila.fechaInicio).toBe(dia(-30));
+
+    const congelaciones = await prisma.membresiaGymCambio.count({
+      where: { membresiaId: vigenciaId, accion: "CONGELACION" },
+    });
+    expect(congelaciones).toBe(1);
+  });
+
+  // Enmendado 2026-10-20 por DEC-042 (INC-05 C4): la rama por TIPO se
+  // conserva REENCUADRADA como guarda generica de `src`, hoy alcanzable solo
+  // con un `tipoServicio` fuera del set (el campo es `String` sin constraint
+  // en `prisma/schema.prisma`). Orden y literales intactos.
+  it("fila 12/31 una vigencia con tipoServicio fuera de TIPOS_CONGELABLES responde 409 CONGELACION_NO_PERMITIDA y no cambia (guarda generica DEC-023)", async () => {
+    const cliente = await crearCliente();
+    const vigenciaId = await crearVigenciaDirecta(cliente.id, {
+      fechaInicio: dia(-30),
+      fechaFin: dia(30),
+      tipoServicio: "SERVICIO_EXTERNO",
     });
 
     const res = await congelar(cliente.id, vigenciaId, bodyValido());
@@ -807,6 +855,11 @@ describe("POST .../congelar — 404 y 409 en orden determinista (HU15-C01/C04)",
     expect(fila.version).toBe(1);
     expect(fila.fechaFin).toBe(dia(30));
     expect(fila.fechaInicio).toBe(dia(-30));
+
+    const cambios = await prisma.membresiaGymCambio.count({
+      where: { membresiaId: vigenciaId },
+    });
+    expect(cambios).toBe(1);
   });
 
   it("fila 13 una vigencia VENCIDA responde 409 MEMBRESIA_VENCIDA antes de validar el rango (DEC-022)", async () => {
