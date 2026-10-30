@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, Button, Navbar, PageHeader } from "@/components";
 import EstadoAccesoBadge from "@/components/EstadoAccesoBadge";
 import ChangePinForm from "@/components/ChangePinForm";
@@ -74,6 +75,32 @@ export default function PortalPage() {
     };
   }, [status]);
 
+  // INC-06 (matriz de navegacion: URL directa / recarga / atras sin bucles):
+  // el portal SOLO se pinta en /portal. Tras un back/forward, el `popstate`
+  // puede llegar antes de la hidratacion y perderse: el documento queda
+  // pintando el portal con la URL de la entrada anterior (p. ej.
+  // /login-cliente) y el redirect del middleware nunca llega a aplicarse
+  // (URL y DOM desincronizados). Aqui se recompone la URL con un UNICO
+  // `router.replace("/portal")`; sin bucle: al quedar la URL en /portal la
+  // guarda deja de actuar. No compite con la salida por sesion (`!session`
+  // mas abajo): solo corre con sesion autenticada.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    const repararUrlDelPortal = () => {
+      if (window.location.pathname !== "/portal") {
+        router.replace("/portal");
+      }
+    };
+    // Cubre el popstate perdido antes de la hidratacion (ya no hay evento).
+    repararUrlDelPortal();
+    window.addEventListener("popstate", repararUrlDelPortal);
+    window.addEventListener("pageshow", repararUrlDelPortal);
+    return () => {
+      window.removeEventListener("popstate", repararUrlDelPortal);
+      window.removeEventListener("pageshow", repararUrlDelPortal);
+    };
+  }, [status, router]);
+
 
   if (status === "loading") {
     return (
@@ -126,6 +153,18 @@ export default function PortalPage() {
                 <p className="text-gray-400 text-sm">
                   Tu PIN ha sido cambiado correctamente. Ya puedes acceder a todas las funcionalidades.
                 </p>
+                {/* INC-07 (INC07-NAV-04, C2): CTA como <a href> NATIVO (no
+                    next/link): la URL actual ya es /portal y una navegacion
+                    client-side a la misma URL no remonta el componente (la
+                    tarjeta de exito seguiria pintandose). El <a> nativo fuerza
+                    el remontaje completo, cumple "href real, navegable sin JS,
+                    Tab" y no toca la carrera update(). Fuera de <nav> (C3). */}
+                <a
+                  href="/portal"
+                  className="inline-block mt-4 text-sm text-gray-400 hover:text-royal transition-colors"
+                >
+                  Ir a mi portal
+                </a>
               </div>
             </Card>
           </div>
@@ -181,6 +220,61 @@ export default function PortalPage() {
                 setPinChangeSuccess(true);
               }}
             />
+            {/* INC-07 (INC07-NAV-03, C3): link de regreso FUERA de <nav>
+                (dentro de <nav> vive el logo del Navbar, que tambien es
+                a[href="/"]) y debajo del ChangePinForm (orden de Tab tras el
+                boton). El link no modifica sesion ni flag: navegar fuera y
+                volver a /portal repinta el formulario (guarda
+                `debeCambiarPin` intacta, sin bypass). */}
+            <div className="mt-6 text-center">
+              <Link
+                href="/"
+                className="text-sm text-gray-400 hover:text-royal transition-colors"
+              >
+                Volver al inicio
+              </Link>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // INC-06 (DEC-048 / DEC-051 PEND-03(a)): sin ninguna membresia activa el
+  // aviso de activar membresia REEMPLAZA el contenido del portal a pantalla
+  // completa (solo Navbar + tarjeta central con el copy de PEND-01; sin
+  // tarjetas de estado/rutina/plan/identidad). El flag sale del resumen
+  // (R3: booleano top-level unico) y solo entra aqui cuando es true: con
+  // `false` o campo ausente el pintado del portal queda intacto (regresion
+  // INC06-ACC-07). El flujo de cambio de PIN obligatorio (arriba) y el logout
+  // (`signOut -> /login-cliente`) se conservan intactos (INC06-ACC-07 y matriz
+  // de navegacion). Accesibilidad INC06-ACC-06: `role="alert"` con el copy
+  // completo y el titulo como heading (estructura semantica).
+  if (resumen?.sinMembresiaActiva) {
+    return (
+      <main className="min-h-screen bg-near-black">
+        <Navbar showAuth={false} />
+        <div className="pt-24 pb-12">
+          <div className="max-w-md mx-auto px-5">
+            <Card padding="lg">
+              <div role="alert">
+                <h1 className="text-2xl md:text-3xl font-display font-bold text-white uppercase mb-3">
+                  No tienes una membresia activa
+                </h1>
+                <p className="text-gray-400">
+                  Contacta recepcion para activar tu membresia y volver a acceder
+                </p>
+              </div>
+              <div className="mt-6">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => signOut({ callbackUrl: "/login-cliente" })}
+                >
+                  Cerrar sesion
+                </Button>
+              </div>
+            </Card>
           </div>
         </div>
       </main>

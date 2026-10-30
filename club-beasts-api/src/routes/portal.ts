@@ -2,7 +2,7 @@ import { FastifyInstance } from "fastify";
 import prisma from "../lib/prisma.js";
 import {
   getTodayBogota,
-  resolverEstadoAcceso,
+  resolverAccesoApp,
 } from "../services/membresia.service.js";
 
 /**
@@ -17,6 +17,12 @@ import {
  * GYM se elige con el selector ratificado: `tipoServicio = "GYM"`, orden
  * `fechaFin desc, fechaInicio desc, id desc`, `take 1`.
  *
+ * INC-06 (DEC-048, R2/R3/R10): `resolverAccesoApp` deriva el flag
+ * `sinMembresiaActiva` (booleano top-level UNICO nuevo, sin `accesoApp` ni
+ * `fechaInicio` — R11) y el bloque GYM del MISMO snapshot (un solo
+ * `findMany` de los 3 tipos). Orden (R4): 401 -> 403 rol -> 404 cliente ->
+ * resolucion -> 200. Sin escritura.
+ *
  * Superficie de respuesta = superconjunto del contrato G14
  * (`cliente{}` anidado, HU-25-schemas.ts) + campos planos
  * (`nombreCompleto`/`cedula`/`sede`) que consumen los steps Gherkin del
@@ -29,6 +35,7 @@ export default async function portalRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const clienteId = (request.user as { id: string }).id;
 
+      // R4: el 404 del cliente se resuelve ANTES de la resolucion de acceso.
       const cliente = await prisma.cliente.findUnique({
         where: { id: clienteId },
         select: {
@@ -37,26 +44,6 @@ export default async function portalRoutes(fastify: FastifyInstance) {
           apellidos: true,
           cedula: true,
           sede: { select: { id: true, nombre: true } },
-          membresias: {
-            where: { tipoServicio: "GYM" },
-            orderBy: [
-              { fechaFin: "desc" },
-              { fechaInicio: "desc" },
-              { id: "desc" },
-            ],
-            take: 1,
-            include: {
-              cambios: {
-                select: {
-                  accion: true,
-                  version: true,
-                  congelacionInicio: true,
-                  congelacionFin: true,
-                },
-                orderBy: { version: "asc" as const },
-              },
-            },
-          },
         },
       });
 
@@ -68,8 +55,12 @@ export default async function portalRoutes(fastify: FastifyInstance) {
       }
 
       const hoy = getTodayBogota();
-      const vigencia = cliente.membresias[0] ?? null;
-      const acceso = resolverEstadoAcceso(vigencia, vigencia?.cambios, hoy);
+      // R2/R10: un solo `findMany` de los 3 tipos con `cambios` deriva el flag
+      // y el bloque GYM del mismo snapshot (campos G14 intactos).
+      const { sinMembresiaActiva, gym } = await resolverAccesoApp(
+        clienteId,
+        hoy
+      );
 
       return {
         cliente: {
@@ -82,10 +73,11 @@ export default async function portalRoutes(fastify: FastifyInstance) {
         nombreCompleto: `${cliente.nombres} ${cliente.apellidos}`,
         cedula: cliente.cedula,
         sede: cliente.sede,
-        estadoAccesoGym: acceso.estadoAccesoGym,
-        fechaVencimiento: acceso.fechaVencimiento,
-        congelacion: acceso.congelacion,
+        estadoAccesoGym: gym.estadoAccesoGym,
+        fechaVencimiento: gym.fechaVencimiento,
+        congelacion: gym.congelacion,
         fechaActual: hoy,
+        sinMembresiaActiva,
       };
     }
   );

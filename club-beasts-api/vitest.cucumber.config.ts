@@ -23,8 +23,11 @@ const vitestCucumberId = /@lotun[\\/]vitest-cucumber/;
  * exige 63 + 63 = **126** escenarios ejecutados. Se SUBE la constante (nunca
  * se baja): con 63 el guard marcaba exit 1 en toda corrida completa aunque
  * los 126 escenarios pasaran, porque `executed` era 126.
+ *
+ * INC-06 (GREEN backend, 2026-10-29): +6 escenarios de
+ * `inc06-acceso-sin-membresia.feature` -> el guard exige **220**.
  */
-const INC00_SCENARIO_COUNT = 153;
+const INC00_SCENARIO_COUNT = 220;
 
 /**
  * `@lotun/vitest-cucumber@0.5.x` apunta a vitest 4/5 y el proyecto usa vitest

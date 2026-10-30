@@ -87,21 +87,49 @@ test.describe("DEC-026: el login con cedula/PIN sigue funcionando con la membres
 });
 
 test.describe("INC03-VEN-04: bloqueo observable en portal y recepcion", () => {
-  test("el portal de un cliente con vigencia vencida muestra el estado vencido con 'Sin acceso al gimnasio'", async ({
+  // ENMIENDA C4 (2026-10-29, INC-06 `INC06-R12` / `INC06-ACC-01`): cambio de
+  // comportamiento APROBADO (DEC-048 + DEC-051 PEND-03(a)), no regresion
+  // `ACC-07`. El cliente con GYM vencida unica ahora ve el aviso de activar
+  // membresia a pantalla completa en /portal (copy DEC-051) en lugar de las
+  // tarjetas del portal. Antes/despues y comandos ejecutados en
+  // `docs/incrementos/INC-06-acceso-sin-membresia-activa/evidencia.md`,
+  // seccion 3. Los otros dos viajes de este spec quedan intactos (DEC-026:
+  // login 200/401; recepcion 403 `INGRESO_NO_PERMITIDO`).
+  test("el portal de un cliente con vigencia vencida unica muestra el aviso de activar membresia (DEC-051) en lugar de las tarjetas", async ({
     page,
     request,
   }) => {
     const cliente = await clienteVencido(request, 10);
 
     await loginComoClienteCon(page, cliente.cedula, "1234");
-    await expect(page.getByRole("heading", { name: "Mi Portal" })).toBeVisible();
+    await expect(page).toHaveURL(/\/portal/);
 
-    const estado = cardCon(page, "Estado de acceso");
-    await expect(estado.getByText("Vencido", { exact: true })).toBeVisible();
-    await expect(estado.getByText("Sin acceso al gimnasio", { exact: true })).toBeVisible();
-    await expect(estado.getByText(cliente.fechaFin, { exact: true })).toBeVisible();
+    // DEC-051 (copy fijo, opcion a): aviso a pantalla completa.
+    await expect(
+      page.getByRole("heading", { name: "No tienes una membresia activa" })
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Contacta recepcion para activar tu membresia y volver a acceder",
+        { exact: true }
+      )
+    ).toBeVisible();
+
+    // DEC-051 PEND-03(a): el aviso reemplaza las tarjetas del portal.
+    for (const tarjeta of [
+      "Mi Informacion",
+      "Estado de acceso",
+      "Mi Rutina",
+      "Plan Nutricional",
+    ]) {
+      await expect(
+        page.getByRole("heading", { name: tarjeta }),
+        `la tarjeta "${tarjeta}" fue reemplazada por el aviso`
+      ).toHaveCount(0);
+    }
+
     // INC03-VEN-03 / POR-02: el estado sale del backend; nunca texto fijo.
-    await expect(estado.getByText("Activo", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Activo", { exact: true })).toHaveCount(0);
   });
 
   test("recepcion rechaza el ingreso con 403 INGRESO_NO_PERMITIDO y no muestra confirmacion", async ({

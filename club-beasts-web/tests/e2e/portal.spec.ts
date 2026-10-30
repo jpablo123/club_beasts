@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import {
   API_URL,
   cardCon,
@@ -21,8 +21,28 @@ async function loginAsClient(page: import("@playwright/test").Page) {
 }
 
 test.describe("Portal del Cliente", () => {
-  test("muestra información del cliente autenticado", async ({ page }) => {
-    await loginAsClient(page);
+  test("muestra información del cliente autenticado", async ({ page, request }) => {
+    // Enmienda C4 (2026-10-29, DEC-048 + DEC-051 PEND-03(a) / INC06-ACC-01):
+    // el cliente seed 1234567890 (sin vigencias) ahora ve el aviso a pantalla
+    // completa, no las tarjetas del portal. Este viaje conserva su proposito
+    // INC03-POR-01 (identidad desde la BD) reasignado a un fixture CON
+    // membresia activa (DEC-051: solo ACTIVA/CONGELADO pintan el portal); las
+    // aserciones quedan byte a byte identicas. La ruta del aviso ya la cubre
+    // inc06-acceso-membresia.spec.ts y el login del cliente seed sigue
+    // cubierto por "portal muestra secciones de información" (sin tocar).
+    const cliente = await crearClientePortalApi(request, {
+      sedeId: "sede-1",
+      nombres: "Carlos",
+      apellidos: "Rodriguez",
+    });
+    await crearVigenciaApi(
+      request,
+      cliente.id,
+      sumarDias(hoyBogota(), -10),
+      sumarDias(hoyBogota(), 30)
+    );
+
+    await entrarAlPortal(page, cliente.cedula);
 
     await expect(page.getByRole("heading", { name: "Mi Portal" })).toBeVisible();
     await expect(page.getByText("Carlos Rodriguez", { exact: true })).toBeVisible();
@@ -70,6 +90,29 @@ test.describe("Portal del Cliente", () => {
 async function entrarAlPortal(page: Page, cedula: string, pin = "1234"): Promise<void> {
   await page.context().clearCookies();
   await loginComoClienteCon(page, cedula, pin);
+}
+
+/**
+ * Vigencia de servicio NUTRICION (INC-05) via API real. Cuenta como membresia
+ * activa para DEC-051 sin tocar el bloque GYM del portal: con ella el portal
+ * pinta las tarjetas y la tarjeta "Estado de acceso" refleja el estado GYM
+ * real (SIN_VIGENCIA / PROGRAMADA / VENCIDA) de los viajes enmendados C4.
+ */
+async function crearServicioNutricionApi(
+  request: APIRequestContext,
+  clienteId: string,
+  fechaInicio: string,
+  fechaFin: string
+): Promise<void> {
+  const token = await tokenApi(request);
+  const res = await request.post(`${API_URL}/clientes/${clienteId}/servicios-nutricion`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { fechaInicio, fechaFin },
+  });
+  expect(
+    res.ok(),
+    `POST /servicios-nutricion devolvio ${res.status()}: ${await res.text()}`
+  ).toBe(true);
 }
 
 test.describe("Portal con estado real (INC-03 / INC03-POR-*)", () => {
@@ -142,11 +185,27 @@ test.describe("Portal con estado real (INC-03 / INC03-POR-*)", () => {
     await expect(estado.getByText(pausa.fechaFin, { exact: true })).toBeVisible();
   });
 
-  test("cliente sin membresia ve Sin vigencia y Sin fecha de vencimiento, nunca Activo", async ({
+  test("cliente sin vigencia GYM (con servicio vigente) ve Sin vigencia y Sin fecha de vencimiento, nunca Activo", async ({
     page,
     request,
   }) => {
+    // Enmienda C4 (2026-10-29, DEC-048 + DEC-051 PEND-03(a) / INC06-ACC-01):
+    // sin NINGUNA vigencia ACTIVA/CONGELADO el portal muestra el aviso a
+    // pantalla completa (ruta cubierta por inc06-acceso-membresia.spec.ts).
+    // Este viaje conserva su proposito INC03-POR-06 (pintado honesto del
+    // estado vacio: "Sin vigencia", "Sin fecha de vencimiento" y jamas
+    // "Activo" — INC03-VEN-03) reasignado al fixture CON membresia activa
+    // NO-GYM (NUTRICION ACTIVA) y cero vigencias GYM: el portal pinta las
+    // tarjetas y "Estado de acceso" muestra SIN_VIGENCIA sin mentir. Las
+    // aserciones quedan byte a byte identicas; solo cambian el titulo (el
+    // cliente ya no esta "sin membresia", solo sin vigencia GYM) y el fixture.
     const cliente = await crearClientePortalApi(request, { sedeId: "sede-1" });
+    await crearServicioNutricionApi(
+      request,
+      cliente.id,
+      sumarDias(hoyBogota(), -5),
+      sumarDias(hoyBogota(), 25)
+    );
 
     await entrarAlPortal(page, cliente.cedula);
     await expect(page.getByRole("heading", { name: "Mi Portal" })).toBeVisible();
@@ -200,6 +259,19 @@ test.describe("Portal con estado real (INC-03 / INC03-POR-*)", () => {
         apellidos: caso.nombre,
       });
       await crearVigenciaApi(request, cliente.id, caso.inicio, caso.fin);
+      // Enmienda C4 (2026-10-29, DEC-048 + DEC-051 PEND-03(a) / INC06-ACC-01):
+      // con PROGRAMADA/VENCIDA unica el portal ya no pinta tarjetas (muestra el
+      // aviso a pantalla completa). Cada caso lleva ademas una NUTRICION ACTIVA
+      // (membresia activa segun DEC-051) para que el portal pinte y los
+      // extremos de calendario del GYM (INC03-POR-07 / DEC-005/006) sigan
+      // verificandose igual: el selector GYM del resumen no cambia y las
+      // aserciones quedan byte a byte identicas.
+      await crearServicioNutricionApi(
+        request,
+        cliente.id,
+        sumarDias(hoy, -5),
+        sumarDias(hoy, 25)
+      );
 
       await entrarAlPortal(page, cliente.cedula);
       await expect(page.getByRole("heading", { name: "Mi Portal" })).toBeVisible();
