@@ -1,9 +1,9 @@
 ﻿"use client";
 
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Card, Navbar, PageHeader } from "@/components";
+import { Button, Card, Navbar, PageHeader } from "@/components";
 import ConsultaRecepcion from "@/components/recepcion/ConsultaRecepcion";
 import RegistrarIngreso from "@/components/recepcion/RegistrarIngreso";
 import AltaClienteRapido from "@/components/recepcion/AltaClienteRapido";
@@ -58,9 +58,26 @@ export default function RecepcionPage() {
 
       <div className="pt-24 pb-12">
         <div className="max-w-[1200px] mx-auto px-5">
+          {/* INC-08 / DEC-053 (INC08-NAV-01..03): control "Salir" propio de la
+              pantalla staff con el patron exacto del Navbar
+              (`signOut({ callbackUrl: "/" })`). Es un <button> nativo en el
+              header propio de la pantalla — FUERA de <nav> — para no romper
+              `nav a[href="/"]` ni duplicar el "Salir" del Navbar (aqui el
+              Navbar va con showAuth={false}): un unico "Salir" por pantalla. */}
           <PageHeader
             title="Recepcion"
             description="Consulta por cedula, registro de ingresos y alta rapida"
+            actions={
+              esStaff ? (
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                >
+                  Salir
+                </Button>
+              ) : undefined
+            }
           />
 
           {!esStaff ? (
