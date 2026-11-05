@@ -10,6 +10,7 @@ import { construirPayloadEdicionCliente } from "@/lib/cliente-payload";
 import { OPCIONES_SEDE, sedePorId } from "@/lib/sedes";
 import { Card, Button, Badge, Input, Select, Navbar, PageHeader } from "@/components";
 import MembershipSection from "@/components/MembershipSection";
+import AnamnesisSection from "@/components/anamnesis/AnamnesisSection";
 
 interface Cliente {
   id: string;
@@ -85,7 +86,18 @@ export default function FichaClientePage() {
     try {
       // INC00-CLI-02/03: sede y estado se envian en la edicion y los campos
       // opcionales limpiados viajan como `null` (borrado intencional).
-      const payload = construirPayloadEdicionCliente(form);
+      // INC-08 / DEC-054 (INC08-ED-01..03): `estado` viaja SOLO cuando el
+      // usuario lo cambio respecto al persistido; editar un campo suelto
+      // guarda sin `estado` ni `motivo` (el builder solo emite `motivo`
+      // junto a `estado`, asi que omitir el estado alcanza). Cuando el
+      // estado SI cambia, el payload viaja completo y el backend sigue
+      // exigiendo `motivo` (DEC-035 intacta).
+      const cambioEstado = Boolean(form.estado) && form.estado !== cliente?.estado;
+      const payload = construirPayloadEdicionCliente({
+        ...form,
+        estado: cambioEstado ? form.estado : undefined,
+        motivo: cambioEstado ? form.motivo : undefined,
+      });
 
       await api.clientes.update(params.id as string, payload);
       setEditing(false);
@@ -337,6 +349,22 @@ export default function FichaClientePage() {
           {/* Sección de membresías - solo para DUENO/RECEPCIONISTA.
               `canManage` gobierna las acciones de pausa (DEC-017 / HU15-C05). */}
           {canEdit && <MembershipSection clienteId={cliente.id} canManage={canEdit} />}
+
+          {/* INC-09 (C1): "Anamnesis deportiva" inline tras MembershipSection.
+              Vista solo lectura por defecto; editor bajo demanda solo DUENO
+              (DEC-058) y con los 5 sensibles filtrados por la API (DEC-055). */}
+          {canEdit && (
+            <AnamnesisSection
+              clienteId={cliente.id}
+              cliente={{
+                nombres: cliente.nombres,
+                apellidos: cliente.apellidos,
+                cedula: cliente.cedula,
+                telefono: cliente.telefono,
+                email: cliente.email,
+              }}
+            />
+          )}
         </div>
       </div>
     </main>

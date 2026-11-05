@@ -1,5 +1,10 @@
 import { getSession } from "next-auth/react";
 import { recoverSession } from "./session-recovery";
+import type {
+  AnamnesisRespuestaPortal,
+  AnamnesisRespuestaStaff,
+  AnamnesisStaffDTO,
+} from "./anamnesis-campos";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -404,6 +409,28 @@ export const api = {
   // INC-03 (endpoint #1): resumen del portal del cliente, sesion CLIENTE.
   portal: {
     resumen: () => fetchApi("/portal/resumen"),
+    // INC-09 (endpoint 1b, R2/C9): anamnesis propia agrupada S1-S4 por token
+    // CLIENTE (sin id en URL). SIN_REGISTRO = 200 + { estado, mensaje }.
+    anamnesis: <T = AnamnesisRespuestaPortal>() => fetchApi<T>("/portal/anamnesis"),
+  },
+  // INC-09 (endpoints #1/#2/#3, contrato ratificado 2026-11-04): anamnesis
+  // deportiva 1:1 con el cliente. GET filtra por rol (DUENO plana 25/25;
+  // RECEP 20/25 sin las 5 claves de DEC-055; ambos con metadatos staff).
+  // POST/PATCH solo DUENO (DEC-058). PATCH = merge R3/C3a: clave ausente =
+  // conserva; `null`/`""` = vacia; valor = valida y reemplaza.
+  anamnesis: {
+    get: <T = AnamnesisRespuestaStaff>(clienteId: string) =>
+      fetchApi<T>(`/clientes/${clienteId}/anamnesis`),
+    create: <T = AnamnesisStaffDTO>(clienteId: string, data: Record<string, unknown>) =>
+      fetchApi<T>(`/clientes/${clienteId}/anamnesis`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: <T = AnamnesisStaffDTO>(clienteId: string, data: Record<string, unknown>) =>
+      fetchApi<T>(`/clientes/${clienteId}/anamnesis`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
   },
   // INC-03 (endpoints #2..#5): superficie de recepcion, sesion staff
   // (DUENO / RECEPCIONISTA; el CLIENTE queda fuera por middleware + UI).

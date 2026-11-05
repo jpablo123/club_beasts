@@ -18,6 +18,26 @@ import {
  * Flujo critico: staff logueado -> buscar cliente -> ficha -> Nueva Membresia
  * -> preset "1 mes (30 dias)" -> guardar -> la fila persiste con exactamente
  * 30 dias calendario inclusivos y estado Activa.
+ *
+ * FIX INC09-FIX-02 (2026-11-04, patron R-10 / H-INC09-FLAKY-01): los viajes
+ * `:71` y `:102` fallaban intermitentemente bajo carga porque la espera tras
+ * "Guardar" era un conteo estructural con ventana fija de 5s que se agotaba
+ * mientras el refetch post-creacion (`loadMembresias()`) aun no pintaba la
+ * fila (14 sondeos = 0 elementos; la fila si se renderizaba despues).
+ * Reproduccion deliberada pre-fix con `--repeat-each=6`: 2/12 fallos (ambos
+ * `expectFilaMembresia` desde `:94`). Correccion SOLO de la forma de esperar:
+ * (1) espera anclada a la respuesta real del POST de creacion
+ * (`page.waitForResponse` del POST a `.../membresias-gym`, status 201
+ * verificado) registrada antes del click; (2) espera por contenido unico del
+ * fixture (rango de fechas del periodo) con timeout 30s; (3) presupuesto
+ * `test.setTimeout(90_000)` para que las esperas ancladas quepan bajo carga.
+ * Las aserciones de negocio no cambian: rango exacto dd/mm/yyyy, estado
+ * Activa, 30 dias calendario inclusivos, persistencia tras recargar y el
+ * rechazo 409 MEMBRESIA_SOLAPADA siguen igual.
+ *
+ * PIN obligatorio intacto: ningun paso relaja `debeCambiarPin` ni la
+ * autenticacion. Sin `waitForTimeout`, skips ni `only`; fixtures deterministas
+ * existentes sin cambios de semantica.
  */
 
 const RE_RANGO = /(\d{2})\/(\d{2})\/(\d{4})\s+—\s+(\d{2})\/(\d{2})\/(\d{4})/;
@@ -40,7 +60,12 @@ async function expectFilaMembresia(
 ): Promise<void> {
   const rango = `${fechaLarga(inicio)} — ${fechaLarga(fin)}`;
   const fila = page.locator("div.space-y-3 > div").filter({ hasText: rango });
-  await expect(fila).toHaveCount(1);
+  // FIX INC09-FIX-02 (patron R-10): la fila nace del refetch post-creacion y
+  // bajo carga supera la ventana default de 5s. Se espera por el contenido
+  // unico del fixture (rango de fechas) con timeout generoso; una vez que la
+  // fila con ese contenido existe, las aserciones de negocio siguientes son
+  // inmediatas y no cambian.
+  await expect(fila).toHaveCount(1, { timeout: 30_000 });
   await expect(fila.getByText("Activa", { exact: true })).toHaveCount(1);
 
   const texto = (await fila.textContent()) ?? "";
@@ -72,6 +97,8 @@ test.describe("Membresías (E2E)", () => {
     page,
     request,
   }) => {
+    // FIX INC09-FIX-02: presupuesto para las esperas ancladas de 30s.
+    test.setTimeout(90_000);
     const cliente = await crearClienteApi(request, { sedeId: "sede-1" });
     await abrirFicha(page, cliente.cedula, cliente.id);
 
@@ -89,7 +116,19 @@ test.describe("Membresías (E2E)", () => {
     // El preset calcula el fin de forma inclusiva antes de guardar.
     await expect(page.getByText(fechaLarga(fin), { exact: true })).toBeVisible();
 
+    // FIX INC09-FIX-02 (patron R-10): ancla determinista a la respuesta real
+    // del POST de creacion (201), registrada antes del click; la espera por la
+    // fila nunca arranca antes de que la membresia exista en la API.
+    const creacion = page.waitForResponse(
+      (res) =>
+        res.request().method() === "POST" &&
+        new URL(res.url()).pathname === `/clientes/${cliente.id}/membresias-gym`
+    );
     await page.getByRole("button", { name: "Guardar" }).click();
+    expect(
+      (await creacion).status(),
+      "el POST de creacion de membresia debe responder 201"
+    ).toBe(201);
 
     await expectFilaMembresia(page, inicio, fin);
 
@@ -103,17 +142,38 @@ test.describe("Membresías (E2E)", () => {
     page,
     request,
   }) => {
+    // FIX INC09-FIX-02: presupuesto para las esperas ancladas de 30s.
+    test.setTimeout(90_000);
     const cliente = await crearClienteApi(request, { sedeId: "sede-1" });
     await abrirFicha(page, cliente.cedula, cliente.id);
 
     const inicio = hoyBogota();
     const fin = sumarDias(inicio, 29);
+    const rango = `${fechaLarga(inicio)} — ${fechaLarga(fin)}`;
 
     // Primer periodo valido.
     await page.getByRole("button", { name: "Nueva Membresía" }).click();
     await page.getByLabel("Plan").selectOption("1m");
     await page.getByLabel("Fecha Inicio").fill(inicio);
+    // FIX INC09-FIX-02 (patron R-10): ancla determinista a la respuesta real
+    // del POST de creacion (201) antes del click; luego se espera por el
+    // contenido unico del fixture (rango) con timeout generoso — la fila nace
+    // del refetch post-creacion y bajo carga superaba la ventana de 5s. El
+    // conteo de negocio "exactamente una fila" queda intacto y ahora es
+    // inmediato porque la fila ya existe.
+    const creacion = page.waitForResponse(
+      (res) =>
+        res.request().method() === "POST" &&
+        new URL(res.url()).pathname === `/clientes/${cliente.id}/membresias-gym`
+    );
     await page.getByRole("button", { name: "Guardar" }).click();
+    expect(
+      (await creacion).status(),
+      "el POST de creacion de membresia debe responder 201"
+    ).toBe(201);
+    await expect(
+      page.locator("div.space-y-3 > div").filter({ hasText: rango })
+    ).toHaveCount(1, { timeout: 30_000 });
     await expect(page.locator("div.space-y-3 > div")).toHaveCount(1);
 
     // Segundo intento con el mismo rango: la UI bloquea el solapamiento.

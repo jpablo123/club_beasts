@@ -51,6 +51,26 @@ import {
  *
  * Restricciones INC00-QA-01/02: sin `isVisible()` condicional, sin
  * `waitForTimeout`, skips ni `only`, sin aserciones vacias.
+ *
+ * FIX INC09-FIX-04 (2026-11-05, patron FIX-02/R-10, hallazgo H-REV-01):
+ * el viaje `:358` ("teclado: el aviso es legible por lector y Tab alcanza el
+ * logout sin foco trampa") fallaba intermitentemente bajo carga (1/143 en la
+ * bateria del reviewer; verde aislado) porque `tabHasta` leia
+ * `document.activeElement` en caliente tras cada Tab: si el foco aun no se
+ * asentaba o la resolucion del locator fallaba transitoriamente durante la
+ * hidratacion/re-render, el `.catch(() => false)` tabulaba de mas y el foco
+ * pasaba de largo del logout (categoria foco/teclado bajo carga, igual que
+ * H-INC09-FLAKY-01). Reproduccion pre-fix en este entorno: 0/24 (12 aislado
+ * `--repeat-each=6` + 12 con carga artificial de CPU), coherente con la baja
+ * frecuencia reportada. Correccion SOLO de la forma de esperar: (1) cada Tab
+ * se ancla al estado observable de foco con `toBeFocused` (espera web-first,
+ * timeout 1s) antes de tabular otra vez; (2) la verificacion final conserva
+ * `toBeFocused` con timeout generoso (15s) tambien anclado al foco; (3)
+ * presupuesto `test.setTimeout(90_000)` para que las esperas ancladas quepan
+ * bajo carga. Las aserciones de negocio no cambian: legibilidad por lector
+ * (heading + role=alert), Tab alcanza el logout, sin foco trampa y salida a
+ * /login-cliente intactos. PIN obligatorio intacto; sin `waitForTimeout`,
+ * skips ni `only`.
  */
 
 const PIN_CLIENTE = "1234";
@@ -245,16 +265,34 @@ async function expectFlagResumen(
   );
 }
 
-/** Enfoca el control con Tab desde el foco actual; falla si nunca se alcanza. */
+/**
+ * Enfoca el control con Tab desde el foco actual; falla si nunca se alcanza.
+ * FIX INC09-FIX-04 (patron FIX-02/R-10): la lectura en caliente de
+ * `document.activeElement` tras cada Tab era una carrera bajo carga
+ * (H-REV-01). Cada Tab se ancla ahora al estado observable de foco con
+ * `toBeFocused` (espera web-first) antes de tabular otra vez, de modo que un
+ * foco que se asienta con retardo o un fallo transitorio de resolucion del
+ * locator no provocan Tabs de mas que pasen de largo del control. La
+ * verificacion final conserva `toBeFocused` con timeout generoso anclado al
+ * foco: sin foco trampa, y falla si el control nunca se alcanza.
+ */
 async function tabHasta(page: Page, control: Locator, maxTabs = 15): Promise<void> {
   for (let i = 0; i < maxTabs; i++) {
     await page.keyboard.press("Tab");
-    const enfocado = await control
-      .evaluate((el) => el === document.activeElement)
-      .catch(() => false);
-    if (enfocado) break;
+    try {
+      await expect(
+        control,
+        `el Tab #${i + 1} debe dejar el foco en el control buscado`
+      ).toBeFocused({ timeout: 1000 });
+      return;
+    } catch {
+      // El foco se asento en otro control del recorrido: siguiente Tab.
+    }
   }
-  await expect(control).toBeFocused();
+  await expect(
+    control,
+    "Tab debe alcanzar el control de salida sin foco trampa"
+  ).toBeFocused({ timeout: 15000 });
 }
 
 // ─── Sesion expirada (mismo mecanismo que sesion-vencida.spec.ts) ────────────
@@ -359,6 +397,8 @@ for (const vp of VIEWPORTS) {
       page,
       request,
     }) => {
+      // FIX INC09-FIX-04: presupuesto para las esperas ancladas de foco bajo carga.
+      test.setTimeout(90_000);
       const cliente = await crearClienteF2(request);
 
       await loginComoClienteCon(page, cliente.cedula, PIN_CLIENTE);
@@ -379,7 +419,10 @@ for (const vp of VIEWPORTS) {
       // Sin foco trampa: Tab recorre hasta el control de salida (falla si no).
       await tabHasta(page, logout);
       await page.keyboard.press("Enter");
-      await expect(page).toHaveURL(/\/login-cliente/);
+      // FIX INC09-FIX-04: mismo destino de negocio (/login-cliente), con
+      // presupuesto generoso anclado a la URL para la navegacion del signOut
+      // bajo carga.
+      await expect(page).toHaveURL(/\/login-cliente/, { timeout: 15000 });
     });
   });
 }

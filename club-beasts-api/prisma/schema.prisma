@@ -34,6 +34,7 @@ model User {
   clientesPinReset     Cliente[]            @relation("ClientePinResetPor")
   ingresosRegistrados  Ingreso[]            // back-relation INC-03 (registradoPor)
   estadosClienteCambiados ClienteEstadoCambio[] // back-relation INC-04/DEC-036 (actor; obligatoria)
+  anamnesisActualizadas Anamnesis[] @relation("AnamnesisActualizadaPor") // back-relation INC-09/DEC-057 (actor; obligatoria)
   // INC-03 (DEC-031): sede del staff de recepcion; al final del modelo para que
   // la migracion SQLite sea un ADD COLUMN simple (portable), como perfilPendiente.
   // Nullable: DUENO puede no tener sede; en #5, si el token no trae sede -> 400.
@@ -70,6 +71,7 @@ model Cliente {
   membresias      MembresiaGym[]
   ingresos        Ingreso[]        // back-relation INC-03 (obligatoria para Ingreso.cliente)
   estadoCambios   ClienteEstadoCambio[] // back-relation INC-04/DEC-036 (obligatoria)
+  anamnesis       Anamnesis? // back-relation INC-09/DEC-057 (1:1 opcional)
 }
 
 model MembresiaGym {
@@ -163,4 +165,73 @@ model ClienteEstadoCambio {
   createdAt      DateTime @default(now())
 
   @@index([clienteId, createdAt])
+}
+
+// INC-09 (AN-01..AN-12 registro 23 campos, AN-22/AN-25 estado derivado, DEC-057):
+// anamnesis deportiva del cliente. Patron `ClienteEstadoCambio` (spec INC-09,
+// seccion "Contrato API", punto "Modelo Prisma (R6)", ratificado por backend R6).
+// - 1:1 con Cliente (DEC-057): `clienteId @unique` -> maximo una anamnesis por cliente.
+// - SIN columna `estado`: R5 — el estado (INCOMPLETA/COMPLETA) se deriva en servicio
+//   (`derivarEstadoAnamnesis`/`cumpleCompletitud`); no se persiste (sin drift).
+// - S1 identificacion personal = snapshot (DEC-056/056a): copia al momento del
+//   diligenciamiento, no se recalcula contra Cliente.
+// - Campos SENSIBLES (DEC-055): rh, antecedentesMedicos, antecedentesFamiliares,
+//   enfermedadRelevante, cualEnfermedad — manejo restringido en servicio, sin loguear.
+// - Tipos: todo String?/Int? opcional (registro parcial 23 campos, AN-01..AN-12);
+//   literales exactos en comentario (sexo FEMENINO|MASCULINO, practicaDeporte/enfermedadRelevante
+//   SI|NO, nivelActividad 4 literales del Anexo DEC-052) validados en Zod, no en BD.
+// - rh ^(A|B|AB|O)[+-]$ (DEC-059); edad 13..100 y comidasPorDia 1..12 (DEC-059);
+//   fechaNacimiento YYYY-MM-DD y horaAcostarse HH:MM 24h como String (DEC-012 portabilidad).
+// - Multi-selects (antecedentesMedicos=21, diasNoEntrenamiento=16): String con JSON de
+//   string[] (SQLite no soporta scalar lists; (de)serializacion solo en servicio,
+//   INC09-R09; sin tipo `Json` por DEC-012 portabilidad SQLite/PostgreSQL).
+// - Trazabilidad (DEC-057): actualizadoPorId obligatorio -> User; fechaActualizacion
+//   @updatedAt (exposicion ISO-8601); createdAt.
+// - FKs sin onDelete explicito = patron del repo (ClienteEstadoCambio, MembresiaGymCambio):
+//   la limpieza de fixtures debe borrar Anamnesis antes que Cliente/User.
+// - Back-relations minimas (sin columna): Cliente.anamnesis Anamnesis?,
+//   User.anamnesisActualizadas Anamnesis[] @relation("AnamnesisActualizadaPor").
+model Anamnesis {
+  id         String  @id @default(cuid())
+  clienteId  String  @unique // DEC-057: 1:1
+  cliente    Cliente @relation(fields: [clienteId], references: [id])
+
+  // S1 — Identificacion personal (snapshot, DEC-056/056a)
+  nombreCompleto     String?
+  numeroDocumento    String?
+  sexo               String? // FEMENINO | MASCULINO
+  rh                 String? // ^(A|B|AB|O)[+-]$ (DEC-059) — SENSIBLE (DEC-055)
+  edad               Int?    // 13..100 (DEC-059)
+  fechaNacimiento    String? // YYYY-MM-DD (DEC-012)
+  lugarNacimiento    String?
+  estadoCivil        String?
+  direccionResidencia String?
+  numeroContacto     String?
+  correoElectronico  String?
+
+  // S2 — Deporte
+  practicaDeporte    String? // SI | NO
+  cualDeporte        String? // condicional si practicaDeporte = SI
+  tiempoQuePractica  String?
+
+  // S3 — Emergencia y salud
+  contactoEmergencia   String?
+  eps                  String?
+  antecedentesMedicos  String? // JSON string[] de ANTECEDENTES_MEDICOS — SENSIBLE (DEC-055)
+  antecedentesFamiliares String? // SENSIBLE (DEC-055)
+  enfermedadRelevante  String? // SI | NO — SENSIBLE (DEC-055)
+  cualEnfermedad       String? // condicional si enfermedadRelevante = SI — SENSIBLE (DEC-055)
+
+  // S4 — Objetivos y estilo de vida
+  objetivosEntrenamiento String?
+  nivelActividad         String? // 4 literales exactos del Anexo DEC-052
+  diasNoEntrenamiento    String? // JSON string[] de DIAS_NO_ENTRENAMIENTO
+  horaAcostarse          String? // HH:MM 24h
+  comidasPorDia          Int?    // 1..12 (DEC-059)
+
+  // Trazabilidad (DEC-057)
+  actualizadoPorId   String
+  actualizadoPor     User     @relation("AnamnesisActualizadaPor", fields: [actualizadoPorId], references: [id])
+  fechaActualizacion DateTime @updatedAt // exposicion ISO-8601
+  createdAt          DateTime @default(now())
 }

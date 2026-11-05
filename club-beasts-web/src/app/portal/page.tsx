@@ -398,6 +398,26 @@ export default function PortalPage() {
               </h3>
               <p className="text-gray-400">Tu plan nutricional personalizado estara disponible proximamente.</p>
             </Card>
+
+            {/* INC-09 (C2 / NAV-AN-01..02): entrada a la anamnesis deportiva,
+                FUERA de <nav> (C3) y solo pintada con servicio vigente: el
+                aviso DEC-051 de `sinMembresiaActiva` reemplaza todo el
+                contenido (DEC-060 / NAV-AN-09) y el cambio de PIN obligatorio
+                también (guarda `debeCambiarPin` intacta). */}
+            <Card padding="lg">
+              <h3 className="text-xl font-display font-bold text-white uppercase mb-4">
+                Anamnesis deportiva
+              </h3>
+              <p className="text-gray-400 text-sm mb-4">
+                Consulta la anamnesis deportiva que diligenciaste en el club.
+              </p>
+              <Link
+                href="/portal/anamnesis"
+                className="text-royal hover:text-royal-light transition-colors"
+              >
+                Mi anamnesis
+              </Link>
+            </Card>
           </div>
         </div>
       </div>

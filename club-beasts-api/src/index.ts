@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
+import anamnesisRoutes from "./routes/anamnesis.js";
 import authRoutes from "./routes/auth.js";
 import clienteRoutes from "./routes/clientes.js";
 import membresiaRoutes from "./routes/membresia.js";
@@ -22,6 +23,7 @@ async function start() {
   await server.register(prismaPlugin);
   await server.register(authPlugin);
 
+  await server.register(anamnesisRoutes);
   await server.register(authRoutes);
   await server.register(clienteRoutes);
   await server.register(membresiaRoutes);
