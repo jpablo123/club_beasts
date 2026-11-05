@@ -434,3 +434,40 @@ Fraccion: **3/3**. Puntos: **3.0** (0 -> 3).
 | **Total MVP** | **43** | **+6** | **49/100 (49%)** |
 
 G6 (HU-13/HU-14 sin codigo ni asignacion) **cerrado** en sus bullets b1..b3; b4 sigue fuera de alcance sin puntos (DEC-018/019). Deuda menor de revision (no bloqueante): H-02 (401 sin token no ejercitado en los archivos nuevos), H-03 (`tipoServicio` String sin constraint en Prisma). Ruta al 50% restante: **49 + 1 de anamnesis/HU-07** (PEND-003) segun DEC-021.
+
+## 12. Ampliacion INC-09 (2026-11-05) — bloque 5 Anamnesis y privacidad
+
+Incremento `INC-09-anamnesis-deportiva` **ACEPTADO** (2026-11-05; revision `code-reviewer` **ACEPTA CON HALLAZGOS NO BLOQUEANTES**, 7/7 checklist CONFORME; H-REV-02 resuelto por Producto con **DEC-061** = limite conocido; H-REV-01 flaky de base INC-06 estabilizado por INC09-FIX-04 -> bateria final **143/143**). Pipeline completo: LISTO (contratos R1-R8/C1-C9 ratificados; DEC-052+Anexo/055/056a/057/058/059/060) -> RED (250 pruebas, 4 enmiendas C4) -> GREEN T8 (modelo `Anamnesis` 1:1 + migracion **10/0**) + T9 (API: whitelist, merge R3/C3a, orden R7) + T10 (web: `/portal/anamnesis`, ficha, editor 25 props) -> INC09-FIX-01 (fixture paridad) -> INC09-FIX-02 (flaky `membresia.spec.ts`) -> VERIFICADO bateria x2 identica (API **807/807** x2, Gherkin **220/220** x2, web **303/303** x2, E2E 135/135 x2) -> auditoria navegacion (NAV-AN-01..09 VERIFICADO; NAV-F-01..06) -> INC09-FIX-03 + NAV-F-03b (foco alertdialog) -> REVISADO -> INC09-FIX-04 (**143/143**) -> ACEPTADO.
+
+### 12.1 Ponderacion y reparto por HU (DEC-016; literales del historial de HU)
+
+| HU | Prioridad | Peso | Justificacion de alcance relativo | Fraccion | Puntos |
+|---|---|---:|---|---:|---:|
+| HU-09 Registro de anamnesis deportiva | Alta | **4** | Superficie mayor del bloque: formulario completo 23 campos/4 secciones (Anexo DEC-052), asociacion al cliente, trazabilidad fecha+usuario; criterios AN-01..AN-12 | 4/4 | **4** |
+| HU-10 Control de acceso a datos sensibles | Alta | **4** | Permisos por 3 roles + particion sensible/operativa (DEC-055: 5 sensibles con RH) + privacidad de anamnesis ajena; criterios AN-13..AN-20 | 4/4 | **4** |
+| HU-11 Guardado progresivo | Media | **2** | Guardado parcial + marca derivada PENDIENTE/COMPLETA + retomar; criterios AN-21..AN-27 (reconciliacion con obligatorios del Anexo) | 3/3 | **2** |
+| HU-28 Visualizacion en modo lectura | Media | **2** | Vista portal agrupada S1-S4, solo lectura, SIN_REGISTRO; criterios AN-28..AN-33 | 3/3 | **2** |
+| | | **12** | | | **12** |
+
+**Evidencia por bullet** (todos cerrados con spec + implementacion + prueba + evidencia ejecutada + revision): registro/23 campos/secciones/asociacion/trazabilidad = AN-01..AN-12 (`inc09-anamnesis-registro.test.ts` 53 + `edicion` 27 + unit schemas 45, E2E staff/portal); dueño completa/recepcion sin sensibles/cliente solo lectura/separacion = AN-13..AN-20 (`inc09-anamnesis-permisos.test.ts` 16 con `not.toHaveProperty` x5 + E2E NAV-AN-07 doble capa DOM+red); guardar incompleta/marca/retomar = AN-21..AN-27 (registro/edicion + degradacion AN-25); consulta solo lectura/no editar/secciones = AN-28..AN-33 (`inc09-anamnesis-portal.test.ts` 8 + E2E NAV-AN-01/02/03 + NAV-F-01/05/06).
+
+### 12.2 No-duplicado (regla del orquestador, DEC-016)
+
+- **Campos 1-10 snapshot (DEC-056/056a)**: no suman puntos de HU-04/HU-05 (nombre, documento, telefono, email ya cobrados en bloque 2); acreditan solo el registro de la anamnesis como documento clinico.
+- **HU-07 b4 (ficha con anamnesis)**: **sin puntos** en este incremento (la seccion staff es la visibilidad de HU-09/HU-10 ya cobrada arriba; HU-07 queda **3/6** en bloque 2, coherente con el spec INC-09 "sin cobro doble").
+- **DEC-060 (gate `/portal/anamnesis`)**: mejora de regla tipo DEC-048/INC-06 — sin bullet propio, 0 puntos.
+- **DEC-054/INC-08 y fixes**: ya cerrados sin puntos en su ciclo.
+
+### 12.3 Totales actualizados
+
+| Bloque | Antes (INC-08) | INC-09 | Despues |
+|---|---:|---:|---:|
+| Identidad, sesiones y permisos | 10 | 0 | 10 |
+| Clientes, sedes, estados y ficha basica | 14 | 0 | 14 |
+| Vigencias de servicios y congelacion | 15 | 0 | 15 |
+| Recepcion, ingresos y portal operativo | 10 | 0 | 10 |
+| Anamnesis y privacidad | 0 | **+12** (HU-09 4/4, HU-10 4/4, HU-11 2/2, HU-28 2/2) | **12** |
+| Rutinas/Nutricion/Historial (bloques 6-8) | 0 | 0 | 0 |
+| **Total MVP** | **49** | **+12** | **61/100 (61%)** |
+
+**Corte al 50% SUPERADO**: 61 >= 50. Riesgo residual registrado (DEC-061: limite AN-26 al vaciar un solo campo; H-REV-04/05/07/08 backlog de endurecimiento). Ruta restante: bloques 6-8 (rutinas 18, nutricion 12, historial 8 = 38 puntos) + el resto de HU-07.
