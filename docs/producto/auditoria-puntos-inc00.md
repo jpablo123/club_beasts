@@ -471,3 +471,58 @@ Incremento `INC-09-anamnesis-deportiva` **ACEPTADO** (2026-11-05; revision `code
 | **Total MVP** | **49** | **+12** | **61/100 (61%)** |
 
 **Corte al 50% SUPERADO**: 61 >= 50. Riesgo residual registrado (DEC-061: limite AN-26 al vaciar un solo campo; H-REV-04/05/07/08 backlog de endurecimiento). Ruta restante: bloques 6-8 (rutinas 18, nutricion 12, historial 8 = 38 puntos) + el resto de HU-07.
+
+## 13. Ampliacion INC-10 (2026-11-18) — bloque 6 Rutinas, asignacion e historial
+
+Incremento `INC-10-rutinas` **ACEPTADO** (2026-11-18; revision `code-reviewer` **ACEPTA CON HALLAZGOS NO BLOQUEANTES**, REV-01..REV-11 en `evidencia.md` §7; REV-01/REV-05 cerrados con FIX-04/FIX-05 bajo decision de Producto). Pipeline completo: ESPECIFICADO + LISTO (contratos R1-R8/C1-C9 ratificados, DEC-062..070 + Anexo DEC-052) -> RED (268 pruebas con base intacta) -> GREEN T6 (modelo + migracion **11/0**) / T7 (API) / T8 (web) -> FIX-01..06 -> VERIFICADO INC10-VER-FINAL verde completa 2026-11-18 (API **1034/1034**, Gherkin **220/220**, web unit **401/401**, build PASS, tsc 0/0, migraciones **11/0**, E2E **213/213** = 143 base + 70 NAV-RU, invert **143/143**, PIN **3/3**) -> auditoria navegacion **NAV-RU-01..24: 24 plenos / 0 parciales / 0 fallidas** (AUD-01..10 y BLOQ-01/02 cerrados) -> REVISADO -> ACEPTADO (`evidencia.md` §8).
+
+### 13.1 Ponderacion y reparto por HU (DEC-016; literales del historial de HU)
+
+| HU | Prioridad | Peso | Justificacion de alcance relativo | Fraccion | Puntos |
+|---|---|---:|---|---:|---:|
+| HU-18 Definicion de rutina generica/induccion | Alta | **4** | Alta: creacion base con tipo explicito, estructura B1/B2, reutilizacion con varios clientes y edicion por secciones; la activacion (b4) es REF hacia HU-20 | 4/4 | **4** |
+| HU-19 Contenido detallado de la personalizada | Alta | **5** | Alta y mayor superficie del bloque: informacion general + diagnostico, arbol macro/meso/micro con contencion (DEC-018), sesiones/ejercicios/series/intensidades/descansos y evaluaciones tipadas | 4/4 | **5** |
+| HU-20 Asignacion al cliente | Alta | **4** | Alta: una sola activa por cliente, 3 tipos asignables, gate de vigencia personalizada (HU-13 b4) y reemplazo con cierre; el portal (b4) es REF hacia HU-26 | 4/4 | **4** |
+| HU-21 Historial de asignaciones | Media | **3** | Media: fechas inicio/fin, actor del cambio, cierre de la anterior y vista en ficha con acceso restringido (solo lectura, snapshot inmutable) | 4/4 | **3** |
+| HU-26 Portal del cliente (rutina activa) | Alta | **2** | Alta pero superficie menor (solo lectura): activa propia, version personalizada vigente o base, y no-edicion | 4/4 | **2** |
+| | | **18** | | | **18** |
+
+**Evidencia por bullet** (todos cerrados con spec + implementacion + prueba + evidencia ejecutada + revision):
+
+- **HU-18**: b1 tipo GENERICA/INDUCCION = RU-01/02 (`inc10-rutinas-creacion-base.test.ts` + unit `inc10-rutinas-schemas.test.ts` mensajes exactos, E2E `inc10-rutinas-creacion-base.spec.ts`); b2 estructura para consulta = RU-03/08 + listado/detalle (`inc10-rutinas-listado-detalle.test.ts`, contrato `.strict()` en unit, E2E `inc10-rutinas-listado.spec.ts`); b3 reutilizacion = RU-04 (creacion-base, clientes multiples); b4 activacion **REF** = RU-05 sin punto propio, verificada via RU-20/22 en `inc10-rutinas-asignacion.test.ts` (seccion 13.2). Edicion base RU-06/07 cubierta en creacion-base + E2E `inc10-rutinas-edicion.spec.ts` y web `inc10-rutinas-editor.test.tsx`.
+- **HU-19**: b1 info general + diagnostico = RU-09/10; b2 macro/meso/micro = RU-11/12 (contencion DEC-018); b3 sesiones/ejercicios/series/intensidades/descansos/observaciones = RU-13; b4 tests/antropometria/analisis biomecanico = RU-14 — todos en `inc10-rutinas-personalizada.test.ts` + unit `inc10-rutinas-schemas.test.ts` (RU-10..14) + `inc10-rutinas-schemas-paridad.test.tsx`, E2E `inc10-rutinas-creacion-personalizada.spec.ts` / `inc10-rutinas-edicion.spec.ts`.
+- **HU-20**: b1 una sola activa = RU-20/21/28 (incluye concurrencia `ASIGNACION_CONFLICTO`); b2 tipos = RU-22/24 (+ RU-26/27 estado y permisos); b3 gate de vigencia = RU-23 (**cierra HU-13 b4**, ver 13.1b); b4 portal **REF** = RU-25 sin punto propio, verificada via RU-36..38 en `inc10-rutinas-portal.test.ts` (seccion 13.2) — todos en `inc10-rutinas-asignacion.test.ts` + unit schemas (RU-20/23, RU-21/31/35), web `inc10-rutinas-asignacion-form.test.tsx`, E2E `inc10-rutinas-asignacion.spec.ts`.
+- **HU-21**: b1 fechas = RU-29; b2 actor = RU-30; b3 cierre de la anterior = RU-31 (efecto propio en historial; el reemplazo RU-21 se cobra en HU-20, sin doble); b4 historial en ficha = RU-32 + RU-34 — todos en `inc10-rutinas-historial.test.ts` (incluye snapshot RU-33 e invariante RU-35), web `inc10-rutinas-historial.test.tsx`, E2E `inc10-rutinas-asignacion.spec.ts` / `inc10-rutinas-cobertura.spec.ts`.
+- **HU-26**: b1 solo su activa = RU-36 (+ RU-41/42 sin actor y seguridad de sesion); b2 version personalizada vigente = RU-37; b3 base sin vigencia = RU-38 (+ RU-39 sin rutina); b4 no editable = RU-40 — todos en `inc10-rutinas-portal.test.ts` + unit schemas (RU-36..42) + web `inc10-rutinas-portal-gate.test.tsx` / `inc10-rutinas-vista.test.tsx`, E2E `inc10-rutinas-portal.spec.ts`.
+
+### 13.1b HU-13 b4 (peso 3) — cierre explicito del split (INC10-R01)
+
+| Bullet HU-13 | Criterio INC-05 | Criterio INC-10 | Evidencia | Cerrado |
+|---|---|---|---|---|
+| b4 `rutinaActiva` solo con servicio vigente | `INC05-PER-05` **EXCLUIDO** (DEC-018, "0 en INC-05" §11.1) | **RU-23** (asignacion con `SIN_VIGENCIA_PERSONALIZADA`) + **RU-37/38** (portal con personalizada VENCIDA/CONGELADO) | `inc10-rutinas-asignacion.test.ts` (RU-23), `inc10-rutinas-portal.test.ts` (RU-37/38), unit schemas RU-20/23 | **Si** (INC-10) |
+
+Fraccion HU-13: **4/4** (antes 3/3 en INC-05). Puntos HU-13: **3.0 -> 3.0 (+0)** — el peso 3 ya estaba al maximo en §11.1; el cierre de b4 se acredita como **split explicito sin puntos nuevos** para no duplicar (regla INC10-R01 / DEC-016).
+
+### 13.2 No-duplicado (regla del orquestador, DEC-016)
+
+- **REF sin punto propio**: HU-18 b4 (activacion -> RU-05), HU-19 RU-18 (permisos -> RU-07, criterio, no bullet) y HU-20 b4 (portal -> RU-25) se contan **dentro de la fraccion de su propia HU** sin cobro doble hacia HU-20/HU-26/HU-03 (precedente §10.3 HU-08).
+- **HU-13 b4**: cierra en INC-10 con **+0** (peso 3 ya al maximo desde INC-05; ver 13.1b). La regla de vigencia **no se re-cobra** en HU-20 b3 mas alla de su propia fraccion.
+- **HU-07 b5/b6** (rutina activa y historial en la ficha): **anotados para el cierre de HU-07** (bloque 2) desde los endpoints propios `/clientes/:id/rutinas/{activa,historial}` (spec INC-10 C9) — **sin puntos aqui**.
+- **DEC-018 macro/meso/micro**: cobrado una sola vez como HU-19 b2 (RU-11/12); su gate en HU-13 b4 es +0 (arriba).
+- **Sin puntos propios**: fixes FIX-01..06 (incluido `inc10-fix06-repro-aud034.test.ts`, reproduccion de AUD-034), NAV-RU fixes y `dec047`-style mitigaciones sobre codigo del incremento; DEC-062..070 son contrato/regla, no bullets (DEC-024/DEC-016); `turbopack.root`/R-FIX03B-01 es configuracion de entorno.
+
+### 13.3 Totales actualizados
+
+| Bloque | Antes (INC-09) | INC-10 | Despues |
+|---|---:|---:|---:|
+| Identidad, sesiones y permisos | 10 | 0 | 10 |
+| Clientes, sedes, estados y ficha basica | 14 | 0 | 14 (HU-07 3/6; b5/b6 anotados) |
+| Vigencias de servicios y congelacion | 15 | 0 (+HU-13 b4 = **+0**) | 15 (HU-13 4/4 = 3.0 ya cobrados) |
+| Recepcion, ingresos y portal operativo | 10 | 0 | 10 |
+| Anamnesis y privacidad | 12 | 0 | 12 |
+| Rutinas, asignacion e historial | 0 | **+18** (HU-18 4/4, HU-19 5/5, HU-20 4/4, HU-21 3/3, HU-26 2/2) | **18** |
+| Nutricion, asignacion e historial (bloque 7) | 0 | 0 | 0 |
+| Historial, reportes y notificaciones (bloque 8) | 0 | 0 | 0 |
+| **Total MVP** | **61** | **+18** | **79/100 (79%)** |
+
+**Corte al 50% SUPERADO** (79 >= 50, ampliado desde 61). Riesgos residuales al cierre de INC-10: R-FIX03B-01 (entorno, devops), REV-02/06..09/11 backlog, INC10-NAV-AUD-11 INFO, concurrencia real solo Postgres, `bodyLimit` 5 MiB. Ruta restante: bloque 7 nutricion (12) + bloque 8 historial/reportes (8) + resto de HU-07 (2) = 22 puntos.

@@ -127,7 +127,7 @@ Hallazgos:
 | H-REV-03 | BAJO | Cerrado por el orquestador: nota corregida en §4c ("integracion", no "E2E") | imprecision documental sobre la cobertura de AN-25 |
 | H-REV-04 | BAJO | Backlog (endurecimiento INC09-R09) | `deserializarMulti` sin validar tipos de elementos |
 | H-REV-05 | BAJO | Backlog (aceptado en MVP: escritor unico DEC-058) | PATCH read-modify-write sin transaccion |
-| H-REV-06 | BAJO | **Cerrado en gestion**: commits separados INC-08/INC-09 al cierre | atribucion de worktree |
+| H-REV-06 | BAJO | **Cerrado (TASK-GIT-02, 2026-11-05)**: commits separados por incremento — `f890e1c` (INC-08), `0677766` (INC-09, incluye hunk DEC-054 consolidado en `clientes/[id]/page.tsx` por archivo enredado, documentado en ambos mensajes), `4484e92` (docs); worktree limpio, sin secretos | atribucion de worktree |
 | H-REV-07 | SUGGERIMENTO | Backlog | paridad espejo con entradas no-string |
 | H-REV-08 | SUGGERIMENTO | Backlog (decision de accesibilidad) | `aria-modal` sin foco trap (el viaje `:280` exige Tab sin trampa) |
 
