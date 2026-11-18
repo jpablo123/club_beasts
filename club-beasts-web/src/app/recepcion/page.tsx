@@ -11,6 +11,7 @@ import { resolveSessionExit } from "@/lib/session-recovery";
 
 const NAV_LINKS = [
   { label: "Clientes", href: "/clientes" },
+  { label: "Rutinas", href: "/rutinas" },
   { label: "Recepcion", href: "/recepcion" },
   { label: "Dashboard", href: "/dashboard" },
 ];

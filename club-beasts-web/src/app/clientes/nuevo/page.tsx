@@ -40,6 +40,7 @@ export default function NuevoClientePage() {
 
   const navLinks = [
     { label: "Clientes", href: "/clientes" },
+    { label: "Rutinas", href: "/rutinas" },
     { label: "Dashboard", href: "/dashboard" },
   ];
 

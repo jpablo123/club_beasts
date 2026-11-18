@@ -64,3 +64,15 @@ body {
   line-height: 0.85;
   letter-spacing: 0.02em;
 }
+
+/* INC-10 (C3): paréntesis del título "Ciclos (macro-meso-micro)" como
+   contenido generado (CSS). El nombre accesible literal se conserva en el
+   navegador (Chromium incluye ::before en el AccName) sin alterar el texto
+   del nodo (contratos de encabezados exactos). */
+.ciclos-parentesis-i::before {
+  content: "(";
+}
+
+.ciclos-parentesis-d::before {
+  content: ")";
+}

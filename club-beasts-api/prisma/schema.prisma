@@ -35,6 +35,8 @@ model User {
   ingresosRegistrados  Ingreso[]            // back-relation INC-03 (registradoPor)
   estadosClienteCambiados ClienteEstadoCambio[] // back-relation INC-04/DEC-036 (actor; obligatoria)
   anamnesisActualizadas Anamnesis[] @relation("AnamnesisActualizadaPor") // back-relation INC-09/DEC-057 (actor; obligatoria)
+  rutinasActualizadas  Rutina[] @relation("RutinaActualizadaPor") // back-relation INC-10/RU-16 (actualizadoPor; obligatoria)
+  rutinaAsignacionesComoActor RutinaAsignacion[] @relation("RutinaAsignacionActor") // back-relation INC-10 (actor de asignacion)
   // INC-03 (DEC-031): sede del staff de recepcion; al final del modelo para que
   // la migracion SQLite sea un ADD COLUMN simple (portable), como perfilPendiente.
   // Nullable: DUENO puede no tener sede; en #5, si el token no trae sede -> 400.
@@ -72,6 +74,7 @@ model Cliente {
   ingresos        Ingreso[]        // back-relation INC-03 (obligatoria para Ingreso.cliente)
   estadoCambios   ClienteEstadoCambio[] // back-relation INC-04/DEC-036 (obligatoria)
   anamnesis       Anamnesis? // back-relation INC-09/DEC-057 (1:1 opcional)
+  rutinaAsignaciones RutinaAsignacion[] // back-relation INC-10/RU-16 (obligatoria)
 }
 
 model MembresiaGym {
@@ -234,4 +237,77 @@ model Anamnesis {
   actualizadoPor     User     @relation("AnamnesisActualizadaPor", fields: [actualizadoPorId], references: [id])
   fechaActualizacion DateTime @updatedAt // exposicion ISO-8601
   createdAt          DateTime @default(now())
+}
+
+// Bloque 6 (INC-10). DEC-012: fechas YYYY-MM-DD y contenido JSON como String
+// (portabilidad SQLite/PostgreSQL; sin tipo Json — patron Anamnesis).
+// Modelo ratificado (R3, spec INC-10 "Contrato API"): 1 columna por seccion —
+// el PATCH "presente = reemplaza seccion" (R3/C3a) es un UPDATE de columna.
+// - tipoRutina: GENERICA | INDUCCION | PERSONALIZADA (inmutable tras crear, R1#4).
+// - Base GENERICA/INDUCCION (DEC-064): objetivo/nivelExperiencia/sesiones; null en PERSONALIZADA.
+// - Personalizada (DEC-018/062/063): informacionGeneral/diagnostico/macrociclos/tests/
+//   antropometria/analisisBiomecanico; null en base. Limites exactos (C4): macrociclos 20,
+//   evaluaciones 50 por seccion, antropometria 0..50 (enum 13 medidas), analisisBiomecanico
+//   0..50 (enum 10 zonas) — validados en Zod, no en BD.
+// - Sin DELETE en MVP (patron Anamnesis/DEC-057).
+// - Trazabilidad (RU-16, patron Anamnesis/DEC-057): actualizadoPorId obligatorio -> User.
+// - FKs sin onDelete explicito = patron del repo (Restrict): la limpieza de fixtures debe
+//   borrar RutinaAsignacion antes que Rutina/Cliente/User.
+model Rutina {
+  id                  String   @id @default(cuid())
+  tipoRutina          String   // GENERICA | INDUCCION | PERSONALIZADA (inmutable tras crear)
+  nombre              String   // 3..100 (Zod)
+  descripcion         String?  // 1..500
+  // Base GENERICA/INDUCCION (DEC-064) — null en PERSONALIZADA
+  objetivo            String?
+  nivelExperiencia    String?  // PRINCIPIANTE | INTERMEDIO | AVANZADO
+  sesiones            String?  // JSON string de Sesion[] (1..30)
+  // Personalizada (DEC-018/062/063) — null en base
+  informacionGeneral  String?  // JSON string {objetivoGeneral, nivelExperiencia, fechaEvaluacion}
+  diagnostico         String?  // JSON string {diagnostico, restriccionesMedicas, lesionesPrevias, observacionesGenerales}
+  macrociclos         String?  // JSON string de Macrociclo[] (20; macro->meso->micro->sesion)
+  tests               String?  // JSON string de Test[] (0..50)
+  antropometria       String?  // JSON string de AntropometriaItem[] (0..50, enum 13 medidas)
+  analisisBiomecanico String?  // JSON string de AnalisisBiomecanicoItem[] (0..50, enum 10 zonas)
+  // Trazabilidad (RU-16, patron Anamnesis/DEC-057)
+  actualizadoPorId    String
+  actualizadoPor      User     @relation("RutinaActualizadaPor", fields: [actualizadoPorId], references: [id])
+  fechaActualizacion  DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  asignaciones        RutinaAsignacion[]
+  // 1 columna por seccion: el PATCH "presente = reemplaza seccion" = UPDATE de columna.
+}
+
+// INC-10 (RU-16 historial, DEC-067 snapshot, DEC-005/006 fechas America/Bogota):
+// asignacion de rutina a cliente. Patron MembresiaGym (fechas YYYY-MM-DD String,
+// DEC-012 portabilidad). Sin columna `estado`: ACTIVA/CERRADA se deriva de
+// fechaFin (null = ACTIVA, patron HU-11 estado derivado; sin drift).
+// - contenidoSnapshot (DEC-067): JSON string del contenido al asignar; capturado en la
+//   misma transaccion de la asignacion (R6); las lecturas leen desde snapshot, por lo que
+//   un PATCH de la rutina solo afecta asignaciones futuras (R1#4).
+// - activaClave String? @unique = ARBITRO portable de 0-1 activas (INC00-MEM-03):
+//   guarda clienteId mientras fechaFin IS NULL; se pone null al cerrar. Dos "activas"
+//   del mismo cliente colisionan en P2002 -> 409 ASIGNACION_CONFLICTO. NO usar
+//   @@unique([clienteId, fechaFin]) (NULLs distintos) ni indices parciales raw-SQL
+//   (drift con `migrate dev`).
+// - FKs sin onDelete explicito = Restrict (patron repo); fixtures borran RutinaAsignacion
+//   antes que Rutina/Cliente/User.
+// - @@index([clienteId, fechaInicio]): historial ORDER BY fechaInicio DESC (RU-16).
+model RutinaAsignacion {
+  id                String   @id @default(cuid())
+  clienteId         String
+  cliente           Cliente  @relation(fields: [clienteId], references: [id]) // onDelete Restrict (default)
+  rutinaId          String
+  rutina            Rutina   @relation(fields: [rutinaId], references: [id])  // onDelete Restrict (default)
+  fechaInicio       String   // YYYY-MM-DD (America/Bogota, DEC-005/006)
+  fechaFin          String?  // null = ACTIVA (estado derivado, sin columna — patron HU-11)
+  actorId           String
+  actor             User     @relation("RutinaAsignacionActor", fields: [actorId], references: [id])
+  contenidoSnapshot String   // JSON string del contenido al asignar (DEC-067)
+  activaClave       String?  @unique // ARBITRO 0-1 activas (INC00-MEM-03): = clienteId si fechaFin IS NULL; null al cerrar
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([clienteId, fechaInicio]) // historial ORDER BY fechaInicio DESC
+  @@index([rutinaId])
 }

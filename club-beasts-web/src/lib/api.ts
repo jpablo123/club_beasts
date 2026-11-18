@@ -5,6 +5,10 @@ import type {
   AnamnesisRespuestaStaff,
   AnamnesisStaffDTO,
 } from "./anamnesis-campos";
+import type {
+  BorradorPersonalizada,
+  BorradorRutina,
+} from "./rutina-schemas";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -167,11 +171,57 @@ export interface ClienteRapido {
   creadoPor: { id: string; nombre: string };
 }
 
+// ---------------------------------------------------------------------------
+// INC-10 (bloque 6): DTOs de rutinas, asignaciones y portal (contrato R1..R8)
+// ---------------------------------------------------------------------------
+
+export interface RutinaResumenDTO {
+  id: string;
+  nombre: string;
+  tipoRutina: string;
+  descripcion: string | null;
+}
+
+export interface RutinasListaDTO {
+  rutinas: RutinaResumenDTO[];
+  total: number;
+}
+
+export interface RutinaAsignacionDTO {
+  id: string;
+  clienteId: string;
+  rutina: RutinaResumenDTO;
+  fechaInicio: string;
+  fechaFin: string | null;
+  estado: "ACTIVA" | "CERRADA";
+  actor: { id: string; nombre: string };
+  contenidoSnapshot?: Record<string, unknown> | null;
+}
+
+export interface HistorialRutinasDTO {
+  clienteId: string;
+  asignaciones: RutinaAsignacionDTO[];
+  total: number;
+}
+
+/** Estados del endpoint #7 (DEC-066/DEC-070: ocultación sin borrar). */
+export type EstadoRutinaActiva = "ACTIVA" | "SIN_RUTINA" | "OCULTA_POR_VIGENCIA";
+
+export interface RutinaActivaDTO {
+  clienteId: string;
+  asignacion: RutinaAsignacionDTO | null;
+  estado: EstadoRutinaActiva;
+}
+
+/** Respuesta del portal (rutina del snapshot o `{ mensaje }`). */
+export type RespuestaPortalRutina = Record<string, unknown> & {
+  mensaje?: string;
+};
+
 function createApiError(
   message: string,
   opts: { code?: string; status?: number; kind?: ApiError["kind"] } = {}
-): ApiError {
-  const err = new Error(message) as ApiError;
+): ApiError {  const err = new Error(message) as ApiError;
   err.code = opts.code;
   err.status = opts.status;
   err.kind = opts.kind ?? "unknown";
@@ -412,6 +462,54 @@ export const api = {
     // INC-09 (endpoint 1b, R2/C9): anamnesis propia agrupada S1-S4 por token
     // CLIENTE (sin id en URL). SIN_REGISTRO = 200 + { estado, mensaje }.
     anamnesis: <T = AnamnesisRespuestaPortal>() => fetchApi<T>("/portal/anamnesis"),
+    // INC-10 (endpoint 8, C8): rutina activa del cliente desde el snapshot
+    // (DEC-067/DEC-068) o `{ mensaje: SIN_RUTINA_MENSAJE }`.
+    rutina: <T = RespuestaPortalRutina>() => fetchApi<T>("/portal/rutina"),
+  },
+  // INC-10 (endpoints #1..#4, contrato R1): creación/listado/detalle/edición
+  // de rutinas. POST separado por familia (DEC-064 vs DEC-018); PATCH unificado
+  // por tipo persistido (sin `tipoRutina` en el body: es inmutable).
+  rutinas: {
+    listar: <T = RutinasListaDTO>(params?: { tipo?: string; nombre?: string }) => {
+      const query = new URLSearchParams();
+      if (params?.tipo) query.set("tipo", params.tipo);
+      if (params?.nombre) query.set("nombre", params.nombre);
+      const qs = query.toString();
+      return fetchApi<T>(`/rutinas${qs ? `?${qs}` : ""}`);
+    },
+    obtener: <T = Record<string, unknown>>(rutinaId: string) =>
+      fetchApi<T>(`/rutinas/${rutinaId}`),
+    crear: <T = Record<string, unknown>>(data: BorradorRutina) =>
+      fetchApi<T>("/rutinas", { method: "POST", body: JSON.stringify(data) }),
+    crearPersonalizada: <T = Record<string, unknown>>(data: BorradorPersonalizada) =>
+      fetchApi<T>("/rutinas-personalizadas", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    actualizar: <T = Record<string, unknown>>(
+      rutinaId: string,
+      data: Record<string, unknown>
+    ) =>
+      fetchApi<T>(`/rutinas/${rutinaId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+  },
+  // INC-10 (endpoints #5..#7, C5/C6/C9): asignación, historial y estado activo
+  // en la ficha staff. `/asignacion` (singular) fijado en DEC-070.
+  asignaciones: {
+    crear: <T = RutinaAsignacionDTO>(
+      clienteId: string,
+      data: { rutinaId: string; fechaInicio?: string }
+    ) =>
+      fetchApi<T>(`/clientes/${clienteId}/rutinas/asignacion`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    historial: <T = HistorialRutinasDTO>(clienteId: string) =>
+      fetchApi<T>(`/clientes/${clienteId}/rutinas/historial`),
+    activa: <T = RutinaActivaDTO>(clienteId: string) =>
+      fetchApi<T>(`/clientes/${clienteId}/rutinas/activa`),
   },
   // INC-09 (endpoints #1/#2/#3, contrato ratificado 2026-11-04): anamnesis
   // deportiva 1:1 con el cliente. GET filtra por rol (DUENO plana 25/25;

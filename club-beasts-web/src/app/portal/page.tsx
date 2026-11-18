@@ -390,6 +390,19 @@ export default function PortalPage() {
                 Mi Rutina
               </h3>
               <p className="text-gray-400">Tu rutina activa aparecera aqui.</p>
+              {/* INC-10 (C3/C8): el acceso a la rutina es un LINK dentro de la
+                  card "Mi Rutina" (1 único heading "Mi Rutina"; nunca un
+                  heading de acceso). Pintado solo con servicio vigente
+                  (DEC-060): el aviso `sinMembresiaActiva` reemplaza todo el
+                  contenido. */}
+              {resumen && !resumen.sinMembresiaActiva ? (
+                <Link
+                  href="/portal/rutina"
+                  className="mt-2 inline-block text-royal hover:text-royal-light transition-colors"
+                >
+                  Mi rutina activa
+                </Link>
+              ) : null}
             </Card>
 
             <Card padding="lg" className="md:col-span-2">

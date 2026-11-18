@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import {
   API_URL,
+  cardCon,
   crearClienteApi,
   diasInclusivos,
   diferenciaDias,
@@ -38,6 +39,16 @@ import {
  * PIN obligatorio intacto: ningun paso relaja `debeCambiarPin` ni la
  * autenticacion. Sin `waitForTimeout`, skips ni `only`; fixtures deterministas
  * existentes sin cambios de semantica.
+ *
+ * FIX INC10-FIX-02 (2026-11-05, regresion base): correccion SOLO de scoping.
+ * El locator global `div.space-y-3 > div` matchea ahora tambien la fila del
+ * badge de "Rutina activa" (RutinaSection, markup legitimo aprobado por el
+ * spec de INC-10; pasaba antes porque un bug UI ocultaba las secciones). Se
+ * acota el locator al contenedor de Membresias con el patron C7 ya usado en
+ * `inc05-tipos-vigencia.spec.ts` (card `div.rounded-card` con el heading
+ * "Membresías" = `cardCon` de `e2e-helpers`). Las aserciones de negocio
+ * (exactamente una fila por periodo, rango exacto y rechazo 409
+ * MEMBRESIA_SOLAPADA) quedan intactas.
  */
 
 const RE_RANGO = /(\d{2})\/(\d{2})\/(\d{4})\s+—\s+(\d{2})\/(\d{2})\/(\d{4})/;
@@ -151,6 +162,14 @@ test.describe("Membresías (E2E)", () => {
     const fin = sumarDias(inicio, 29);
     const rango = `${fechaLarga(inicio)} — ${fechaLarga(fin)}`;
 
+    // FIX INC10-FIX-02: scoping C7 al contenedor de Membresias (card
+    // `div.rounded-card` con el heading "Membresías", mismo patron de
+    // `inc05-tipos-vigencia.spec.ts` / `cardCon`). El locator global
+    // `div.space-y-3 > div` matchea ahora tambien la fila del badge de
+    // "Rutina activa" (markup legitimo de INC-10). Aserciones de negocio
+    // intactas: exactamente una fila por periodo.
+    const seccionMembresias = cardCon(page, "Membresías");
+
     // Primer periodo valido.
     await page.getByRole("button", { name: "Nueva Membresía" }).click();
     await page.getByLabel("Plan").selectOption("1m");
@@ -172,9 +191,9 @@ test.describe("Membresías (E2E)", () => {
       "el POST de creacion de membresia debe responder 201"
     ).toBe(201);
     await expect(
-      page.locator("div.space-y-3 > div").filter({ hasText: rango })
+      seccionMembresias.locator("div.space-y-3 > div").filter({ hasText: rango })
     ).toHaveCount(1, { timeout: 30_000 });
-    await expect(page.locator("div.space-y-3 > div")).toHaveCount(1);
+    await expect(seccionMembresias.locator("div.space-y-3 > div")).toHaveCount(1);
 
     // Segundo intento con el mismo rango: la UI bloquea el solapamiento.
     await page.getByRole("button", { name: "Nueva Membresía" }).click();
@@ -184,7 +203,8 @@ test.describe("Membresías (E2E)", () => {
     await expect(
       page.getByText("El período se solapa con una membresía existente.")
     ).toBeVisible();
-    await expect(page.locator("div.space-y-3 > div")).toHaveCount(1);
+    // FIX INC10-FIX-02: mismo scoping C7 al contenedor de Membresias (ver arriba).
+    await expect(seccionMembresias.locator("div.space-y-3 > div")).toHaveCount(1);
 
     // Sin el chequeo de la UI, la API devuelve el 409 de negocio.
     const token = await tokenApi(request);

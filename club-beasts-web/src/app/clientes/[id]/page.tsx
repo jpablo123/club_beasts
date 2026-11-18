@@ -11,6 +11,9 @@ import { OPCIONES_SEDE, sedePorId } from "@/lib/sedes";
 import { Card, Button, Badge, Input, Select, Navbar, PageHeader } from "@/components";
 import MembershipSection from "@/components/MembershipSection";
 import AnamnesisSection from "@/components/anamnesis/AnamnesisSection";
+import RutinaSection from "@/components/rutinas/RutinaSection";
+import HistorialRutinas from "@/components/rutinas/HistorialRutinas";
+import { duplicarEntradaDeHistorial } from "@/lib/nav-entrada";
 
 interface Cliente {
   id: string;
@@ -55,6 +58,11 @@ export default function FichaClientePage() {
 
   const userRole = (session?.user as { role?: string })?.role;
   const canEdit = userRole === "DUENO" || userRole === "RECEPCIONISTA";
+
+  // INC-10 (NAV-RU-14): URL directa + recarga + atrás conservan la ficha.
+  useEffect(() => {
+    duplicarEntradaDeHistorial();
+  }, []);
 
   useEffect(() => {
     loadCliente();
@@ -120,6 +128,7 @@ export default function FichaClientePage() {
 
   const navLinks = [
     { label: "Clientes", href: "/clientes" },
+    { label: "Rutinas", href: "/rutinas" },
     { label: "Dashboard", href: "/dashboard" },
   ];
 
@@ -365,6 +374,12 @@ export default function FichaClientePage() {
               }}
             />
           )}
+
+          {/* INC-10 (C1/C9): rutina activa e historial desde los endpoints
+              propios `/clientes/:id/rutinas/{activa,historial}`. Montaje bajo
+              demanda; solo DUENO edita/asigna (DEC-065). */}
+          {canEdit && <RutinaSection clienteId={cliente.id} />}
+          {canEdit && <HistorialRutinas clienteId={cliente.id} />}
         </div>
       </div>
     </main>

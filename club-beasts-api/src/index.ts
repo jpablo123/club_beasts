@@ -3,11 +3,14 @@ import cors from "@fastify/cors";
 import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
 import anamnesisRoutes from "./routes/anamnesis.js";
+import asignacionesRoutes from "./routes/asignaciones.js";
 import authRoutes from "./routes/auth.js";
 import clienteRoutes from "./routes/clientes.js";
 import membresiaRoutes from "./routes/membresia.js";
 import portalRoutes from "./routes/portal.js";
 import recepcionRoutes from "./routes/recepcion.js";
+import rutinasRoutes from "./routes/rutinas.js";
+import rutinasPersonalizadasRoutes from "./routes/rutinas-personalizadas.js";
 
 const server = Fastify({
   logger: true,
@@ -24,11 +27,14 @@ async function start() {
   await server.register(authPlugin);
 
   await server.register(anamnesisRoutes);
+  await server.register(asignacionesRoutes);
   await server.register(authRoutes);
   await server.register(clienteRoutes);
   await server.register(membresiaRoutes);
   await server.register(portalRoutes);
   await server.register(recepcionRoutes);
+  await server.register(rutinasRoutes);
+  await server.register(rutinasPersonalizadasRoutes);
 
   server.get("/health", async () => ({ status: "ok" }));
 

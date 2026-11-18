@@ -28,6 +28,7 @@ export default function DashboardPage() {
 
   const navLinks = [
     { label: "Clientes", href: "/clientes" },
+    { label: "Rutinas", href: "/rutinas" },
     { label: "Dashboard", href: "/dashboard" },
   ];
 
@@ -59,19 +60,21 @@ export default function DashboardPage() {
               </Card>
             </Link>
 
-            <Card className="opacity-50 h-full">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gray-700/50 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
+            <Link href="/rutinas">
+              <Card className="hover:border-royal/50 transition-colors cursor-pointer h-full">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-royal/20 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-6 h-6 text-royal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-display font-bold text-white uppercase">Rutinas</h3>
+                    <p className="text-sm text-gray-400">Gestionar rutinas del gimnasio</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-display font-bold text-white uppercase">Rutinas</h3>
-                  <p className="text-sm text-gray-400">Proximamente</p>
-                </div>
-              </div>
-            </Card>
+              </Card>
+            </Link>
 
             <Card className="opacity-50 h-full">
               <div className="flex items-center gap-4">

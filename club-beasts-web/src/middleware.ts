@@ -37,6 +37,12 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/portal", req.url));
   }
 
+  // INC-10 (C1 / DEC-065): /rutinas solo staff (DUENO/RECEPCIONISTA); el
+  // CLIENTE queda derivado al portal.
+  if (pathname.startsWith("/rutinas") && userRole === "CLIENTE") {
+    return NextResponse.redirect(new URL("/portal", req.url));
+  }
+
   // /clientes y /dashboard solo para DUENO/RECEPCIONISTA
   if (
     (pathname.startsWith("/clientes") || pathname.startsWith("/dashboard")) &&
