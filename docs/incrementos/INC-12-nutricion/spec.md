@@ -1,6 +1,6 @@
 # INC-12 - Nutricion, asignacion e historial - Spec
 
-Estado: **ESPECIFICADO** (2026-11-18; PEND-NUT-01..08 resueltos por DEC-075..082, opcion (a)). Abierto tras el cierre de INC-11 (79/100).
+Estado: **LISTO** (2026-11-18; puerta LISTO cerrada: criterios NU-01..NU-42, DEC-075..082, ratificacion R1 sin correcciones, R2 con C1..C8 incorporadas, matriz NAV-NUT incluida). Abierto tras el cierre de INC-11 (79/100).
 
 ## Objetivo
 
@@ -82,11 +82,39 @@ Analogia con INC-10: `PlanNutricional` + `PlanNutricionalAsignacion` (snapshot d
 
 Aplicabilidad: **SI** (nuevas pantallas `/nutricion`, `/nutricion/nueva`, `/nutricion/:id`, `/nutricion/:id/editar`, `/portal/plan-nutricional`, seccion historial en ficha). Se requiere matriz NAV-NUT-01..NN por rol antes de LISTO (analogia NAV-RU).
 
-## No-goals
+## Ratificacion de contratos (2026-11-18)
 
-- No calcular macros automaticamente (HU-22 c5).
-- No historial versionado del plan (block 8 HU-32).
-- No cambios a INC-10/INC-11 cerrados salvo endpoints de ficha ya existentes.
+- **Backend (R1)**: RATIFICA sin correcciones. Archivos fuente verificados (INC-10 reutilizables): `rutinas.ts`, `rutinas-personalizadas.ts`, `asignaciones.ts`, `portal.ts`, `clientes.ts`, `rutina.service.ts`, `asignacion.service.ts`, `servicio.service.ts`, `rutina.schema.ts`. Riesgos: migracion Prisma pendiente; matriz NAV-NUT pendiente; literales deben coincidir con `HU-23-schemas.ts`.
+- **Frontend (R2)**: RATIFICA CON CORRECCIONES C1..C8 (incorporadas):
+  - **C1**: rutas web `/nutricion`, `/nutricion/nueva`, `/nutricion/[id]`, `/nutricion/[id]/editar`, `/portal/plan-nutricional` + seccion historial en ficha cliente (App Router, `font-display` en headings).
+  - **C2**: reutilizar componentes INC-10 (`RutinaSection`, `RutinaVista`, `HistorialRutinas`, `AsignarRutinaForm`, `RutinaEditor`, `RutinaListado`) como patron; crear namespace `nutricion/` analogo, sin modificar INC-10.
+  - **C3**: formularios por seccion (biometricos, macros, comidas, recomendaciones) con PATCH parcial (presente=reemplaza, ausente=conserva); macros manual (no calculo) NU-05.
+  - **C4**: portal `/portal/plan-nutricional` solo lectura; marcadores `SIN_PLAN` vs `OCULTO_POR_VIGENCIA`; mensaje exacto "No tienes un plan nutricional activo".
+  - **C5**: matriz NAV-NUT por rol (DUENO/RECEPCIONISTA/CLIENTE) con inicio/volver/cancelar/logout, URL directa/reload/back, movil/desktop/teclado; estado NO VERIFICADO hasta E2E.
+  - **C6**: gate DEC-079 (solo servicio nutricion ACTIVA permite activar; si vence despues, plan intacto y portal oculta).
+  - **C7**: rutas API sin prefijo `/api`; codigos `SIN_VIGENCIA_NUTRICION`, `CLIENTE_INACTIVO`, `PLAN_YA_ACTIVO`, etc.
+  - **C8**: no recibir `fechaFin`/`estado`/`actor` en body.
+
+## Matriz de navegacion (NAV-NUT) — por rol, estado NO VERIFICADO hasta E2E
+
+| ID | Pantalla/estado | Rol | Entrada | Salida esperada | Prueba |
+|---|---|---|---|---|---|
+| NAV-NUT-01 | `/nutricion` listado | DUENO | navbar "Nutricion" | detalle `/nutricion/:id` o nueva | E2E |
+| NAV-NUT-02 | `/nutricion/nueva` | DUENO | boton "Nuevo plan" | guardar -> `/nutricion/:id` o cancelar -> `/nutricion` | E2E |
+| NAV-NUT-03 | `/nutricion/:id` detalle | DUENO | listado | editar -> `/nutricion/:id/editar`, volver -> listado | E2E |
+| NAV-NUT-04 | `/nutricion/:id/editar` | DUENO | detalle | guardar -> detalle, cancelar -> detalle | E2E |
+| NAV-NUT-05 | asignacion en ficha cliente | DUENO | ficha cliente -> asignar | historial actualizado, plan activo | E2E |
+| NAV-NUT-06 | historial en ficha cliente | DUENO/RECEPCIONISTA | ficha cliente | solo lectura (DUENO/RECEPCIONISTA) | E2E |
+| NAV-NUT-07 | `/portal/plan-nutricional` con plan activo | CLIENTE | portal "Mi plan nutricional" | vista completa solo lectura | E2E |
+| NAV-NUT-08 | `/portal/plan-nutricional` sin plan | CLIENTE | portal | mensaje "No tienes un plan nutricional activo" | E2E |
+| NAV-NUT-09 | `/portal/plan-nutricional` oculto por vigencia | CLIENTE | portal (servicio vencido) | marcador OCULTO_POR_VIGENCIA | E2E |
+| NAV-NUT-10 | gate DEC-079 (asignacion sin vigencia) | DUENO | ficha -> asignar | 409 `SIN_VIGENCIA_NUTRICION` | integracion |
+| NAV-NUT-11 | permisos escritura | RECEPCIONISTA/CLIENTE | intento de crear/editar/asignar | 403 | integracion |
+| NAV-NUT-12 | logout por rol | DUENO/RECEPCIONISTA/CLIENTE | control "Salir" | `/` | E2E |
+| NAV-NUT-13 | URL directa/reload/back | todos | URL directa, F5, atras | sin bucles, destino correcto | E2E |
+| NAV-NUT-14 | movil/desktop/teclado | todos | viewport + tab | foco visible, operable | E2E |
+
+Todas las filas en estado **NO VERIFICADO** hasta evidencia ejecutada. Sin navegador/evidencia quedan NO VERIFICADO (lectura de codigo o build no bastan).
 
 ## Puntos
 

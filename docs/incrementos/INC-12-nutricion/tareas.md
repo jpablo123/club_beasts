@@ -1,6 +1,6 @@
 # INC-12 - Tareas
 
-Estado: ESPECIFICADO (2026-11-18). Pipeline: ESPECIFICADO -> LISTO -> RED -> GREEN -> VERIFICADO -> auditoria navegacion -> REVISADO -> ACEPTADO.
+Estado: LISTO (2026-11-18; puerta LISTO cerrada: criterios NU-01..NU-42, DEC-075..082, ratificacion R1 sin correcciones, R2 con C1..C8 incorporadas, matriz NAV-NUT incluida). Pipeline: LISTO -> RED -> GREEN -> VERIFICADO -> auditoria navegacion -> REVISADO -> ACEPTADO.
 
 ## ESPECIFICADO - acceptance-criteria-analyst
 
@@ -9,9 +9,9 @@ Estado: ESPECIFICADO (2026-11-18). Pipeline: ESPECIFICADO -> LISTO -> RED -> GRE
 
 ## Ratificacion de contratos (paralelo, solo analisis)
 
-- [ ] R1 `backend-developer`: ratifica contrato API (endpoints, orden de errores, snapshot, modelos Prisma).
-- [ ] R2 `frontend-developer`: ratifica contrato web (formularios, portal, matriz NAV-NUT).
-- [ ] R3 Orquestador: incorpora correcciones y cierra puerta LISTO.
+- [x] R1 `backend-developer`: ratifica contrato API (endpoints, orden de errores, snapshot, modelos Prisma). **RATIFICA sin correcciones.**
+- [x] R2 `frontend-developer`: ratifica contrato web (formularios, portal, matriz NAV-NUT). **RATIFICA CON CORRECCIONES C1..C8 (incorporadas).**
+- [x] R3 Orquestador: incorpora correcciones y cierra puerta LISTO. **CERRADO 2026-11-18.**
 
 ## RED - test-engineer
 
