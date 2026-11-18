@@ -1,11 +1,11 @@
 # INC-12 - Tareas
 
-Estado: PROPUESTO (2026-11-18). Pipeline: ESPECIFICADO -> LISTO -> RED -> GREEN -> VERIFICADO -> auditoria navegacion -> REVISADO -> ACEPTADO.
+Estado: ESPECIFICADO (2026-11-18). Pipeline: ESPECIFICADO -> LISTO -> RED -> GREEN -> VERIFICADO -> auditoria navegacion -> REVISADO -> ACEPTADO.
 
 ## ESPECIFICADO - acceptance-criteria-analyst
 
-- [ ] A1 `acceptance-criteria-analyst` (Modo CREAR): criterios ISTQB + Gherkin + schemas para HU-22, HU-23, HU-24, HU-27 (analogia HU-18..26) en `club-beasts-api/features/acceptance-criteria/`.
-- [ ] A2 Orquestador: incorporar correcciones, registrar PEND-NUT-01..08 resueltas como DEC-075..082.
+- [x] A1 `acceptance-criteria-analyst` (Modo CREAR): criterios ISTQB + Gherkin + schemas para HU-22, HU-23, HU-24, HU-27 (analogia HU-18..26) en `club-beasts-api/features/acceptance-criteria/`.
+- [x] A2 Orquestador: incorporar correcciones, registrar PEND-NUT-01..08 resueltas como DEC-075..082. **CERRADO 2026-11-18**.
 
 ## Ratificacion de contratos (paralelo, solo analisis)
 

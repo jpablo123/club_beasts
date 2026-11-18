@@ -1,6 +1,6 @@
 # INC-12 - Nutricion, asignacion e historial - Spec
 
-Estado: **PROPUESTO** (2026-11-18). Abierto tras el cierre de INC-11 (79/100).
+Estado: **ESPECIFICADO** (2026-11-18; PEND-NUT-01..08 resueltos por DEC-075..082, opcion (a)). Abierto tras el cierre de INC-11 (79/100).
 
 ## Objetivo
 
