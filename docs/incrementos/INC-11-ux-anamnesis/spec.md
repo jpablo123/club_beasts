@@ -1,6 +1,6 @@
 # INC-11 - UX anamnesis y tipografia - Spec
 
-Estado: **LISTO** (2026-11-18; puerta L1 cerrada). Propuesto y aprobado por Producto el 2026-11-18.
+Estado: **ACEPTADO** (2026-11-18; revision `code-reviewer` **ACEPTA**, 0 bloqueantes; ver `evidencia.md` §3-§5). Pipeline: LISTO -> RED -> GREEN -> VERIFICADO -> REVISADO -> ACEPTADO. 0 puntos MVP (UX no certifica puntos; precedente INC-08).
 
 ## Objetivo
 
