@@ -120,6 +120,51 @@ Todas las filas en estado **NO VERIFICADO** hasta evidencia ejecutada. Sin naveg
 
 12 (0 hasta evidencia + revision + aceptacion).
 
+## Contrato web (UI) — rutas, componentes y props (INC-12)
+
+Analogia directa con INC-10. App Router (`src/app/...`). Tipografia: `font-display` en todos los encabezados. Sin cambios a INC-10 (namespace `nutricion/` nuevo).
+
+### Rutas (pages)
+- `src/app/nutricion/page.tsx` — listado de planes (DUENO; RECEPCIONISTA solo lectura).
+- `src/app/nutricion/nueva/page.tsx` — creacion estructurada (DUENO).
+- `src/app/nutricion/[id]/page.tsx` — detalle por plan (DUENO/RECEPCIONISTA).
+- `src/app/nutricion/[id]/editar/page.tsx` — edicion por secciones (DUENO).
+- `src/app/portal/plan-nutricional/page.tsx` — vista solo lectura del cliente (CLIENTE).
+- Seccion historial en `src/app/clientes/[id]/page.tsx` (DUENO/RECEPCIONISTA): componente `HistorialPlanesNutricionales`.
+
+### Componentes (`src/components/nutricion/`)
+- `PlanNutricionalListado` — listado con filtros; props `{ planes, onNuevo?, onVer }`.
+- `PlanNutricionalEditor` — form por secciones (biometricos, macros, comidas, recomendaciones); props `{ plan?, onGuardado, onDescartar }`.
+- `PlanNutricionalVista` — solo lectura (portal), props `{ datos }`.
+- `AsignarPlanForm` — asignacion con gate; props `{ clienteId, onAsignado }`.
+- `HistorialPlanesNutricionales` — historial en ficha; props `{ clienteId }`.
+- `PlanNutricionalSection` — seccion en ficha cliente (DUENO/RECEPCIONISTA).
+
+### Formularios y validacion
+- Labels/hints por campo (analogia DEC-072): label corto + hint con instruccion completa. Sin sensibles DEC-055 en nutricion.
+- Validacion Zod en `src/lib/plan-nutricional-schemas.ts` (paridad con `src/lib/rutina-schemas.ts` y `features/acceptance-criteria/HU-22-schemas.ts`).
+- PATCH parcial: presente=reemplaza, ausente=conserva (R3).
+- Macros manuales (no calculo) — NU-05 / DEC-076.
+
+### API client (`src/lib/api.ts`)
+- `api.planesNutricionales.*` (listar, crear, detalle, editar) y `api.asignacionesNutricion.*` (asignar, activa, historial) y `api.portal.planNutricional`.
+
+### Portal
+- Link "Mi plan nutricional" en `/portal` (analogia "Mi Rutina" card) solo si hay servicio nutricion vigente (gate DEC-079).
+- Ruta `/portal/plan-nutricional` gateada por servicio vigente; marcadores `SIN_PLAN` vs `OCULTO_POR_VIGENCIA`; mensaje exacto "No tienes un plan nutricional activo".
+
+### Permisos
+- DUENO: crear/editar/asignar/ver.
+- RECEPCIONISTA: solo lectura (listado/detalle/historial).
+- CLIENTE: solo lectura de la suya en portal.
+
+### Fixtures/seed para E2E
+- Usuarios por rol: DUENO (`dueno@test.com`), RECEPCIONISTA (`recepcion@test.com`), CLIENTE (`cliente@test.com`) con PIN `cambio-pin-obligatorio` (patron INC-10).
+- Clientes de prueba: uno con servicio nutricion ACTIVO, uno VENCIDO, uno sin servicio, uno SUSPENDIDO (para gate).
+- Planes: uno completo (biometricos+macros+comidas+recomendaciones), uno minimo. Analogia fixtures INC-10 (`inc10-rutinas-e2e-helpers.ts`).
+
+### Matriz NAV-NUT (en spec, 14 filas NAV-NUT-01..14) — destinos esperados fijados arriba. Estado NO VERIFICADO hasta E2E.
+
 ## Cierre de HU-07 b5/b6
 
 Los endpoints `/clientes/:id/rutinas/{activa,historial}` (INC-10 C9) ya existen; el cierre de HU-07 b5/b6 (rutina activa + historial en ficha) se acredita como **+1 punto en bloque 2** al final de INC-12 o en un incremento de cierre, sin duplicar con bloque 6 (INC10-R01 / INC10-R02).
