@@ -76,6 +76,10 @@ Este registro evita que los agentes resuelvan la misma duda de formas distintas.
 | DEC-068 | Resuelve `PEND-RUT-07` (Producto, 2026-11-05, opcion (a)): el cliente ve su rutina activa **completa** en solo lectura (paridad con HU-28), incluidos diagnostico y evaluaciones; nunca `actor` (DEC-041 analogo) | Aprobada (2026-11-05) | INC-10, HU-26/RU-41 |
 | DEC-069 | Precisa RU-26 (orquestador, 2026-11-05, con base en DEC-030/DEC-038/DEC-040): la asignacion de rutinas **no se entrega a clientes `SUSPENDIDO`, `RETIRADO` ni `INACTIVO`** -> 409 `CLIENTE_INACTIVO` (guarda evaluada ANTES de la regla de vigencia, orden R8). `RETIRADO` es terminal (DEC-038); SUSPENDIDO no recibe servicios nuevos (mismo espiritu que DEC-030 en ingresos). Nota: extiende el guard INACTIVO-only del precedente HU08-C04b/INC-05; **si Producto prefiere INACTIVO-only, es enmienda menor** de RU-26 con re-equipamiento de fixtures | Fijada por coherencia (2026-11-05) | INC-10, RU-26/27, orden de guardas endpoint 5 |
 | DEC-070 | Unifica literales y paths del contrato INC-10 (ratificacion R1/R2, 2026-11-05): codigo de vigencia **`SIN_VIGENCIA_PERSONALIZADA`** (mensaje exacto de `HU-20-schemas.ts`; NO `RUTINA_PERSONALIZADA_SIN_VIGENCIA`); codigos nuevos `CLIENTE_NO_ENCONTRADO`, `RUTINA_YA_ACTIVA`, **`ASIGNACION_CONFLICTO`** (concurrencia, patron `SERVICIO_CONFLICTO`/DEC-046); marcadores de lectura **`SIN_RUTINA` vs `OCULTA_POR_VIGENCIA`** (endpoint staff con estado discriminado, DEC-066 "staff con indicador") y `SIN_RUTINA_MENSAJE` = "No tienes una rutina activa" (portal); path de asignacion **`POST /clientes/:clienteId/rutinas/asignacion`**; creacion separada (`POST /rutinas` base + `POST /rutinas-personalizadas`); rutas sin prefijo `/api` | Aprobada (2026-11-05) | INC-10, contratos, tests, UI |
+| DEC-071 | Resuelve hallazgo de auditoria de UX/diseno (Producto, 2026-11-18): la clase **`font-oswald` no existe** en Tailwind v4 (el token del sistema es `--font-display`, clase `font-display`); los **5 encabezados** afectados (`AnamnesisSection`, `AnamnesisVista`, `AnamnesisEditor`, `MembershipSection` x2) se corrigen a `font-display`. Criterio observable: **0 ocurrencias de `font-oswald`** en `club-beasts-web/src` | Aprobada (2026-11-18) | INC-11, tipografia del sistema |
+| DEC-072 | Resuelve **D-PROD-01** (Producto, 2026-11-18): en el formulario de anamnesis se **conservan los labels cortos** y se agrega un **hint con la instruccion completa del Anexo DEC-052** por campo; el **Anexo DEC-052 queda ENMENDADO** para fijar los labels definitivos (cortos) y sus hints | Aprobada (2026-11-18) | INC-11, form anamnesis, HU-09 |
+| DEC-073 | Resuelve **D-PROD-03** (Producto, 2026-11-18): aviso discreto **"Informacion confidencial"** en los **5 campos sensibles de DEC-055** (4 RH, 16 Antecedentes Medicos, 17 Antecedentes Familiares, 18a/18b Enfermedad relevante), renderizado por **presencia de la clave** en el schema (no por rol/visibilidad) para preservar **NAV-AN-07** (doble capa DOM+red); visible en editor y vista; **sin cambios de API ni permisos** | Aprobada (2026-11-18) | INC-11, form anamnesis, HU-10/AN-13..20 |
+| DEC-074 | Resuelve **D-PROD-04** (Producto, 2026-11-18): **hint visible + validacion inline de consistencia** en los condicionales **#12 (si 11=SI)** y **#18b (si 18a=SI)** — el campo condicional muestra su instruccion y la contradiccion SI/NO se senala en linea antes del guardado (ademas de la limpieza existente al pasar a NO); **enmienda del criterio C3 de INC-09** (spec: la limpieza al cambiar a NO se conserva; se agrega hint + senalamiento inline) | Aprobada (2026-11-18) | INC-11, form anamnesis, HU-09/AN-07, C3 INC-09 |
 | DEC-051 | Resuelve `INC06-PEND-01..04` (Producto, 2026-10-29, confirmacion unica de las 4 recomendaciones, **opcion (a) en todas**): **PEND-01** copy del aviso = "No tienes una membresia activa" + subtexto "Contacta recepcion para activar tu membresia y volver a acceder" (sin la palabra "suspension"; colision con estado `SUSPENDIDO` evitada); **PEND-02** = login **intacto** (identidad != acceso; solo `DEC-034` bloquea login) y el bloqueo se ve en el portal; **PEND-03** = aviso a **pantalla completa** dentro de `/portal` (sin tarjetas de estado); **PEND-04** = `PROGRAMADA` **cuenta** como sin membresia activa (coherente con el 403 de ingreso aceptado; el copy puede informar "tu membresia inicia el <fecha>") | Aprobada (2026-10-29) | INC-06, `INC06-ACC-01/05/06`, contrato API/web |
 
 ### Confirmaciones de INC-03 ratificadas por el orquestador (2026-10-10)
@@ -156,6 +160,39 @@ Fuente: formulario real del gimnasio "ANALISIS PRE ENTRENAMIENTO / ANAMNESIS DEP
 | 21 | Que dias no puede entrenar? | S4 | multi-select: lunes/martes/miercoles/jueves/viernes | no | |
 | 22 | A que hora suele acostarse? | S4 | hora | no | |
 | 23 | Cuantas comidas al dia? | S4 | entero | no | **ultimo campo del formulario** |
+
+#### Enmienda DEC-072 (2026-11-18): labels definitivos y hints del formulario
+
+Los **labels** son cortos (se conservan tal cual); el **hint** lleva la instruccion completa del formulario original. Texto definitivo fijado para el editor de anamnesis (paridad testable):
+
+| # | Label UI (definitivo) | Hint |
+|---|---|---|
+| 1 | Nombre completo | Tal como aparece en tu documento de identidad. |
+| 2 | Numero de documento | Cedula o documento de identidad. |
+| 3 | Sexo | Selecciona FEMENINO o MASCULINO. |
+| 4 | RH | Grupo sanguineo con factor (ej. O+). |
+| 5 | Edad | Edad en anos (13 a 100). |
+| 6 | Fecha y lugar de nacimiento | Fecha (YYYY-MM-DD) y lugar de nacimiento. |
+| 7 | Estado civil | Opcional. |
+| 8 | Direccion de residencia | Direccion actual de residencia. |
+| 9 | Numero de contacto | Telefono de contacto. |
+| 10 | Correo electronico | Opcional; formato de correo valido. |
+| 11 | Practica algun deporte? | Selecciona SI o NO. |
+| 12 | Cual deporte? | Solo si practica deporte (SI en la pregunta anterior). |
+| 13 | Tiempo que practica | Tiempo que lleva practicandolo. |
+| 14 | En caso de emergencia llamar | Nombre y numero de la persona a contactar en emergencia. |
+| 15 | EPS | EPS actual. |
+| 16 | Antecedentes Medicos | Marca lo que aplique; "Ninguno" excluye el resto. |
+| 17 | Antecedentes familiares | Indica parentesco (padres, abuelos, hermanos) y cuales. |
+| 18a | Enfermedad relevante | Selecciona SI o NO. |
+| 18b | Cual enfermedad? | Solo si respondio SI en la pregunta anterior. |
+| 19 | Objetivos de entrenamiento | Describe los objetivos que deseas al entrenar. |
+| 20 | Nivel de actividad | Elige el nivel que mejor te describa (sin considerar el deporte). |
+| 21 | Dias que no puede entrenar | Marca los dias de la semana que no puede entrenar. |
+| 22 | Hora de acostarse | Formato HH:mm. |
+| 23 | Comidas al dia | Numero de comidas por dia (1 a 12). |
+
+Los campos **4, 16, 17, 18a y 18b** (sensibles, DEC-055) ademas muestran el aviso "Informacion confidencial" de **DEC-073**. Los condicionales **12 y 18b** muestran hint + senalamiento inline de **DEC-074**.
 
 ### Ratificacion de contratos y enmiendas (2026-10-29)
 
