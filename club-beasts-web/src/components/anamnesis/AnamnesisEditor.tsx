@@ -35,6 +35,8 @@ import { prellenarAnamnesisDesdeCliente, type ClientePrefill } from "@/lib/anamn
 import {
   CAMPOS_ANAMNESIS,
   CONDICIONALES,
+  CAMPOS_SENSIBLES,
+  HINTS_CAMPOS,
   type CampoAnamnesis,
   type ClaveAnamnesis,
   type AnamnesisDatos,
@@ -292,7 +294,7 @@ export default function AnamnesisEditor({
           const seccion = SECCIONES_ANAMNESIS[claveSeccion];
           return (
             <div key={claveSeccion}>
-              <h3 className="font-oswald text-lg font-bold text-white uppercase tracking-wide mb-3">
+              <h3 className="font-display text-lg font-bold text-white uppercase tracking-wide mb-3">
                 {seccion.titulo}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -366,6 +368,20 @@ export default function AnamnesisEditor({
                         error={errores[campo.clave]}
                       />
                     )}
+                    <p className="text-xs text-gray-400 mt-1">{HINTS_CAMPOS[campo.clave]}</p>
+                    {CAMPOS_SENSIBLES.includes(campo.clave) && (
+                      <p className="text-xs text-amber-400 mt-1">Informacion confidencial</p>
+                    )}
+                    {campo.clave === "cualDeporte" &&
+                      valores.practicaDeporte === "NO" &&
+                      (valores.cualDeporte as string) !== "" && (
+                        <p className="text-xs text-red-400 mt-1">Contradiccion: el campo 12 no aplica si no practica deporte.</p>
+                      )}
+                    {campo.clave === "cualEnfermedad" &&
+                      valores.enfermedadRelevante === "NO" &&
+                      (valores.cualEnfermedad as string) !== "" && (
+                        <p className="text-xs text-red-400 mt-1">Contradiccion: el campo 18b no aplica si no hay enfermedad.</p>
+                      )}
                   </div>
                 ))}
               </div>

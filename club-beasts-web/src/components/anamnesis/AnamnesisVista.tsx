@@ -22,6 +22,7 @@ import {
 } from "@/lib/anamnesis-schemas";
 import {
   ETIQUETAS_CAMPOS,
+  CAMPOS_SENSIBLES,
   formatearValor,
   type AnamnesisDatos,
   type ClaveAnamnesis,
@@ -57,7 +58,7 @@ export default function AnamnesisVista({ datos }: AnamnesisVistaProps) {
     <div className="space-y-6">
       {secciones.map((seccion) => (
         <div key={seccion.titulo}>
-          <h3 className="font-oswald text-lg font-bold text-white uppercase tracking-wide mb-3">
+          <h3 className="font-display text-lg font-bold text-white uppercase tracking-wide mb-3">
             {seccion.titulo}
           </h3>
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
@@ -67,6 +68,9 @@ export default function AnamnesisVista({ datos }: AnamnesisVistaProps) {
                   {ETIQUETAS_CAMPOS[fila.campo]}
                 </dt>
                 <dd className="text-white">{formatearValor(fila.valor)}</dd>
+                {CAMPOS_SENSIBLES.includes(fila.campo) && (
+                  <dd className="text-xs text-amber-400">Informacion confidencial</dd>
+                )}
               </div>
             ))}
           </dl>

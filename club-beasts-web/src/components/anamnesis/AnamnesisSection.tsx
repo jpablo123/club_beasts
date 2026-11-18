@@ -130,7 +130,7 @@ export default function AnamnesisSection({
     <section aria-label="Anamnesis deportiva" className="mt-6">
       <Card padding="lg">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <h2 className="font-oswald text-xl font-bold text-white uppercase tracking-wide">
+          <h2 className="font-display text-xl font-bold text-white uppercase tracking-wide">
             Anamnesis deportiva
           </h2>
           {/* AN-22: badge PENDIENTE/COMPLETA del DTO (rol status accesible). */}

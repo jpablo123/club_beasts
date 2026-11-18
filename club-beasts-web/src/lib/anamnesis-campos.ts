@@ -142,6 +142,44 @@ export const CAMPOS_ANAMNESIS: readonly CampoAnamnesis[] = [
   { clave: "comidasPorDia", etiqueta: "Comidas al día", tipo: "numero", min: 1, max: 12 },
 ];
 
+/** Hints exactos de la Enmienda DEC-072 por clave. */
+export const HINTS_CAMPOS: Record<ClaveAnamnesis, string> = {
+  nombreCompleto: "Tal como aparece en tu documento de identidad.",
+  numeroDocumento: "Cedula o documento de identidad.",
+  sexo: "Selecciona FEMENINO o MASCULINO.",
+  rh: "Grupo sanguineo con factor (ej. O+).",
+  edad: "Edad en anos (13 a 100).",
+  fechaNacimiento: "Fecha (YYYY-MM-DD) y lugar de nacimiento.",
+  lugarNacimiento: "Fecha (YYYY-MM-DD) y lugar de nacimiento.",
+  estadoCivil: "Opcional.",
+  direccionResidencia: "Direccion actual de residencia.",
+  numeroContacto: "Telefono de contacto.",
+  correoElectronico: "Opcional; formato de correo valido.",
+  practicaDeporte: "Selecciona SI o NO.",
+  cualDeporte: "Solo si practica deporte (SI en la pregunta anterior).",
+  tiempoQuePractica: "Tiempo que lleva practicandolo.",
+  contactoEmergencia: "Nombre y numero de la persona a contactar en emergencia.",
+  eps: "EPS actual.",
+  antecedentesMedicos: "Marca lo que aplique; \"Ninguno\" excluye el resto.",
+  antecedentesFamiliares: "Indica parentesco (padres, abuelos, hermanos) y cuales.",
+  enfermedadRelevante: "Selecciona SI o NO.",
+  cualEnfermedad: "Solo si respondio SI en la pregunta anterior.",
+  objetivosEntrenamiento: "Describe los objetivos que deseas al entrenar.",
+  nivelActividad: "Elige el nivel que mejor te describa (sin considerar el deporte).",
+  diasNoEntrenamiento: "Marca los dias de la semana que no puede entrenar.",
+  horaAcostarse: "Formato HH:mm.",
+  comidasPorDia: "Numero de comidas por dia (1 a 12).",
+};
+
+/** Campos sensibles DEC-055. */
+export const CAMPOS_SENSIBLES: readonly ClaveAnamnesis[] = [
+  "rh",
+  "antecedentesMedicos",
+  "antecedentesFamiliares",
+  "enfermedadRelevante",
+  "cualEnfermedad",
+];
+
 /** Etiqueta exacta del Anexo por clave. */
 export const ETIQUETAS_CAMPOS: Record<ClaveAnamnesis, string> = CAMPOS_ANAMNESIS.reduce(
   (acc, campo) => {

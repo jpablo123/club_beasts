@@ -418,7 +418,7 @@ export default function MembershipSection({
   if (loading) {
     return (
       <Card padding="lg" className="mt-6">
-        <h2 className="font-oswald text-xl font-bold text-white uppercase tracking-wide mb-4">
+        <h2 className="font-display text-xl font-bold text-white uppercase tracking-wide mb-4">
           Membresías
         </h2>
         <p className="text-gray-400 text-sm">Cargando membresías...</p>
@@ -434,7 +434,7 @@ export default function MembershipSection({
   return (
     <Card padding="lg" className="mt-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="font-oswald text-xl font-bold text-white uppercase tracking-wide">
+        <h2 className="font-display text-xl font-bold text-white uppercase tracking-wide">
           Membresías
         </h2>
         {formMode === "none" && !pausaForm && (
