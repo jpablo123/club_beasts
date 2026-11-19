@@ -1,6 +1,6 @@
 # INC-13 - Historial, reportes y notificaciones - Spec
 
-Estado: **LISTO** (2026-11-19; puerta LISTO cerrada: criterios HI-xx, DEC-083..088, ratificacion R1 con R1-R8, R2 con C1-C6, matriz NAV-HIS incluida). Abierto tras el cierre de INC-12 (91/100).
+Estado: **ACEPTADO** (2026-11-19; revision `code-reviewer` **ACEPTA CON HALLAZGOS NO BLOQUEANTES**, 0 bloqueantes; ver `evidencia.md` §3-§5). Abierto tras el cierre de INC-12 (91/100).
 
 ## Objetivo
 

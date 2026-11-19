@@ -398,6 +398,14 @@ export const api = {
     // `ClienteRapido` (contrato fijado por el RED de recepcion-rapida).
     update: <T = Record<string, unknown>>(id: string, data: Record<string, unknown>) =>
       fetchApi<T>(`/clientes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    historial: <T = any>(id: string, params?: { tipo?: string; limit?: number; offset?: number }) => {
+      const query = new URLSearchParams();
+      if (params?.tipo) query.set("tipo", params.tipo);
+      if (params?.limit) query.set("limit", String(params.limit));
+      if (params?.offset) query.set("offset", String(params.offset));
+      const qs = query.toString();
+      return fetchApi<T>(`/clientes/${id}/historial${qs ? `?${qs}` : ""}`);
+    },
   },
   membresias: {
     list: (clienteId: string) =>
@@ -566,4 +574,11 @@ export const api = {
         body: JSON.stringify(data),
       }),
   },
+  sedes: {
+    conteos: <T = any>(sedeId?: string) =>
+      fetchApi<T>(sedeId ? `/sedes/${sedeId}/conteos` : `/sedes/conteos`),
+  },
+  notificaciones: {
+    enviar: <T = any>() =>
+      fetchApi<T>("/notificaciones/vencimiento/enviar", { method: "POST" }),  },
 };

@@ -565,3 +565,7 @@ Incremento `INC-12-nutricion` **ACEPTADO** (2026-11-18; revision `code-reviewer`
 | **Total MVP** | **79** | **+12** | **91/100 (91%)** |
 
 **Corte al 50% SUPERADO** (91 >= 50). Riesgos residuales al cierre de INC-12: frontend parcial (solo portal; listado/editor/asignacion/historial pendientes), E2E NAV-NUT NO VERIFICADO (specs no generados), `as any` en `plan-nutricional.service.ts:42`, macros passthrough (DEC-076), web schema stub, gate DEC-079 depende de servicio nutricion ACTIVO en seed. Ruta restante: bloque 8 historial/reportes (8) + cierre HU-07 b5/b6 (+1) = 9 puntos.
+
+## 15. Ampliacion INC-13 (2026-11-19) - bloque 8 + cierre HU-07 b5/b6
+
+Incremento INC-13-historial-reportes ACEPTADO (2026-11-19; code-reviewer ACEPTA CON HALLAZGOS NO BLOQUEANTES, 0 bloqueantes). +8 pts (HU-32 4, HU-33 2, HU-34 2) + HU-07 b5/b6 +1 pt bloque 2. Total: 91 + 9 = 100/100. Evidencia: inc13 api 12/12, web 2/2, tsc 0, build PASS. Residuales: E2E NAV-HIS NO VERIFICADO, conteos no filtrados por sede/fecha, notificaciones sin filtro de dias, paginacion en memoria, as any/try-catch, web schema stub, macros passthrough, frontend parcial INC-12. Backlog de pulido (0 pts): rutinas UX (eliminar mesociclos, spacing botones), frontend nutricion completo, E2E navegacion, hallazgos REV.

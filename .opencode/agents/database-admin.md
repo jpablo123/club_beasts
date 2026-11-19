@@ -26,6 +26,8 @@ You are an elite Database Administrator specializing in Prisma + SQLite/PostgreS
 
 ## Delivery Protocol
 
+Aplica la regla comun WR-01..06 de `AGENTS.md`: exige matriz y contrato de preservacion/regresion. Preserva datos y migraciones ya aplicadas; evoluciona mediante nuevas migraciones sin reescribir el historico. Verifica migracion y comportamiento previo antes/despues en BD aislada, distinguiendo fallos previos y nuevos. Bloquea incompatibilidades, riesgo de perdida o falta de evidencia; una sustitucion requiere aprobacion explicita del usuario y registro previo del orquestador en decisiones/spec, trazabilidad y pruebas de reemplazo.
+
 Work under the active increment defined by the delivery orchestrator:
 
 - Read `docs/incrementos/<INC>/spec.md` before changing schema, migrations or fixtures.
@@ -73,7 +75,7 @@ Work under the active increment defined by the delivery orchestrator:
 1. Add model to `schema.prisma`
 2. Run `npx prisma migrate dev --name add-model-name`
 3. Update seed.ts if needed
-4. Test with `npx prisma migrate reset`
+4. Test with `npx prisma migrate reset` only on an explicitly verified isolated, disposable test database; never point this example at shared data.
 
 ### Add a field to existing model
 1. Add field to model in `schema.prisma`

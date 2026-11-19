@@ -140,6 +140,7 @@ PROPUESTO -> ESPECIFICADO -> LISTO -> RED -> IMPLEMENTADO -> VERIFICADO -> REVIS
 - `fase1.md` and `fase2.md`: historical phase notes, not final percentage authority.
 
 #### Definition of Ready
+- Before LISTO, the orchestrator records an impact matrix: prior increment/criterion, protected behavior, regression test, command and executed baseline result; justify non-applicability explicitly.
 - Acceptance criteria are observable and testable.
 - Product decisions that affect permissions, data, or UX are resolved.
 - API contracts are defined before backend/frontend parallel work.
@@ -148,6 +149,7 @@ PROPUESTO -> ESPECIFICADO -> LISTO -> RED -> IMPLEMENTADO -> VERIFICADO -> REVIS
 - When navigation is affected, an approved criterion/screen/state/entry/exit/role/test/result/evidence matrix exists, including expected destinations and justified non-applicable cases. The orchestrator records applicability.
 
 #### Definition of Accepted
+- Affected regression and shared critical flows have before/after evidence, with prior failures distinguished from new failures. Missing evidence or unresolved regressions block acceptance even when new criteria pass.
 - Every included criterion is verified or removed by explicit scope change.
 - API and web compile where applicable.
 - Critical API behavior has integration tests.
@@ -164,6 +166,7 @@ When delegating to a subagent, include:
 - Allowed files or areas.
 - Relevant business rules.
 - Expected tests and verification commands.
+- Protected prior criteria/behaviors, impact matrix and before/after regression commands and evidence.
 - Explicit non-goals and files not to touch.
 - Required final report: files changed, evidence, risks, and blockers.
 
@@ -176,6 +179,14 @@ Every specialist must validate this contract before work and return `BLOQUEADO` 
 - Only accepted criteria count toward MVP percentage.
 - Configuration tasks such as WORKFLOW-NAV do not certify MVP points.
 - Do not close mandatory criteria as "postponed" unless the scope is explicitly changed in `docs/producto/decisiones.md` and reflected in the increment spec.
+
+#### Preservation and regression (WR-01..06)
+- Increments are additive by default: do not remove, disable or degrade prior functionality, validations, permissions, data or journeys to complete another increment. Refactoring is allowed only with behavior preserved; unblocking one criterion never authorizes breaking another.
+- All specialists apply this rule and validate preservation and regression in their contracts. Return `BLOQUEADO` for incompatibilities or missing required evidence; do not silently narrow previous criteria.
+- Replacing prior behavior requires explicit user approval and prior orchestrator records in `docs/producto/decisiones.md` and the increment spec, linking old/new criteria and replacement tests. Append traceable evidence; never rewrite historical evidence.
+- Execute affected regression and shared critical flows before and after changes. Report commands, environment and results, distinguishing pre-existing from new failures without hiding either. Do not delete, skip or weaken tests/expectations to obtain green; legitimate fixture/locator changes require preserved coverage, justification and review.
+- Preserve data and applied migrations, API contracts, UX, CI verification gates and affected prior journeys. Each specialist reports evidence and blockers; only the orchestrator maintains delivery documents.
+- Stay within authorized files; preserve unrelated work and tool permissions. Configuration-only work uses textual/configuration checks, not product suites, earns 0 MVP points and does not recertify historical increments; justify navigation non-applicability when no product journeys change.
 
 ### Code Style
 - TypeScript strict mode for all code

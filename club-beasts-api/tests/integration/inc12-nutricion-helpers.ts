@@ -1,4 +1,4 @@
-/**
+﻿/**
  * INC-12 (RED) - helpers compartidos de los tests de nutricion, asignacion,
  * historial y portal (NU-01..NU-42).
  *
@@ -52,6 +52,9 @@ const MODULOS_NUTRICION = [
   "../../src/routes/nutricion",
   "../../src/routes/asignaciones-nutricion",
   "../../src/routes/portal-plan-nutricional",
+  "../../src/routes/historial",
+  "../../src/routes/conteos",
+  "../../src/routes/notificaciones",
 ];
 
 export async function buildNutricionApp() {

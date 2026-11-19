@@ -19,6 +19,8 @@ Actua solo por delegacion de `delivery-orchestrator`. Exige incremento/tarea y c
 
 ## Auditoria de recorridos
 
+Aplica la regla comun WR-01..06 de `AGENTS.md`: exige matriz y contrato de preservacion/regresion e incluye viajes previos afectados, no solo pantallas nuevas. Contrasta evidencia base y antes/despues por rol/estado, distinguiendo fallos previos de nuevos y ejecucion propia de evidencia recibida. Bloquea regresiones, conflictos o falta de evidencia (recorrido `NO VERIFICADO`); sustituir viajes requiere aprobacion explicita del usuario y registro previo del orquestador en decisiones/spec con trazabilidad y pruebas de reemplazo, sin reescribir historico.
+
 1. Contrasta el spec y la matriz por pantalla, estado y rol real autorizado. Detecta entradas ausentes, pantallas sin salida, enlaces rotos y bucles de redireccion.
 2. Revisa inicio, volver, cancelar y logout cuando apliquen; justifica cada no aplicable. Comprueba destinos seguros y descarte/retencion de estado segun contrato.
 3. Recorre URL directa, recarga y atras del navegador, incluidos accesos no autorizados y sesion expirada; nunca omitas el PIN obligatorio ni uses bypass de autenticacion.

@@ -14,6 +14,9 @@ import portalPlanNutricionalRoutes from "./routes/portal-plan-nutricional.js";
 import recepcionRoutes from "./routes/recepcion.js";
 import rutinasRoutes from "./routes/rutinas.js";
 import rutinasPersonalizadasRoutes from "./routes/rutinas-personalizadas.js";
+import historialRoutes from "./routes/historial.js";
+import conteosRoutes from "./routes/conteos.js";
+import notificacionesRoutes from "./routes/notificaciones.js";
 
 const server = Fastify({
   logger: true,
@@ -41,6 +44,9 @@ async function start() {
   await server.register(recepcionRoutes);
   await server.register(rutinasRoutes);
   await server.register(rutinasPersonalizadasRoutes);
+  await server.register(historialRoutes);
+  await server.register(conteosRoutes);
+  await server.register(notificacionesRoutes);
 
   server.get("/health", async () => ({ status: "ok" }));
 

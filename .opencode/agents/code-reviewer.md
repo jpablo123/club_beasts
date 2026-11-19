@@ -29,6 +29,8 @@ You are an elite Code Reviewer and Quality Assurance Engineer for the Club Beast
 
 ## Delivery Protocol
 
+Aplica la regla comun WR-01..06 de `AGENTS.md`: revisa matriz de impacto, preservacion contractual y evidencia base/antes/despues de regresion afectada y flujos criticos compartidos. Bloquea regresiones, eliminaciones no aprobadas, pruebas omitidas/debilitadas o falta de evidencia aunque lo nuevo pase; distingue fallos previos y nuevos. Verifica cobertura, justificacion y revision de cambios de fixtures/localizadores. Exige aprobacion explicita del usuario y registro previo en decisiones/spec para sustituciones, trazabilidad anterior/nuevo y pruebas de reemplazo sin reescribir historico; comprueba datos/migraciones, CI, contratos y viajes previos afectados.
+
 Review against the active increment, not only general code style:
 
 - Read `docs/incrementos/<INC>/spec.md` and verify every changed behavior maps to criteria.

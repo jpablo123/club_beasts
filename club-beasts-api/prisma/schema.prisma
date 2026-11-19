@@ -79,6 +79,7 @@ model Cliente {
   anamnesis       Anamnesis? // back-relation INC-09/DEC-057 (1:1 opcional)
   rutinaAsignaciones RutinaAsignacion[] // back-relation INC-10/RU-16 (obligatoria)
   planNutricionalAsignaciones PlanNutricionalAsignacion[]
+  notificacionEnvios          NotificacionEnvio[]
 }
 
 model MembresiaGym {
@@ -96,6 +97,7 @@ model MembresiaGym {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   cambios         MembresiaGymCambio[]
+  notificacionEnvios NotificacionEnvio[]
 
   @@index([clienteId, fechaInicio])
 }
@@ -352,4 +354,20 @@ model PlanNutricionalAsignacion {
 
   @@index([clienteId, fechaInicio])
   @@index([planId])
+}
+
+// INC-13 (HU34-C04): registro de envio de notificaciones para evitar duplicados.
+model NotificacionEnvio {
+  id                String       @id @default(cuid())
+  clienteId         String
+  cliente           Cliente      @relation(fields: [clienteId], references: [id])
+  servicioId        String
+  servicio          MembresiaGym @relation(fields: [servicioId], references: [id])
+  fechaVencimiento  String
+  tipoAviso         String
+  enviadoEn         DateTime
+  canal             String
+  estado            String
+
+  @@unique([clienteId, servicioId, fechaVencimiento, tipoAviso])
 }

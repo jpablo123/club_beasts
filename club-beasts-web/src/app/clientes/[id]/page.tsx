@@ -13,6 +13,7 @@ import MembershipSection from "@/components/MembershipSection";
 import AnamnesisSection from "@/components/anamnesis/AnamnesisSection";
 import RutinaSection from "@/components/rutinas/RutinaSection";
 import HistorialRutinas from "@/components/rutinas/HistorialRutinas";
+import HistorialCliente from "@/components/HistorialCliente";
 import { duplicarEntradaDeHistorial } from "@/lib/nav-entrada";
 
 interface Cliente {
@@ -380,6 +381,7 @@ export default function FichaClientePage() {
               demanda; solo DUENO edita/asigna (DEC-065). */}
           {canEdit && <RutinaSection clienteId={cliente.id} />}
           {canEdit && <HistorialRutinas clienteId={cliente.id} />}
+           {canEdit && <HistorialCliente clienteId={cliente.id} />}
         </div>
       </div>
     </main>

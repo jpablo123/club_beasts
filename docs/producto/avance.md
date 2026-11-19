@@ -1,6 +1,9 @@
 ﻿# Avance del MVP
 
-Fecha de corte: 2026-11-18 (cierre de INC-12; **91 de 100 certificados (91%)**).
+Fecha de corte: 2026-11-19 (cierre de INC-13; **100 de 100 certificados (100%)** - MVP COMPLETO).
+
+Actualizacion 2026-11-19 (XII; +9 puntos certificados: 91 -> 100 de 100 (100%)): INC-13-historial-reportes ACEPTADO (bloque 8 completo: HU-32 4/4, HU-33 2/2, HU-34 2/2) + cierre HU-07 b5/b6 (+1 pt bloque 2). Revision code-reviewer ACEPTA CON HALLAZGOS NO BLOQUEANTES, 0 bloqueantes. Verificacion: tsc 0 api/web, vitest api 12/12 + web 2/2, build PASS. Residuales: frontend parcial INC-12, E2E NAV-NUT/NAV-HIS NO VERIFICADO, conteos no filtrados por sede/fecha, notificaciones sin filtro de dias, paginacion en memoria, as any/try-catch, web schema stub, macros passthrough. Decisiones: DEC-083..088. Evidencia: docs/incrementos/INC-13-historial-reportes/evidencia.md. Total actual: 100/100 (100%).
+
 Actualizacion 2026-11-18 (XI; +12 puntos certificados: 79 -> 91 de 100 (91%)): INC-12-nutricion ACEPTADO (bloque 7 completo: HU-22 4/4, HU-23 4/4, HU-24 2/2, HU-27 2/2; reparto en seccion 14 de auditoria-puntos-inc00.md). Revision code-reviewer ACEPTA CON HALLAZGOS NO BLOQUEANTES, 0 bloqueantes. Verificacion: tsc 0 api/web, vitest api 30/30 + web 5/5, build PASS. Residuales: frontend parcial (solo portal), E2E NAV-NUT NO VERIFICADO, as any, macros passthrough, web schema stub. Decisiones: DEC-075..082. Total actual: 91/100. Evidencia: docs/incrementos/INC-12-nutricion/evidencia.md.
 
 Fecha de corte: 2026-11-18 (cierre de INC-10; **79 de 100 certificados (79%)** â€” corte del 50% ampliado).

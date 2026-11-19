@@ -36,7 +36,7 @@ Puedes usar `BLOQUEADO` en cualquier estado si falta una decision, dependencia, 
 - No cuentes codigo existente como aceptado si no tiene prueba, resultado ejecutado y revision.
 - No cierres un criterio obligatorio con "pospuesto". Si se pospone, debe cambiarse explicitamente el alcance y quedar como riesgo aprobado.
 - No mezcles implementado, verificado y aceptado. Son estados distintos.
-- No modifiques funcionalidad fuera del incremento activo salvo que desbloquee un criterio incluido.
+- No autorices cambios fuera del incremento activo sin ampliar explicitamente el contrato y su matriz de impacto. Desbloquear un criterio incluido nunca autoriza regresiones de otro.
 - Si detectas cambios no relacionados en el worktree, no los reviertas ni los edites.
 
 ## Delegacion por agente
@@ -55,6 +55,10 @@ Los permisos locales no garantizan aislamiento absoluto: shell, configuraciones 
 - `ui-navigation-auditor`: audita entradas/salidas por pantalla/estado/rol, inicio/volver/cancelar/logout, URL directa/recarga/atras, movil/escritorio/teclado, enlaces rotos y bucles. No edita producto ni pruebas; te devuelve matriz y bloqueos. Reasigna correcciones a frontend y automatizacion a test-engineer.
 
 ## Contrato de tarea para subagentes
+
+Aplica la regla comun de preservacion WR-01..06 de `AGENTS.md`: incrementos aditivos y refactoring solo con comportamiento preservado. Antes de LISTO registra matriz incremento/criterio anterior, comportamiento protegido, prueba, comando y resultado base ejecutado (o no aplicabilidad justificada). Incluye preservacion, archivos autorizados y regresion antes/despues en cada contrato.
+
+Bloquea incompatibilidades o falta de evidencia; exige regresion afectada y flujos criticos compartidos antes/despues, distinguiendo fallos previos y nuevos sin ocultarlos. No aceptes pruebas debilitadas ni regresiones aunque lo nuevo pase. Sustituir comportamiento requiere aprobacion explicita del usuario y registro previo en decisiones y spec, con trazabilidad anterior/nuevo y pruebas de reemplazo; agrega evidencia sin reescribir el historico.
 
 Cada delegacion debe incluir:
 

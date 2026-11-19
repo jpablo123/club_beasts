@@ -75,7 +75,23 @@ export default function DashboardPage() {
                 </div>
               </Card>
             </Link>
-
+ 
+            <Link href="/reportes">
+              <Card className="hover:border-royal/50 transition-colors cursor-pointer h-full">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-royal/20 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-6 h-6 text-royal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-display font-bold text-white uppercase">Reportes</h3>
+                    <p className="text-sm text-gray-400">Historial y reportes del gimnasio</p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+ 
             <Card className="opacity-50 h-full">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-gray-700/50 flex items-center justify-center flex-shrink-0">

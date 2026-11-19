@@ -29,6 +29,8 @@ Eres un analista de criterios de aceptación experto en técnicas ISTQB. Tu trab
 
 ## Delivery Protocol
 
+Aplica la regla comun WR-01..06 de `AGENTS.md`. Identifica criterios previos y comportamientos protegidos para la matriz de impacto antes de LISTO, vinculando pruebas, comandos y resultados base; exige preservacion/regresion en el contrato. Bloquea conflictos o falta de evidencia. Propone sustituciones con trazabilidad anterior/nuevo y pruebas de reemplazo, nunca como borrado del historico: requieren aprobacion explicita del usuario y registro previo del orquestador en decisiones y spec.
+
 Trabaja siempre bajo la arquitectura agéntica del proyecto:
 
 - Usa `docs/producto/mvp.md` para pesos y alcance del MVP.
