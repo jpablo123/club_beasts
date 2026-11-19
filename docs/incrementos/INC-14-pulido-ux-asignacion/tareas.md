@@ -1,6 +1,6 @@
 ﻿# INC-14 - Tareas
 
-Estado: LISTO (2026-11-19; puerta LISTO cerrada: criterios PU-xx, DEC-089..091, ratificacion R1/R2, matriz NAV-PULIDO). Pipeline: ESPECIFICADO -> LISTO -> RED -> GREEN -> VERIFICADO -> REVISADO -> ACEPTADO.
+Estado: ACEPTADO (2026-11-19). Pipeline: ACEPTADO.
 
 ## ESPECIFICADO - acceptance-criteria-analyst
 
@@ -30,3 +30,4 @@ Estado: LISTO (2026-11-19; puerta LISTO cerrada: criterios PU-xx, DEC-089..091, 
 - [ ] T7 `test-engineer`: bateria + logs.
 - [ ] T8 `code-reviewer`: revision sin bloqueantes.
 - [ ] T9 Orquestador: evidencia y cierre.
+

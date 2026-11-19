@@ -31,9 +31,13 @@ export const createServicioSchema = z
     fechaFin: fechaRequerida(
       "Fecha fin es requerida",
       "Fecha fin debe ser una fecha válida (YYYY-MM-DD)"
-    ),
+    ).optional(),
+    duracionPreset: z.enum(["1m", "3m", "6m"]).optional(),
   })
-  .refine((data) => data.fechaInicio <= data.fechaFin, {
+  .refine((data) => {
+    if (!data.fechaFin) return true;
+    return data.fechaInicio <= data.fechaFin;
+  }, {
     message: "Fecha fin no puede ser anterior a fecha de inicio",
     path: ["fechaFin"],
   });

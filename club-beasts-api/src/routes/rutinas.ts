@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+import { z } from "zod";
 import {
   actualizarRutinaBaseSchema,
   actualizarRutinaPersonalizadaSchema,
@@ -15,7 +16,9 @@ import {
   listarRutinas,
   obtenerFilaRutina,
   responderError,
+  ErrorNegocio,
 } from "../services/rutina.service.js";
+import { asignarRutina } from "../services/asignacion.service.js";
 
 /**
  * INC-10 (HU-18/19) — rutas de rutinas base (endpoints 1a/2/3/4 del contrato
@@ -164,6 +167,40 @@ export default async function rutinasRoutes(fastify: FastifyInstance) {
       } catch (error) {
         return responderError(error, reply);
       }
+    }
+  );
+
+  fastify.post(
+    "/rutinas/:rutinaId/asignar",
+    { preHandler: [fastify.authenticateRoles(["DUENO"])] },
+    async (request, reply) => {
+      const paramsResult = rutinaIdParamsSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({ error: mensajePrimerErrorZod(paramsResult), code: "VALIDATION_ERROR" });
+      }
+      const asignarSchema = z.object({ clienteIds: z.array(z.string().min(1)) }).strict();
+      const bodyResult = asignarSchema.safeParse(request.body);
+      if (!bodyResult.success) {
+        return reply.status(400).send({ error: "VALIDATION_ERROR", code: "VALIDATION_ERROR" });
+      }
+      const clienteIds = bodyResult.data.clienteIds;
+      const fila = await obtenerFilaRutina(paramsResult.data.rutinaId);
+      if (!fila) {
+        return reply.status(404).send({ error: MENSAJES_ASIGNACION.RUTINA_NO_ENCONTRADA, code: "RUTINA_NO_ENCONTRADA" });
+      }
+      const actorId = (request.user as { id: string }).id;
+      const exitos = [];
+      const fallos = [];
+      for (const cid of clienteIds) {
+        try {
+          const res = await asignarRutina(cid, paramsResult.data.rutinaId, undefined, actorId);
+          exitos.push({ clienteId: cid, asignacionId: res.id });
+        } catch (e) {
+          const codigo = e instanceof ErrorNegocio ? e.codigo : "ERROR_INTERNO";
+          fallos.push({ clienteId: cid, codigo, mensaje: String(e instanceof Error ? e.message : e) });
+        }
+      }
+      return reply.status(200).send({ exitos, fallos });
     }
   );
 }

@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
 import {
+  cancelarVigencia,
   congelarVigencia,
   crearMembresia,
   descongelarVigencia,
@@ -231,7 +232,7 @@ export default async function membresiaRoutes(fastify: FastifyInstance) {
 
       const { clienteId } = paramsResult.data;
       const { fechaInicio, fechaFin } = bodyResult.data;
-      const actorId = (request.user as any).id;
+      const actorId = (request.user as { id: string }).id;
 
       try {
         const cliente = await fastify.prisma.cliente.findUnique({
@@ -285,7 +286,7 @@ export default async function membresiaRoutes(fastify: FastifyInstance) {
         });
       }
 
-      const actorId = (request.user as any).id;
+      const actorId = (request.user as { id: string }).id;
 
       try {
         const membresia = await editarMembresia(
@@ -351,7 +352,7 @@ export default async function membresiaRoutes(fastify: FastifyInstance) {
       if (postZod) return reply.status(postZod.status).send(postZod.body);
 
       const { clienteId, vigenciaId } = paramsResult.data;
-      const actorId = (request.user as any).id;
+      const actorId = (request.user as { id: string }).id;
 
       try {
         const vigencia = await congelarVigencia(
@@ -392,7 +393,7 @@ export default async function membresiaRoutes(fastify: FastifyInstance) {
       }
 
       const { clienteId, vigenciaId } = paramsResult.data;
-      const actorId = (request.user as any).id;
+      const actorId = (request.user as { id: string }).id;
 
       try {
         const vigencia = await descongelarVigencia(
@@ -407,6 +408,27 @@ export default async function membresiaRoutes(fastify: FastifyInstance) {
         if (respuesta) {
           return reply.status(respuesta.status).send(respuesta.body);
         }
+        throw error;
+      }
+    }
+  );
+
+  fastify.post(
+    "/clientes/:clienteId/vigencias/:vigenciaId/cancelar",
+    { preHandler: [fastify.authenticateRoles(["DUENO"])] },
+    async (request, reply) => {
+      const paramsResult = vigenciaParamsSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({ error: paramsResult.error.errors[0].message, code: "VALIDATION_ERROR" });
+      }
+      const { clienteId, vigenciaId } = paramsResult.data;
+      const actorId = (request.user as { id: string }).id;
+      try {
+        const vigencia = await cancelarVigencia(clienteId, vigenciaId, actorId);
+        return reply.status(200).send(vigencia);
+      } catch (error: any) {
+        const respuesta = responderError(error, request);
+        if (respuesta) return reply.status(respuesta.status).send(respuesta.body);
         throw error;
       }
     }
@@ -436,7 +458,7 @@ export default async function membresiaRoutes(fastify: FastifyInstance) {
       if (postZod) return reply.status(postZod.status).send(postZod.body);
 
       const { clienteId, vigenciaId } = paramsResult.data;
-      const actorId = (request.user as any).id;
+      const actorId = (request.user as { id: string }).id;
 
       try {
         const vigencia = await editarCongelacion(
@@ -522,8 +544,18 @@ export default async function membresiaRoutes(fastify: FastifyInstance) {
         }
 
         const { clienteId } = paramsResult.data;
-        const { fechaInicio, fechaFin } = bodyResult.data;
-        const actorId = (request.user as any).id;
+        let { fechaInicio, fechaFin } = bodyResult.data;
+        const duracionPreset = bodyResult.data.duracionPreset;
+        if (!fechaFin && duracionPreset) {
+          const meses = duracionPreset === "1m" ? 1 : duracionPreset === "3m" ? 3 : 6;
+          const [y, m, d] = fechaInicio.split("-").map(Number);
+          const dt = new Date(Date.UTC(y, m - 1 + meses, d));
+          fechaFin = dt.toISOString().slice(0, 10);
+        }
+        if (!fechaFin) {
+          return reply.status(400).send({ error: "Fecha fin es requerida", code: "VALIDATION_ERROR" });
+        }
+        const actorId = (request.user as { id: string }).id;
 
         try {
           const cliente = await servidor.prisma.cliente.findUnique({
@@ -583,7 +615,7 @@ export default async function membresiaRoutes(fastify: FastifyInstance) {
           });
         }
 
-        const actorId = (request.user as any).id;
+        const actorId = (request.user as { id: string }).id;
 
         try {
           const cliente = await servidor.prisma.cliente.findUnique({

@@ -1,6 +1,6 @@
 # INC-14 - Pulido UX y asignacion - Spec
 
-Estado: **LISTO** (2026-11-19; puerta LISTO cerrada: criterios PU-xx, DEC-089..091, ratificacion R1/R2, matriz NAV-PULIDO). Abierto tras el cierre del MVP (100/100) y el pulido inicial.
+Estado: **ACEPTADO** (2026-11-19; revision `code-reviewer` **ACEPTA CON HALLAZGOS NO BLOQUEANTES**, 0 bloqueantes; ver `evidencia.md` §3-§5). Abierto tras el cierre del MVP (100/100) y el pulido inicial.
 
 ## Objetivo
 

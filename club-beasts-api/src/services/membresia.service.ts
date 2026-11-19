@@ -529,6 +529,44 @@ async function registrarCambio(
   }
 }
 
+export async function cancelarVigencia(
+  clienteId: string,
+  vigenciaId: string,
+  actorId: string
+): Promise<MembresiaDTO> {
+  const hoy = getTodayBogota();
+  return prisma.$transaction(async (tx) => {
+    const existente = await tx.membresiaGym.findUnique({
+      where: { id: vigenciaId },
+      include: includeCompleto,
+    });
+    if (!existente || existente.clienteId !== clienteId) {
+      throw new Error("NOT_FOUND");
+    }
+    const nuevaVersion = existente.version + 1;
+    const escritura = await tx.membresiaGym.updateMany({
+      where: { id: vigenciaId, clienteId, version: existente.version },
+      data: { actualizadoPorId: actorId, version: nuevaVersion, updatedAt: new Date() },
+    });
+    if (escritura.count !== 1) throw new Error("MEMBRESIA_CONFLICTO");
+    await registrarCambio(tx, {
+      membresiaId: vigenciaId,
+      actorId,
+      accion: "CANCELACION",
+      version: nuevaVersion,
+      fechaInicioAnterior: existente.fechaInicio,
+      fechaFinAnterior: existente.fechaFin,
+      fechaInicioNueva: existente.fechaInicio,
+      fechaFinNueva: existente.fechaFin,
+    });
+    const completa = await tx.membresiaGym.findUnique({
+      where: { id: vigenciaId },
+      include: includeCompleto,
+    });
+    return toDTO(completa!, hoy);
+  });
+}
+
 export async function listarMembresias(clienteId: string) {
   const hoy = getTodayBogota();
 
