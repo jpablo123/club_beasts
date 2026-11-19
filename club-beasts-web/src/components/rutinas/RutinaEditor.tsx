@@ -1,21 +1,21 @@
-/**
- * INC-10 (GREEN T8) — RutinaEditor: editor del árbol de rutinas (Corte A, C4).
+﻿/**
+ * INC-10 (GREEN T8) â€” RutinaEditor: editor del Ã¡rbol de rutinas (Corte A, C4).
  *
  * Contrato fijado por el RED (tests/unit/inc10-rutinas-editor.test.tsx):
  *  - Export default `RutinaEditor({ tipoRutina, inicial, onAplicar, onDescartar })`.
- *  - Borrador ÚNICO por ruta de índice: cada acción muta solo su subárbol.
+ *  - Borrador ÃšNICO por ruta de Ã­ndice: cada acciÃ³n muta solo su subÃ¡rbol.
  *  - Cada ejercicio se renderiza `role="group"` con `aria-label` = nombre.
  *  - Etiquetas exactas C3: "Nombre de la rutina", "Repeticiones", "Intensidad",
  *    "Descanso (segundos)", "Notas de la serie" (NUNCA "Observaciones"),
- *    "Objetivo general", "Fecha de evaluación", "Inicio del ciclo",
+ *    "Objetivo general", "Fecha de evaluaciÃ³n", "Inicio del ciclo",
  *    "Fin del ciclo" (NUNCA "Fecha de inicio"/"Fecha de fin").
- *  - Límites C4: al máximo, el botón "Agregar X" queda `disabled`.
+ *  - LÃ­mites C4: al mÃ¡ximo, el botÃ³n "Agregar X" queda `disabled`.
  *  - "Aplicar cambios" valida con el espejo `src/lib/rutina-schemas.ts`; en
- *    error renderiza `role="alert"` con los mensajes canónicos y enfoca el
- *    primer campo inválido; válido llama `onAplicar(payload)`.
+ *    error renderiza `role="alert"` con los mensajes canÃ³nicos y enfoca el
+ *    primer campo invÃ¡lido; vÃ¡lido llama `onAplicar(payload)`.
  *  - "Descartar cambios" llama `onDescartar` (si hay cambios sin guardar abre
  *    el alertdialog C5 "Cambios sin guardar" + "Si, descartar"/"Seguir
- *    editando" + banner + `beforeunload`, patrón INC-09).
+ *    editando" + banner + `beforeunload`, patrÃ³n INC-09).
  */
 "use client";
 
@@ -59,11 +59,11 @@ export interface RutinaEditorProps {
   inicial: BorradorRutina | null;
   onAplicar: (payload: BorradorRutina) => void;
   onDescartar: () => void;
-  /** "Volver al listado" (C3); solo se pinta si la página lo provee. */
+  /** "Volver al listado" (C3); solo se pinta si la pÃ¡gina lo provee. */
   onVolver?: () => void;
 }
 
-// ─── Inicialización del borrador (scaffold = 1 cadena válida, no sucia) ─────
+// â”€â”€â”€ InicializaciÃ³n del borrador (scaffold = 1 cadena vÃ¡lida, no sucia) â”€â”€â”€â”€â”€
 
 function normalizarSesion(sesion: Partial<Sesion>): Sesion {
   return {
@@ -166,8 +166,8 @@ function inicializarBorrador(
   };
 }
 
-// ─── Helpers por ruta de índice (borrador único, C4) ────────────────────────
-// Ruta de sesión: [i] en base; [macro, meso, micro, i] en personalizada.
+// â”€â”€â”€ Helpers por ruta de Ã­ndice (borrador Ãºnico, C4) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ruta de sesiÃ³n: [i] en base; [macro, meso, micro, i] en personalizada.
 
 function mapSesion(
   draft: BorradorRutina,
@@ -241,9 +241,9 @@ function mapSerie(
 
 // INC10-FIX-04 (REV-01): se eliminan `totalSesiones`/`totalEjercicios`/
 // `totalSeries` y `contarMesociclos`/`contarMicrociclos`: sus sumas GLOBALES
-// del árbol deshabilitaban botones válidos por C4 (cap por nodo, no global).
+// del Ã¡rbol deshabilitaban botones vÃ¡lidos por C4 (cap por nodo, no global).
 
-// ─── Componente ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Componente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function RutinaEditor({
   tipoRutina,
@@ -265,7 +265,7 @@ export default function RutinaEditor({
 
   const sucio = JSON.stringify(draft) !== base.current;
 
-  // C5 (patrón INC-09): aviso nativo al recargar/cerrar con cambios sin guardar.
+  // C5 (patrÃ³n INC-09): aviso nativo al recargar/cerrar con cambios sin guardar.
   useEffect(() => {
     if (!sucio) return;
     const avisar = (evento: BeforeUnloadEvent) => {
@@ -294,7 +294,7 @@ export default function RutinaEditor({
     };
   }, [confirmarSalida]);
 
-  // ── Mutaciones por ruta de índice ──
+  // â”€â”€ Mutaciones por ruta de Ã­ndice â”€â”€
   const cambiarSesion = (ruta: number[], campo: keyof Sesion, valor: string) =>
     setDraft((d) => mapSesion(d, ruta, (s) => ({ ...s, [campo]: valor || null })));
 
@@ -417,7 +417,7 @@ export default function RutinaEditor({
       };
     });
 
-  // ── Ciclos (solo personalizada) ──
+  // â”€â”€ Ciclos (solo personalizada) â”€â”€
   const cambiarCiclo = (
     nivel: "macro" | "meso" | "micro",
     ruta: number[],
@@ -513,6 +513,21 @@ export default function RutinaEditor({
       };
     });
 
+  const eliminarMesociclo = (mi: number, mei: number) =>
+    setDraft((d) => {
+      const p = d as BorradorPersonalizada;
+      return {
+        ...p,
+        macrociclos: p.macrociclos.map((macro, i) => {
+          if (i !== mi) return macro;
+          if (macro.mesociclos.length <= 1) return macro; // min 1 (validacion)
+          return {
+            ...macro,
+            mesociclos: macro.mesociclos.filter((_, j) => j !== mei),
+          };
+        }),
+      };
+    });
   const agregarMicrociclo = (mi: number, mei: number) =>
     setDraft((d) => {
       const p = d as BorradorPersonalizada;
@@ -545,7 +560,7 @@ export default function RutinaEditor({
       };
     });
 
-  // ── Evaluaciones (solo personalizada) ──
+  // â”€â”€ Evaluaciones (solo personalizada) â”€â”€
   const cambiarEvaluacion = (
     seccion: "tests" | "antropometria" | "analisisBiomecanico",
     indice: number,
@@ -601,7 +616,7 @@ export default function RutinaEditor({
       return { ...p, [seccion]: [...lista, nuevo] } as BorradorPersonalizada;
     });
 
-  // ── Acciones ──
+  // â”€â”€ Acciones â”€â”€
   const manejarAplicar = () => {
     const encontrados = validarBorrador(draft);
     if (encontrados.length > 0) {
@@ -636,10 +651,10 @@ export default function RutinaEditor({
     else onDescartar();
   };
 
-  // ── INC10-FIX-04 (REV-01): los límites C4 se evalúan POR NODO en cada
-  // botón/prop (padre = macro/meso/micro/sesión/ejercicio). Se eliminan los
-  // contadores globales del árbol (20/20/30 en total), que eran más estrictos
-  // que el espejo `rutina-schemas` (validación por nodo, RU-19 intacta). ──
+  // â”€â”€ INC10-FIX-04 (REV-01): los lÃ­mites C4 se evalÃºan POR NODO en cada
+  // botÃ³n/prop (padre = macro/meso/micro/sesiÃ³n/ejercicio). Se eliminan los
+  // contadores globales del Ã¡rbol (20/20/30 en total), que eran mÃ¡s estrictos
+  // que el espejo `rutina-schemas` (validaciÃ³n por nodo, RU-19 intacta). â”€â”€
 
   const renderSesion = (sesion: Sesion, ruta: number[], rutaIds: string) => (
     <SesionEditor
@@ -655,12 +670,12 @@ export default function RutinaEditor({
       onAgregarEjercicio={() => agregarEjercicio(ruta)}
       onAgregarSerie={(ei) => agregarSerie(ruta, ei)}
       onQuitarSerie={(ei, si) => quitarSerie(ruta, ei, si)}
-      // INC10-FIX-04 (REV-01): cap POR NODO por C4 = máximo 30 ejercicios por
-      // SESIÓN (espejo rutina-schemas validarSesion), sin suma global.
+      // INC10-FIX-04 (REV-01): cap POR NODO por C4 = mÃ¡ximo 30 ejercicios por
+      // SESIÃ“N (espejo rutina-schemas validarSesion), sin suma global.
       puedeAgregarEjercicio={sesion.ejercicios.length < LIMITES_RUTINA.ejercicios}
       puedeAgregarSerie={(ei) => {
         const ejercicio = sesion.ejercicios[ei];
-        // INC10-FIX-04 (REV-01): cap POR NODO por C4 = máximo 30 series por
+        // INC10-FIX-04 (REV-01): cap POR NODO por C4 = mÃ¡ximo 30 series por
         // EJERCICIO (espejo rutina-schemas validarEjercicio), sin suma global.
         return (
           !!ejercicio && ejercicio.series.length < LIMITES_RUTINA.series
@@ -725,7 +740,7 @@ export default function RutinaEditor({
 
   return (
     <div>
-      {/* C5: banner de cambios sin guardar (patrón INC-09). */}
+      {/* C5: banner de cambios sin guardar (patrÃ³n INC-09). */}
       {sucio && (
         <div
           role="status"
@@ -735,7 +750,7 @@ export default function RutinaEditor({
         </div>
       )}
 
-      {/* C4: errores de validación (role=alert) + foco al primer error. */}
+      {/* C4: errores de validaciÃ³n (role=alert) + foco al primer error. */}
       {errores.length > 0 && (
         <div
           role="alert"
@@ -749,7 +764,7 @@ export default function RutinaEditor({
         </div>
       )}
 
-      {/* Información general */}
+      {/* InformaciÃ³n general */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label htmlFor="campo-nombre" className="block text-sm text-gray-400 mb-1">
@@ -765,7 +780,7 @@ export default function RutinaEditor({
         </div>
         <div>
           <label htmlFor="campo-descripcion" className="block text-sm text-gray-400 mb-1">
-            Descripción
+            DescripciÃ³n
           </label>
           <input
             id="campo-descripcion"
@@ -891,7 +906,7 @@ export default function RutinaEditor({
                 htmlFor="campo-fecha-evaluacion"
                 className="block text-sm text-gray-400 mb-1"
               >
-                Fecha de evaluación
+                Fecha de evaluaciÃ³n
               </label>
               <input
                 id="campo-fecha-evaluacion"
@@ -942,7 +957,7 @@ export default function RutinaEditor({
                   htmlFor="campo-restricciones"
                   className="block text-sm text-gray-400 mb-1"
                 >
-                  Restricciones médicas
+                  Restricciones mÃ©dicas
                 </label>
                 <input
                   id="campo-restricciones"
@@ -1017,7 +1032,7 @@ export default function RutinaEditor({
         </div>
       ) : null}
 
-      {/* P3: árbol macro-meso-micro (solo personalizada) */}
+      {/* P3: Ã¡rbol macro-meso-micro (solo personalizada) */}
       {draft.tipoRutina === "PERSONALIZADA" ? (
         <div className="mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1041,26 +1056,29 @@ export default function RutinaEditor({
                   type="button"
                   onClick={() => agregarMesociclo(mi)}
                   disabled={
-                    // INC10-FIX-04 (REV-01): cap POR NODO (= límite del padre
+                    // INC10-FIX-04 (REV-01): cap POR NODO (= lÃ­mite del padre
                     // macro, espejo rutina-schemas), nunca conteo global.
                     macro.mesociclos.length >= LIMITES_RUTINA.mesociclos
                   }
-                  className="mt-3 px-4 py-2 text-sm text-royal border border-royal/40 rounded-card hover:bg-royal/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="mt-4 mb-2 px-4 py-2 text-sm text-royal border border-royal/40 rounded-card hover:bg-royal/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Agregar mesociclo
                 </button>
                 {macro.mesociclos.map((meso, mei) => (
                   <CicloAccordion key={mei} nombre={meso.nombre}>
+                    <div className="flex justify-end mb-2">
+                      <button type="button" onClick={() => eliminarMesociclo(mi, mei)} disabled={macro.mesociclos.length <= 1} className="px-3 py-1 text-xs text-red-400 border border-red-400/40 rounded-card hover:bg-red-400/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Eliminar mesociclo</button>
+                    </div>
                     {renderCamposCiclo(meso, "meso", [mi, mei], `meso-${mi}-${mei}`)}
                     <button
                       type="button"
                       onClick={() => agregarMicrociclo(mi, mei)}
                       disabled={
-                        // INC10-FIX-04 (REV-01): cap POR NODO (= límite del
+                        // INC10-FIX-04 (REV-01): cap POR NODO (= lÃ­mite del
                         // padre meso, espejo rutina-schemas), nunca global.
                         meso.microciclos.length >= LIMITES_RUTINA.microciclos
                       }
-                      className="mt-3 px-4 py-2 text-sm text-royal border border-royal/40 rounded-card hover:bg-royal/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="mt-4 mb-2 px-4 py-2 text-sm text-royal border border-royal/40 rounded-card hover:bg-royal/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       Agregar microciclo
                     </button>
@@ -1076,14 +1094,14 @@ export default function RutinaEditor({
                           type="button"
                           onClick={() => agregarSesion([mi, mei, mii])}
                           disabled={
-                            // INC10-FIX-04 (REV-01): cap POR NODO (= límite
+                            // INC10-FIX-04 (REV-01): cap POR NODO (= lÃ­mite
                             // del padre micro, espejo rutina-schemas), nunca
-                            // el total global del árbol.
+                            // el total global del Ã¡rbol.
                             micro.sesiones.length >= LIMITES_RUTINA.sesiones
                           }
-                          className="mt-3 px-4 py-2 text-sm text-royal border border-royal/40 rounded-card hover:bg-royal/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="mt-4 mb-2 px-4 py-2 text-sm text-royal border border-royal/40 rounded-card hover:bg-royal/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                          Agregar sesión
+                          Agregar sesiÃ³n
                         </button>
                         <div className="mt-3 space-y-4">
                           {micro.sesiones.map((sesion, si) =>
@@ -1104,7 +1122,7 @@ export default function RutinaEditor({
         </div>
       ) : null}
 
-      {/* B2: sesiones raíz (base, DEC-064) */}
+      {/* B2: sesiones raÃ­z (base, DEC-064) */}
       {draft.tipoRutina !== "PERSONALIZADA" ? (
         <div className="mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1117,7 +1135,7 @@ export default function RutinaEditor({
               disabled={draft.sesiones.length >= LIMITES_RUTINA.sesiones}
               className="px-4 py-2 text-sm text-royal border border-royal/40 rounded-card hover:bg-royal/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Agregar sesión
+              Agregar sesiÃ³n
             </button>
           </div>
           <div className="mt-3 space-y-4">
@@ -1192,7 +1210,7 @@ export default function RutinaEditor({
         ) : null}
       </div>
 
-      {/* C5 (patrón INC-09): confirmación de salida con cambios sin guardar. */}
+      {/* C5 (patrÃ³n INC-09): confirmaciÃ³n de salida con cambios sin guardar. */}
       {confirmarSalida ? (
         <div
           ref={dialogoRef}
@@ -1227,5 +1245,7 @@ export default function RutinaEditor({
   );
 }
 
-// INC10-FIX-04 (REV-01): aquí termina el componente; los contadores globales
+// INC10-FIX-04 (REV-01): aquÃ­ termina el componente; los contadores globales
 // `contarMesociclos`/`contarMicrociclos` se eliminaron (cap por nodo, ver arriba).
+
+
