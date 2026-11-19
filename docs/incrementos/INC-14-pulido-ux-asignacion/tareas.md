@@ -1,6 +1,6 @@
-# INC-14 - Tareas
+﻿# INC-14 - Tareas
 
-Estado: PROPUESTO (2026-11-19). Pipeline: ESPECIFICADO -> LISTO -> RED -> GREEN -> VERIFICADO -> REVISADO -> ACEPTADO.
+Estado: LISTO (2026-11-19; puerta LISTO cerrada: criterios PU-xx, DEC-089..091, ratificacion R1/R2, matriz NAV-PULIDO). Pipeline: ESPECIFICADO -> LISTO -> RED -> GREEN -> VERIFICADO -> REVISADO -> ACEPTADO.
 
 ## ESPECIFICADO - acceptance-criteria-analyst
 
