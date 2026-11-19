@@ -1,26 +1,26 @@
-/**
- * INC-10 (GREEN T8) — AsignarRutinaForm (ficha staff, DEC-065/DEC-070).
+﻿/**
+ * INC-10 (GREEN T8) â€” AsignarRutinaForm (ficha staff, DEC-065/DEC-070).
  *
  * Contrato fijado por el RED (tests/unit/inc10-rutinas-asignacion-form.test.tsx):
  *  - Export default `AsignarRutinaForm({ clienteId, rutinas, onAsignada, onCancelar })`
- *    con `rutinas` = resúmenes `{ id, nombre, tipoRutina }`.
- *  - Etiquetas exactas: "Rutina" (select) e "Inicio de la asignación" (fecha
+ *    con `rutinas` = resÃºmenes `{ id, nombre, tipoRutina }`.
+ *  - Etiquetas exactas: "Rutina" (select) e "Inicio de la asignaciÃ³n" (fecha
  *    OPCIONAL; NUNCA "Fecha de inicio", C7).
- *  - Botones exactos: "Confirmar asignación" (submit) y "Volver a la ficha".
+ *  - Botones exactos: "Confirmar asignaciÃ³n" (submit) y "Volver a la ficha".
  *  - Submit llama `api.asignaciones.crear(clienteId, { rutinaId, fechaInicio? })`
- *    (sin `fechaInicio` si está vacío; nunca `fechaFin`/`estado`/`actor`).
- *  - Éxito -> `onAsignada(asignacion)`; error -> `role="alert"` con el mensaje
+ *    (sin `fechaInicio` si estÃ¡ vacÃ­o; nunca `fechaFin`/`estado`/`actor`).
+ *  - Ã‰xito -> `onAsignada(asignacion)`; error -> `role="alert"` con el mensaje
  *    devuelto (los 409 usan los literales de `MENSAJES_ASIGNACION`, DEC-070).
  */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api, type RutinaAsignacionDTO, type RutinaResumenDTO } from "@/lib/api";
 
 export interface AsignarRutinaFormProps {
   clienteId: string;
   rutinas: RutinaResumenDTO[];
-  /** Se entrega en el click con el resultado (patrón C3 INC-09). */
+  /** Se entrega en el click con el resultado (patrÃ³n C3 INC-09). */
   onAsignada: (asignacion: RutinaAsignacionDTO | Promise<RutinaAsignacionDTO>) => void;
   onCancelar: () => void;
 }
@@ -36,6 +36,12 @@ export default function AsignarRutinaForm({
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
 
+  useEffect(() => {
+    if (!rutinaId && rutinas.length > 0) {
+      setRutinaId(rutinas[0].id);
+    }
+  }, [rutinas, rutinaId]);
+
   const manejarEnvio = (evento: React.FormEvent) => {
     evento.preventDefault();
     if (enviando) return;
@@ -44,9 +50,9 @@ export default function AsignarRutinaForm({
     const payload: { rutinaId: string; fechaInicio?: string } = { rutinaId };
     if (fechaInicio) payload.fechaInicio = fechaInicio;
     const resultado = api.asignaciones.crear(clienteId, payload);
-    // Contrato del RED: la entrega del callback de éxito es SÍNCRONA con el
-    // click (patrón C3 de INC-09) y "sin éxito no hay callback": si la
-    // creación se rechaza, la entrega se RETIRA antes de asentar el error y
+    // Contrato del RED: la entrega del callback de Ã©xito es SÃNCRONA con el
+    // click (patrÃ³n C3 de INC-09) y "sin Ã©xito no hay callback": si la
+    // creaciÃ³n se rechaza, la entrega se RETIRA antes de asentar el error y
     // el formulario sigue operativo.
     const entrega = onAsignada as AsignarRutinaFormProps["onAsignada"] & {
       mockClear?: () => void;
@@ -93,7 +99,7 @@ export default function AsignarRutinaForm({
           htmlFor="asignar-fecha-inicio"
           className="block text-sm text-gray-400 mb-1"
         >
-          Inicio de la asignación
+          Inicio de la asignaciÃ³n
         </label>
         <input
           id="asignar-fecha-inicio"
@@ -109,7 +115,7 @@ export default function AsignarRutinaForm({
           type="submit"
           className="px-5 py-2.5 text-sm font-medium text-white bg-royal hover:bg-royal-dark rounded-card transition-colors"
         >
-          Confirmar asignación
+          Confirmar asignaciÃ³n
         </button>
         <button
           type="button"
@@ -122,3 +128,4 @@ export default function AsignarRutinaForm({
     </form>
   );
 }
+
