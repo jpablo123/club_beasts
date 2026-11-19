@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -63,7 +63,7 @@ export default function FichaClientePage() {
   const userRole = (session?.user as { role?: string })?.role;
   const canEdit = userRole === "DUENO" || userRole === "RECEPCIONISTA";
 
-  // INC-10 (NAV-RU-14): URL directa + recarga + atrás conservan la ficha.
+  // INC-10 (NAV-RU-14): URL directa + recarga + atrÃ¡s conservan la ficha.
   useEffect(() => {
     duplicarEntradaDeHistorial();
   }, []);
@@ -81,9 +81,9 @@ export default function FichaClientePage() {
       const apiErr = err as ApiError;
       if (apiErr.kind === "session_expired") {
         // INC00-AUTH-02/03: se muestra el mensaje aprobado y se sale hacia el
-        // login correcto conservando esta pantalla. Si la recuperación
-        // centralizada ya está en curso, `resolveSessionExit` devuelve null y
-        // esta página no compite (evita perder el callbackUrl).
+        // login correcto conservando esta pantalla. Si la recuperaciÃ³n
+        // centralizada ya estÃ¡ en curso, `resolveSessionExit` devuelve null y
+        // esta pÃ¡gina no compite (evita perder el callbackUrl).
         setError(apiErr.message || SESSION_EXPIRED_MESSAGE);
         const exit = resolveSessionExit("/login");
         if (exit) router.push(exit);
@@ -118,7 +118,7 @@ export default function FichaClientePage() {
       const apiErr = err as ApiError;
       if (apiErr.kind === "session_expired") {
         // Misma salida que en la carga: sin `router.push("/login")` suelto que
-        // compita con la recuperación y pierda el callbackUrl (hallazgo B2).
+        // compita con la recuperaciÃ³n y pierda el callbackUrl (hallazgo B2).
         setError(apiErr.message || SESSION_EXPIRED_MESSAGE);
         const exit = resolveSessionExit("/login");
         if (exit) router.push(exit);
@@ -131,7 +131,7 @@ export default function FichaClientePage() {
   };
 
   const handleResetPin = async () => {
-    if (!window.confirm("¿Resetear el PIN del cliente?")) return;
+    if (!window.confirm("Â¿Resetear el PIN del cliente?")) return;
     setLoading(true);
     setError("");
     setResetMsg("");
@@ -380,7 +380,7 @@ export default function FichaClientePage() {
             </div>
           </Card>
 
-          {/* Sección de membresías - solo para DUENO/RECEPCIONISTA.
+          {/* SecciÃ³n de membresÃ­as - solo para DUENO/RECEPCIONISTA.
               `canManage` gobierna las acciones de pausa (DEC-017 / HU15-C05). */}
           {canEdit && <MembershipSection clienteId={cliente.id} canManage={canEdit} />}
 
@@ -402,14 +402,16 @@ export default function FichaClientePage() {
 
           {/* INC-10 (C1/C9): rutina activa e historial desde los endpoints
               propios `/clientes/:id/rutinas/{activa,historial}`. Montaje bajo
-              demanda; solo DUENO edita/asigna (DEC-065). */}
-          {canEdit && <RutinaSection clienteId={cliente.id} />}
-          {canEdit && <HistorialRutinas clienteId={cliente.id} />}
-          {canEdit && <PlanNutricionalSection clienteId={cliente.id} />}
-          {canEdit && <HistorialPlanesNutricionales clienteId={cliente.id} />}
-           {canEdit && <HistorialCliente clienteId={cliente.id} />}
+              demanda; solo DUENO edita/asigna (DEC-065). */}          <div className="space-y-6 mt-6">
+            {canEdit && <RutinaSection clienteId={cliente.id} />}
+            {canEdit && <HistorialRutinas clienteId={cliente.id} />}
+            {canEdit && <PlanNutricionalSection clienteId={cliente.id} />}
+            {canEdit && <HistorialPlanesNutricionales clienteId={cliente.id} />}
+            {canEdit && <HistorialCliente clienteId={cliente.id} />}
+          </div>
         </div>
       </div>
     </main>
   );
 }
+
