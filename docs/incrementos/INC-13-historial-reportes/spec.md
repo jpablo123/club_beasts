@@ -1,6 +1,6 @@
 # INC-13 - Historial, reportes y notificaciones - Spec
 
-Estado: **PROPUESTO** (2026-11-19). Abierto tras el cierre de INC-12 (91/100).
+Estado: **ESPECIFICADO** (2026-11-19; PEND-HIS-01..06 resueltos por DEC-083..088, opcion (a)). Abierto tras el cierre de INC-12 (91/100).
 
 ## Objetivo
 
@@ -41,4 +41,20 @@ Aplicabilidad: SI (nuevas pantallas `/reportes` o seccion en dashboard, historia
 
 ## Puntos
 
-8 (0 hasta evidencia + revision + aceptacion). Total tras cierre: 91 + 8 + 1 = 100.
+8 (0 hasta evidencia + revision + aceptacion). Total tras cierre: 91 + 8 + 1 = 100.## Criterios HI-xx (resumen)
+
+- HI-01 Historial consolidado por cliente (HU-32 C01-C06).
+- HI-02 Conteos por sede (HU-33 C01-C05).
+- HI-03 Notificaciones on-demand con dedup (HU-34 C01-C06).
+
+## Contratos R1-R8 / C1-C9 (borrador para ratificacion backend/frontend)
+
+- R1 GET /clientes/:clienteId/historial (staff o propio cliente).
+- R2 GET /sedes/:sedeId/conteos.
+- R3 POST /notificaciones/vencimiento/enviar (DUENO).
+- R4 Dedup por (clienteId, servicioId, fechaVencimiento, tipoAviso).
+- R5 Proveedor configurable (stub/smtp/resend).
+- R6 Sin cron (DEC-048/066).
+- R7 Solo DUENO dispara notificaciones y ve conteos.
+- R8 CLIENTE ve su propio historial sin actor (DEC-041).
+- C1-C9: paths, codigos de error, orden de guardas, paginacion, filtros (a ratificar).

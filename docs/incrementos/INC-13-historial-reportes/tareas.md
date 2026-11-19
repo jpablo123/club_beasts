@@ -1,11 +1,11 @@
 # INC-13 - Tareas
 
-Estado: PROPUESTO (2026-11-19). Pipeline: ESPECIFICADO -> LISTO -> RED -> GREEN -> VERIFICADO -> auditoria navegacion -> REVISADO -> ACEPTADO.
+Estado: ESPECIFICADO (2026-11-19). Pipeline: ESPECIFICADO -> LISTO -> RED -> GREEN -> VERIFICADO -> auditoria navegacion -> REVISADO -> ACEPTADO.
 
 ## ESPECIFICADO - acceptance-criteria-analyst
 
-- [ ] A1 `acceptance-criteria-analyst` (Modo CREAR): criterios ISTQB + Gherkin + schemas para HU-32, HU-33, HU-34.
-- [ ] A2 Orquestador: resolver PEND-HIS-01..06 (especialmente PEND-HIS-03/04 de correo) como DEC-083..088.
+- [x] A1 `acceptance-criteria-analyst` (Modo CREAR): criterios ISTQB + Gherkin + schemas para HU-32, HU-33, HU-34.
+- [x] A2 Orquestador: resolver PEND-HIS-01..06 como DEC-083..088. **CERRADO 2026-11-19**.
 
 ## Ratificacion de contratos (paralelo, solo analisis)
 
