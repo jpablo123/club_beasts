@@ -13,6 +13,8 @@ import MembershipSection from "@/components/MembershipSection";
 import AnamnesisSection from "@/components/anamnesis/AnamnesisSection";
 import RutinaSection from "@/components/rutinas/RutinaSection";
 import HistorialRutinas from "@/components/rutinas/HistorialRutinas";
+import PlanNutricionalSection from "@/components/nutricion/PlanNutricionalSection";
+import HistorialPlanesNutricionales from "@/components/nutricion/HistorialPlanesNutricionales";
 import HistorialCliente from "@/components/HistorialCliente";
 import { duplicarEntradaDeHistorial } from "@/lib/nav-entrada";
 
@@ -381,6 +383,8 @@ export default function FichaClientePage() {
               demanda; solo DUENO edita/asigna (DEC-065). */}
           {canEdit && <RutinaSection clienteId={cliente.id} />}
           {canEdit && <HistorialRutinas clienteId={cliente.id} />}
+          {canEdit && <PlanNutricionalSection clienteId={cliente.id} />}
+          {canEdit && <HistorialPlanesNutricionales clienteId={cliente.id} />}
            {canEdit && <HistorialCliente clienteId={cliente.id} />}
         </div>
       </div>
