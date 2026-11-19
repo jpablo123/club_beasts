@@ -382,7 +382,7 @@ export default function FichaClientePage() {
 
           {/* SecciÃ³n de membresÃ­as - solo para DUENO/RECEPCIONISTA.
               `canManage` gobierna las acciones de pausa (DEC-017 / HU15-C05). */}
-          {canEdit && <MembershipSection clienteId={cliente.id} canManage={canEdit} />}
+          {canEdit && <MembershipSection clienteId={cliente.id} canManage={canEdit} canCancel={userRole === "DUENO"} />}
 
           {/* INC-09 (C1): "Anamnesis deportiva" inline tras MembershipSection.
               Vista solo lectura por defecto; editor bajo demanda solo DUENO
@@ -410,5 +410,6 @@ export default function FichaClientePage() {
     </main>
   );
 }
+
 
 

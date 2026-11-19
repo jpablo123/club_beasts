@@ -11,6 +11,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Navbar } from "@/components";
 import RutinaVista, { type RutinaContenido } from "@/components/rutinas/RutinaVista";
+import AsignarRutinaBulkForm from "@/components/rutinas/AsignarRutinaBulkForm";
 import { api } from "@/lib/api";
 import { MENSAJES_ASIGNACION } from "@/lib/rutina-schemas";
 

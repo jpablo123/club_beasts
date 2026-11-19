@@ -426,6 +426,11 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify(data),
       }),
+    cancelar: (clienteId: string, membresiaId: string) =>
+      fetchApi(`/clientes/${clienteId}/vigencias/${membresiaId}/cancelar`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
     // INC-02 (HU-15 + DEC-024): las 3 operaciones de pausa. Sin prefijo `/api`
     // (el backend registra rutas sin prefijo global) y con `version` en el body
     // (lock optimista INC00-MEM-03). Permiso: DUENO / RECEPCIONISTA (DEC-017).
@@ -490,6 +495,11 @@ export const api = {
     },
     obtener: <T = Record<string, unknown>>(rutinaId: string) =>
       fetchApi<T>(`/rutinas/${rutinaId}`),
+    asignarBulk: <T = Record<string, unknown>>(rutinaId: string, data: { clienteIds: string[] }) =>
+      fetchApi<T>(`/rutinas/${rutinaId}/asignar`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
     crear: <T = Record<string, unknown>>(data: BorradorRutina) =>
       fetchApi<T>("/rutinas", { method: "POST", body: JSON.stringify(data) }),
     crearPersonalizada: <T = Record<string, unknown>>(data: BorradorPersonalizada) =>
@@ -603,4 +613,5 @@ export const api = {
       fetchApi<T>(`/clientes/${clienteId}/planes-nutricionales/activa`),
   },
 };
+
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -11,6 +11,7 @@ import {
 import { hoyBogotaISO, pausaVigente, sumarDiasInclusivos } from "@/lib/membresia-fechas";
 import { Card, Button, Badge, Input, Select } from "@/components";
 import CongelacionForm, { type ModoCongelacion } from "@/components/CongelacionForm";
+import CancelarVigenciaButton from "@/components/membresia/CancelarVigenciaButton";
 
 interface MembresiaUsuario {
   id: string;
@@ -56,6 +57,7 @@ interface MembershipSectionProps {
    * defecto: si la seccion se instancia sin permiso explicito no se pintan.
    */
   canManage?: boolean;
+  canCancel?: boolean;
 }
 
 const estadoConfig: Record<
@@ -79,7 +81,7 @@ const estadoConfig: Record<
 const tipoServicioLabel: Record<string, string> = {
   GYM: "Gym",
   PERSONALIZADO: "Personalizado",
-  NUTRICION: "Nutrición",
+  NUTRICION: "NutriciÃ³n",
 };
 
 function etiquetaTipoServicio(m: Membresia): string {
@@ -88,10 +90,10 @@ function etiquetaTipoServicio(m: Membresia): string {
 
 const PLANES = [
   { label: "Personalizado", value: "personalizado", dias: null },
-  { label: "1 mes (30 días)", value: "1m", dias: 30 },
-  { label: "3 meses (90 días)", value: "3m", dias: 90 },
-  { label: "6 meses (180 días)", value: "6m", dias: 180 },
-  { label: "1 año (365 días)", value: "1a", dias: 365 },
+  { label: "1 mes (30 dÃ­as)", value: "1m", dias: 30 },
+  { label: "3 meses (90 dÃ­as)", value: "3m", dias: 90 },
+  { label: "6 meses (180 dÃ­as)", value: "6m", dias: 180 },
+  { label: "1 aÃ±o (365 dÃ­as)", value: "1a", dias: 365 },
 ];
 
 const planOptions = PLANES.map((p) => ({ value: p.value, label: p.label }));
@@ -123,20 +125,20 @@ function mensajeExito(r: ResultadoPausa, modo: ModoCongelacion): string {
 
   if (modo === "descongelar") {
     const dias = r.diasDevueltos ?? 0;
-    return `Congelación finalizada: la membresía vence el ${fin} (${pluralDias(
+    return `CongelaciÃ³n finalizada: la membresÃ­a vence el ${fin} (${pluralDias(
       dias,
-      "día devuelto",
-      "días devueltos"
+      "dÃ­a devuelto",
+      "dÃ­as devueltos"
     )}).`;
   }
 
   if (modo === "editar") {
     const dias = r.diasCongelados ?? 0;
     const anterior = r.diasCongeladosAnterior ?? 0;
-    return `Congelación editada: la membresía vence el ${fin} (${pluralDias(
+    return `CongelaciÃ³n editada: la membresÃ­a vence el ${fin} (${pluralDias(
       dias,
-      "día congelado",
-      "días congelados"
+      "dÃ­a congelado",
+      "dÃ­as congelados"
     )}; ${anterior} ${anterior === 1 ? "anterior" : "anteriores"}).`;
   }
 
@@ -144,10 +146,10 @@ function mensajeExito(r: ResultadoPausa, modo: ModoCongelacion): string {
   const rango = r.congelacion
     ? ` del ${formatFechaLarga(r.congelacion.fechaInicio)} al ${formatFechaLarga(r.congelacion.fechaFin)}`
     : "";
-  return `Congelación registrada${rango}: la membresía vence el ${fin} (${pluralDias(
+  return `CongelaciÃ³n registrada${rango}: la membresÃ­a vence el ${fin} (${pluralDias(
     dias,
-    "día congelado",
-    "días congelados"
+    "dÃ­a congelado",
+    "dÃ­as congelados"
   )}).`;
 }
 
@@ -161,6 +163,7 @@ interface FormData {
 export default function MembershipSection({
   clienteId,
   canManage = false,
+  canCancel = false,
 }: MembershipSectionProps) {
   const [membresias, setMembresias] = useState<Membresia[]>([]);
   const [fechaActual, setFechaActual] = useState("");
@@ -379,7 +382,7 @@ export default function MembershipSection({
         : checkOverlap(form.fechaInicio, form.fechaFin);
 
     if (hasOverlap) {
-      setFormError("El período se solapa con una membresía existente.");
+      setFormError("El perÃ­odo se solapa con una membresÃ­a existente.");
       return;
     }
 
@@ -404,7 +407,7 @@ export default function MembershipSection({
     } catch (err) {
       const apiErr = err as ApiError;
       if (apiErr.kind === "session_expired") return;
-      setFormError(apiErr.message || "Error al guardar la membresía.");
+      setFormError(apiErr.message || "Error al guardar la membresÃ­a.");
     } finally {
       setSaving(false);
     }
@@ -419,9 +422,9 @@ export default function MembershipSection({
     return (
       <Card padding="lg" className="mt-6">
         <h2 className="font-display text-xl font-bold text-white uppercase tracking-wide mb-4">
-          Membresías
+          MembresÃ­as
         </h2>
-        <p className="text-gray-400 text-sm">Cargando membresías...</p>
+        <p className="text-gray-400 text-sm">Cargando membresÃ­as...</p>
       </Card>
     );
   }
@@ -435,11 +438,11 @@ export default function MembershipSection({
     <Card padding="lg" className="mt-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-display text-xl font-bold text-white uppercase tracking-wide">
-          Membresías
+          MembresÃ­as
         </h2>
         {formMode === "none" && !pausaForm && (
           <Button size="sm" onClick={openCreate}>
-            Nueva Membresía
+            Nueva MembresÃ­a
           </Button>
         )}
       </div>
@@ -448,7 +451,7 @@ export default function MembershipSection({
       {formMode !== "none" && (
         <div className="bg-near-black rounded-card p-5 mb-6 border border-gray-800">
           <h3 className="text-white font-medium mb-4">
-            {formMode === "create" ? "Nuevo Período" : "Editar Período"}
+            {formMode === "create" ? "Nuevo PerÃ­odo" : "Editar PerÃ­odo"}
           </h3>
           {formMode === "create" && (
             <div className="mb-4">
@@ -480,7 +483,7 @@ export default function MembershipSection({
               ) : (
                 <div className="flex items-center gap-2 h-[42px]">
                   <span className="text-white text-sm flex-1">
-                    {form.fechaFin ? formatFechaLarga(form.fechaFin) : "—"}
+                    {form.fechaFin ? formatFechaLarga(form.fechaFin) : "â€”"}
                   </span>
                   <Button
                     size="sm"
@@ -537,10 +540,10 @@ export default function MembershipSection({
         />
       )}
 
-      {/* Lista de membresías */}
+      {/* Lista de membresÃ­as */}
       {membresias.length === 0 ? (
         <p className="text-gray-400 text-sm">
-          No hay membresías registradas para este cliente.
+          No hay membresÃ­as registradas para este cliente.
         </p>
       ) : (
         <div className="space-y-3">
@@ -567,17 +570,17 @@ export default function MembershipSection({
                       {etiquetaTipoServicio(m)}
                     </Badge>
                     <span className="text-white text-sm font-medium">
-                      {formatDate(m.fechaInicio)} — {formatDate(m.fechaFin)}
+                      {formatDate(m.fechaInicio)} â€” {formatDate(m.fechaFin)}
                     </span>
                   </div>
                   {/* Rango de pausa vigente: informativo (DEC-025: no bloquea nada). */}
                   {pausa && (
                     <p className="text-gray-500 text-xs mb-1">
-                      {`Pausa: ${formatDate(pausa.fechaInicio)} — ${formatDate(pausa.fechaFin)}${pausa.motivo ? ` · ${pausa.motivo}` : ""}`}
+                      {`Pausa: ${formatDate(pausa.fechaInicio)} â€” ${formatDate(pausa.fechaFin)}${pausa.motivo ? ` Â· ${pausa.motivo}` : ""}`}
                     </p>
                   )}
                   <p className="text-gray-500 text-xs">
-                    Creado por {m.creadoPor.nombre} · v{m.version}
+                    Creado por {m.creadoPor.nombre} Â· v{m.version}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -593,7 +596,7 @@ export default function MembershipSection({
                           variant="secondary"
                           onClick={() => abrirPausa("editar", m.id)}
                         >
-                          Editar congelación
+                          Editar congelaciÃ³n
                         </Button>
                       </>
                     ) : (
@@ -611,6 +614,9 @@ export default function MembershipSection({
                       Editar
                     </Button>
                   )}
+                  {canCancel && esGym && (
+                    <CancelarVigenciaButton clienteId={clienteId} membresiaId={m.id} onCanceled={loadMembresias} />
+                  )}
                 </div>
               </div>
             );
@@ -620,3 +626,4 @@ export default function MembershipSection({
     </Card>
   );
 }
+
