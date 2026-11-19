@@ -1,4 +1,4 @@
-import { exec } from "node:child_process";
+﻿import { exec } from "node:child_process";
 import { rmSync } from "node:fs";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -68,14 +68,14 @@ async function seedDeterministicFixtures(databaseUrl: string) {
 
     await prisma.sede.upsert({
       where: { id: "sede-1" },
-      update: { nombre: "Sede Principal", direccion: "Dirección por definir" },
-      create: { id: "sede-1", nombre: "Sede Principal", direccion: "Dirección por definir" },
+      update: { nombre: "Sede Principal", direccion: "DirecciÃ³n por definir" },
+      create: { id: "sede-1", nombre: "Sede Principal", direccion: "DirecciÃ³n por definir" },
     });
 
     await prisma.sede.upsert({
       where: { id: "sede-2" },
-      update: { nombre: "Sede Secundaria", direccion: "Dirección por definir" },
-      create: { id: "sede-2", nombre: "Sede Secundaria", direccion: "Dirección por definir" },
+      update: { nombre: "Sede Secundaria", direccion: "DirecciÃ³n por definir" },
+      create: { id: "sede-2", nombre: "Sede Secundaria", direccion: "DirecciÃ³n por definir" },
     });
 
     // INC-03 (DEC-031 / GAP-RED-01): staff del seed con sede `sede-1` (igual
@@ -106,14 +106,14 @@ async function seedDeterministicFixtures(databaseUrl: string) {
       where: { email: "recep@clubbeasts.com" },
       update: {
         contrasena: receptionistPassword,
-        nombre: "María García",
+        nombre: "MarÃ­a GarcÃ­a",
         rol: "RECEPCIONISTA",
         sedeId: "sede-1",
       },
       create: {
         email: "recep@clubbeasts.com",
         contrasena: receptionistPassword,
-        nombre: "María García",
+        nombre: "MarÃ­a GarcÃ­a",
         rol: "RECEPCIONISTA",
         sedeId: "sede-1",
       },
@@ -123,7 +123,7 @@ async function seedDeterministicFixtures(databaseUrl: string) {
       where: { cedula: "1234567890" },
       update: {
         nombres: "Carlos",
-        apellidos: "Rodríguez",
+        apellidos: "RodrÃ­guez",
         telefono: "3001234567",
         email: "carlos@test.com",
         sedeId: "sede-1",
@@ -133,7 +133,7 @@ async function seedDeterministicFixtures(databaseUrl: string) {
       create: {
         cedula: "1234567890",
         nombres: "Carlos",
-        apellidos: "Rodríguez",
+        apellidos: "RodrÃ­guez",
         telefono: "3001234567",
         email: "carlos@test.com",
         sedeId: "sede-1",
@@ -141,6 +141,25 @@ async function seedDeterministicFixtures(databaseUrl: string) {
         estado: "ACTIVO",
       },
     });
+  // INC-12: servicio de nutricion ACTIVO para Carlos (cliente seed).
+  const hoySn = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const finSn = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const carlosSeed = await prisma.cliente.findUnique({ where: { cedula: "1234567890" } });
+  const adminSeed = await prisma.user.findUnique({ where: { email: "admin@clubbeasts.com" } });
+  await prisma.membresiaGym.upsert({
+    where: { id: "seed-servicio-nutricion-carlos" },
+    update: { fechaInicio: hoySn, fechaFin: finSn, tipoServicio: "NUTRICION" },
+    create: {
+      id: "seed-servicio-nutricion-carlos",
+      clienteId: carlosSeed.id,
+      fechaInicio: hoySn,
+      fechaFin: finSn,
+      tipoServicio: "NUTRICION",
+      creadoPorId: adminSeed.id,
+      actualizadoPorId: adminSeed.id,
+    },
+  });
+
   } finally {
     await prisma.$disconnect();
   }
@@ -202,3 +221,6 @@ async function prepareIsolatedSqliteDatabase() {
 }
 
 await prepareIsolatedSqliteDatabase();
+
+
+

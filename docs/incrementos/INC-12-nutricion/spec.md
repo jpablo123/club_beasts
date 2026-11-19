@@ -1,6 +1,6 @@
 # INC-12 - Nutricion, asignacion e historial - Spec
 
-Estado: **LISTO** (2026-11-18; puerta LISTO cerrada: criterios NU-01..NU-42, DEC-075..082, ratificacion R1 sin correcciones, R2 con C1..C8 incorporadas, matriz NAV-NUT incluida). Abierto tras el cierre de INC-11 (79/100).
+Estado: **ACEPTADO** (2026-11-18; revision `code-reviewer` **ACEPTA CON HALLAZGOS NO BLOQUEANTES**, 0 bloqueantes; ver `evidencia.md` §3-§5). Abierto tras el cierre de INC-11 (79/100).
 
 ## Objetivo
 

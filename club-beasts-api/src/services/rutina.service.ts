@@ -415,6 +415,14 @@ export function respuestaErrorNegocio(codigo: string): {
           code: "CLIENTE_NO_ENCONTRADO",
         },
       };
+    case "PLAN_NO_ENCONTRADO":
+      return {
+        status: 404,
+        body: {
+          error: "PLAN_NO_ENCONTRADO",
+          code: "PLAN_NO_ENCONTRADO",
+        },
+      };
     case "RUTINA_NO_ENCONTRADA":
       return {
         status: 404,
@@ -446,6 +454,16 @@ export function respuestaErrorNegocio(codigo: string): {
           error: MENSAJES_ASIGNACION.RUTINA_YA_ACTIVA,
           code: "RUTINA_YA_ACTIVA",
         },
+      };
+    case "PLAN_YA_ACTIVO":
+      return {
+        status: 409,
+        body: { error: "PLAN_YA_ACTIVO", code: "PLAN_YA_ACTIVO" },
+      };
+    case "SIN_VIGENCIA_NUTRICION":
+      return {
+        status: 409,
+        body: { error: "SIN_VIGENCIA_NUTRICION", code: "SIN_VIGENCIA_NUTRICION" },
       };
     // ENMIENDA C4 (INC-10, 2026-11-05) — INC10-R08-GAP-02 / DEC-070: 409 de
     // concurrencia (arbitro `activaClave` -> P2002).

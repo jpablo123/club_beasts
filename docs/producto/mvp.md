@@ -42,9 +42,9 @@ Ampliacion 2026-11-18: cierre de `INC-10-rutinas` (**+18 puntos: bloque 6 comple
 | Recepcion, ingresos y portal operativo | 10 | HU-25, HU-29, HU-30, HU-31 | **10/10 aceptado (INC-03)**: HU-25 4/4 (portal con estado real), HU-29 5/5 (consulta por cedula con alertas derivadas de estado, DEC-028), HU-30 4/4 (ingresos por sede con guardas de vigencia), HU-31 3/3 (creacion rapida con `perfilPendiente`); reparto INC03-R05 en auditoria seccion 9 |
 | Anamnesis y privacidad | 12 | HU-09, HU-10, HU-11, HU-28 | **12/12 aceptado (INC-09, 2026-11-05)**: HU-09 4/4 (registro 23 campos/4 secciones, trazabilidad), HU-10 4/4 (permisos por rol, 5 sensibles DEC-055 filtrados en API, privacidad), HU-11 3/3 (guardado parcial, PENDIENTE/COMPLETA derivado), HU-28 3/3 (portal `/portal/anamnesis` solo lectura, gate DEC-060); HU-07 b4 sin puntos (no-duplicado) |
 | Rutinas, asignacion e historial | 18 | HU-18, HU-19, HU-20, HU-21, HU-26 | **18/18 aceptado (INC-10, 2026-11-18)**: HU-18 4/4 (tipo generica/induccion, estructura, reutilizacion; b4 REF sin punto), HU-19 5/5 (info+diagnostico, arbol macro/meso/micro DEC-018, series/intensidades, evaluaciones), HU-20 4/4 (una sola activa, tipos, gate de vigencia RU-23, b4 REF sin punto), HU-21 3/3 (fechas, actor, cierre de la anterior, historial en ficha), HU-26 2/2 (portal solo lectura, version vigente, no-edicion); reparto INC10-R01 en auditoria seccion 13 |
-| Nutricion, asignacion e historial | 12 | HU-22, HU-23, HU-24, HU-27 | Pendiente |
+| Nutricion, asignacion e historial | 12 | HU-22, HU-23, HU-24, HU-27 | **12/12 aceptado (INC-12, 2026-11-18)**: HU-22 4/4 (biometricos/objetivos fijos, macros manuales, comidas estructuradas, recomendaciones, no calculo), HU-23 4/4 (un solo activo, gate DEC-079, visible portal, sin nutricion informa sin plan), HU-24 2/2 (fechas, actor, cierre anterior, historial ficha), HU-27 2/2 (portal solo lectura, alimentos/cantidades/recomendaciones, mensaje claro, no-edicion); reparto INC12 en auditoria seccion 14; frontend parcial (solo portal) y E2E NAV-NUT NO VERIFICADO como residual |
 | Historial, reportes y notificaciones | 8 | HU-32, HU-33, HU-34 | Pendiente |
-| **Total** | **100** | HU-01 a HU-34 | **79 puntos aceptados (79%)** |
+| **Total** | **100** | HU-01 a HU-34 | **91 puntos aceptados (91%)** |
 
 ## Corte objetivo del 50%
 
@@ -75,3 +75,6 @@ El corte recomendado para llegar a 50 puntos prioriza operacion diaria completa 
 - Los permisos se prueban por rol y por propiedad del recurso.
 - Las reglas con concurrencia tienen pruebas especificas.
 - La documentacion de avance coincide con la evidencia ejecutada.
+Ampliacion 2026-11-18 (2): cierre de INC-11-ux-anamnesis (0 puntos). Total sigue 79/100.
+
+Ampliacion 2026-11-18 (3): cierre de INC-12-nutricion (+12 puntos, bloque 7 completo). Total actual: 91/100 (91%).

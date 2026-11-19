@@ -37,6 +37,9 @@ model User {
   anamnesisActualizadas Anamnesis[] @relation("AnamnesisActualizadaPor") // back-relation INC-09/DEC-057 (actor; obligatoria)
   rutinasActualizadas  Rutina[] @relation("RutinaActualizadaPor") // back-relation INC-10/RU-16 (actualizadoPor; obligatoria)
   rutinaAsignacionesComoActor RutinaAsignacion[] @relation("RutinaAsignacionActor") // back-relation INC-10 (actor de asignacion)
+  planNutricionalesCreados PlanNutricional[] @relation("PlanNutricionalCreadoPor")
+  planNutricionalesActualizados PlanNutricional[] @relation("PlanNutricionalActualizadoPor")
+  planNutricionalAsignacionesComoActor PlanNutricionalAsignacion[] @relation("PlanNutricionalAsignacionActor")
   // INC-03 (DEC-031): sede del staff de recepcion; al final del modelo para que
   // la migracion SQLite sea un ADD COLUMN simple (portable), como perfilPendiente.
   // Nullable: DUENO puede no tener sede; en #5, si el token no trae sede -> 400.
@@ -75,6 +78,7 @@ model Cliente {
   estadoCambios   ClienteEstadoCambio[] // back-relation INC-04/DEC-036 (obligatoria)
   anamnesis       Anamnesis? // back-relation INC-09/DEC-057 (1:1 opcional)
   rutinaAsignaciones RutinaAsignacion[] // back-relation INC-10/RU-16 (obligatoria)
+  planNutricionalAsignaciones PlanNutricionalAsignacion[]
 }
 
 model MembresiaGym {
@@ -310,4 +314,42 @@ model RutinaAsignacion {
 
   @@index([clienteId, fechaInicio]) // historial ORDER BY fechaInicio DESC
   @@index([rutinaId])
+}
+
+// INC-12 (NU). Plan nutricional + asignacion, analogo a Rutina/RutinaAsignacion.
+model PlanNutricional {
+  id                   String   @id @default(cuid())
+  nombre               String
+  datosBiometricos     Json
+  macronutrientes      Json?
+  comidas              Json
+  recomendaciones      String?
+  suplementacion       String?
+  observacionesGenerales String?
+  creadoPorId          String?
+  creadoPor            User?    @relation("PlanNutricionalCreadoPor", fields: [creadoPorId], references: [id])
+  actualizadoPorId     String?
+  actualizadoPor       User?    @relation("PlanNutricionalActualizadoPor", fields: [actualizadoPorId], references: [id])
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  asignaciones         PlanNutricionalAsignacion[]
+}
+
+model PlanNutricionalAsignacion {
+  id                String   @id @default(cuid())
+  clienteId         String
+  cliente           Cliente  @relation(fields: [clienteId], references: [id])
+  planId            String
+  plan              PlanNutricional @relation(fields: [planId], references: [id])
+  fechaInicio       String
+  fechaFin          String?
+  actorId           String
+  actor             User     @relation("PlanNutricionalAsignacionActor", fields: [actorId], references: [id])
+  snapshot          Json
+  activaClave       String?  @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([clienteId, fechaInicio])
+  @@index([planId])
 }

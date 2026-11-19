@@ -465,6 +465,7 @@ export const api = {
     // INC-10 (endpoint 8, C8): rutina activa del cliente desde el snapshot
     // (DEC-067/DEC-068) o `{ mensaje: SIN_RUTINA_MENSAJE }`.
     rutina: <T = RespuestaPortalRutina>() => fetchApi<T>("/portal/rutina"),
+    planNutricional: <T = any>() => fetchApi<T>("/portal/plan-nutricional"),
   },
   // INC-10 (endpoints #1..#4, contrato R1): creación/listado/detalle/edición
   // de rutinas. POST separado por familia (DEC-064 vs DEC-018); PATCH unificado

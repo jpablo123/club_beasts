@@ -526,3 +526,42 @@ Fraccion HU-13: **4/4** (antes 3/3 en INC-05). Puntos HU-13: **3.0 -> 3.0 (+0)**
 | **Total MVP** | **61** | **+18** | **79/100 (79%)** |
 
 **Corte al 50% SUPERADO** (79 >= 50, ampliado desde 61). Riesgos residuales al cierre de INC-10: R-FIX03B-01 (entorno, devops), REV-02/06..09/11 backlog, INC10-NAV-AUD-11 INFO, concurrencia real solo Postgres, `bodyLimit` 5 MiB. Ruta restante: bloque 7 nutricion (12) + bloque 8 historial/reportes (8) + resto de HU-07 (2) = 22 puntos.
+
+## 14. Ampliacion INC-12 (2026-11-18) — bloque 7 Nutricion, asignacion e historial
+
+Incremento `INC-12-nutricion` **ACEPTADO** (2026-11-18; revision `code-reviewer` **ACEPTA CON HALLAZGOS NO BLOQUEANTES**, 0 bloqueantes, 5 no bloqueantes: `as any` en `plan-nutricional.service.ts:42`, frontend parcial (solo portal), marcador `OCULTO_POR_VIGENCIA` no distinguido en frontend, macros passthrough, web schema stub). Pipeline: ESPECIFICADO (criterios NU-01..NU-42, DEC-075..082) -> LISTO (ratificacion R1 sin correcciones, R2 con C1..C8, matriz NAV-NUT 14 filas) -> RED (41 tests API + 5 web unit; enmiendas INC12-FIX-01..10) -> GREEN (database-admin: migracion 12/0; backend: schema + servicio planes + asignacion/historial/portal + gate DEC-079 + marcadores + snapshot + permisos; frontend: portal + schemas) -> VERIFICADO (tsc 0 api/web, vitest api 30/30 + web 5/5, build PASS) -> REVISADO -> ACEPTADO. E2E NAV-NUT NO VERIFICADO (specs no generados) — residual risk aceptado (analogia INC10-NAV-AUD-11 INFO).
+
+### 14.1 Ponderacion y reparto por HU (DEC-016; literales del historial de HU)
+
+| HU | Prioridad | Peso | Justificacion de alcance relativo | Fraccion | Puntos |
+|---|---|---:|---|---:|---:|
+| HU-22 Creacion de plan nutricional estructurado | Alta | **4** | Alta: biometricos/objetivos caloricos fijos, macros manuales (DEC-076), tiempos de comida estructurados, recomendaciones/suplementacion, no calculo (DEC-075..078) | 5/5 | **4** |
+| HU-23 Asignacion de plan nutricional activo | Alta | **4** | Alta: un solo activo por cliente, gate de vigencia (DEC-079), visible en portal, sin nutricion activa informa sin plan | 4/4 | **4** |
+| HU-24 Historial de planes nutricionales | Media | **2** | Media: fechas inicio/fin, actor, cierre del anterior, historial en ficha | 4/4 | **2** |
+| HU-27 Visualizacion del plan nutricional activo | Alta | **2** | Alta pero superficie menor (solo lectura): solo su plan, alimentos/cantidades/recomendaciones, mensaje claro, no-edicion | 4/4 | **2** |
+| | | **12** | | | **12** |
+
+**Evidencia por bullet** (todos cerrados con spec + implementacion + prueba + evidencia ejecutada + revision): HU-22 = NU-01..NU-08 (`inc12-nutricion-creacion.test.ts` + unit schemas); HU-23 = NU-09..NU-28 (`inc12-nutricion-asignacion.test.ts`: asignacion, vigencia, reemplazo, concurrencia, permisos, recursos inexistentes, estado cliente, invariante); HU-24 = NU-29..NU-35 (`inc12-nutricion-historial.test.ts`: fechas, actor, cierre, snapshot, acceso); HU-27 = NU-36..NU-42 (`inc12-nutricion-portal.test.ts` + web unit: solo lectura, marcadores, mensaje, seguridad sesion).
+
+### 14.2 No-duplicado (regla del orquestador, DEC-016)
+
+- **REF sin punto propio**: HU-23 b3 (plan activo visible en portal) es REF hacia HU-27 (sin punto doble, analogia HU-20 b4 -> HU-26).
+- **HU-07 b5/b6** (rutina activa + historial en ficha): anotados para el cierre de HU-07 (bloque 2) sin puntos aqui (endpoints propios de INC-10 C9); +1 punto en bloque 2 al cerrar.
+- **DEC-079/DEC-081** (gate y portal solo lectura): regla, no bullet; gate ya cobrado como HU-23 b2.
+- **Sin puntos propios**: fixes de fixtures (INC12-FIX-01..10), enriquecimiento de seed (setup-isolated-sqlite), gate/marcadores backend, frontend parcial (listado/editor/asignacion/historial pendientes) sin puntos.
+
+### 14.3 Totales actualizados
+
+| Bloque | Antes (INC-11) | INC-12 | Despues |
+|---|---:|---:|---:|
+| Identidad, sesiones y permisos | 10 | 0 | 10 |
+| Clientes, sedes, estados y ficha basica | 14 | 0 (+HU-07 b5/b6 +1 pendiente) | 14 (HU-07 3/6; b5/b6 anotados) |
+| Vigencias de servicios y congelacion | 15 | 0 | 15 |
+| Recepcion, ingresos y portal operativo | 10 | 0 | 10 |
+| Anamnesis y privacidad | 12 | 0 | 12 |
+| Rutinas, asignacion e historial | 18 | 0 | 18 |
+| Nutricion, asignacion e historial | 0 | **+12** (HU-22 4/4, HU-23 4/4, HU-24 2/2, HU-27 2/2) | **12** |
+| Historial, reportes y notificaciones (bloque 8) | 0 | 0 | 0 |
+| **Total MVP** | **79** | **+12** | **91/100 (91%)** |
+
+**Corte al 50% SUPERADO** (91 >= 50). Riesgos residuales al cierre de INC-12: frontend parcial (solo portal; listado/editor/asignacion/historial pendientes), E2E NAV-NUT NO VERIFICADO (specs no generados), `as any` en `plan-nutricional.service.ts:42`, macros passthrough (DEC-076), web schema stub, gate DEC-079 depende de servicio nutricion ACTIVO en seed. Ruta restante: bloque 8 historial/reportes (8) + cierre HU-07 b5/b6 (+1) = 9 puntos.

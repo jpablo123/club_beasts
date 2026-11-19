@@ -4,10 +4,13 @@ import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
 import anamnesisRoutes from "./routes/anamnesis.js";
 import asignacionesRoutes from "./routes/asignaciones.js";
+import asignacionesNutricionRoutes from "./routes/asignaciones-nutricion.js";
 import authRoutes from "./routes/auth.js";
 import clienteRoutes from "./routes/clientes.js";
 import membresiaRoutes from "./routes/membresia.js";
+import planesNutricionalesRoutes from "./routes/planes-nutricionales.js";
 import portalRoutes from "./routes/portal.js";
+import portalPlanNutricionalRoutes from "./routes/portal-plan-nutricional.js";
 import recepcionRoutes from "./routes/recepcion.js";
 import rutinasRoutes from "./routes/rutinas.js";
 import rutinasPersonalizadasRoutes from "./routes/rutinas-personalizadas.js";
@@ -28,10 +31,13 @@ async function start() {
 
   await server.register(anamnesisRoutes);
   await server.register(asignacionesRoutes);
+  await server.register(asignacionesNutricionRoutes);
   await server.register(authRoutes);
   await server.register(clienteRoutes);
   await server.register(membresiaRoutes);
+  await server.register(planesNutricionalesRoutes);
   await server.register(portalRoutes);
+  await server.register(portalPlanNutricionalRoutes);
   await server.register(recepcionRoutes);
   await server.register(rutinasRoutes);
   await server.register(rutinasPersonalizadasRoutes);

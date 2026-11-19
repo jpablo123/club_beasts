@@ -77,6 +77,57 @@ async function main() {
   });
 
   console.log("Cliente creado:", { cedula: cliente.cedula, nombre: `${cliente.nombres} ${cliente.apellidos}` });
+
+  // INC-12: clientes adicionales para tests de nutricion (idempotente por cedula)
+  const clientesExtra = [
+    { cedula: "1234567891", nombres: "Cliente", apellidos: "Inactivo", estado: "INACTIVO" },
+    { cedula: "1234567892", nombres: "Cliente", apellidos: "Suspendido", estado: "SUSPENDIDO" },
+    { cedula: "1234567893", nombres: "Cliente", apellidos: "SinServicio", estado: "ACTIVO" },
+  ];
+  for (const c of clientesExtra) {
+    await prisma.cliente.upsert({
+      where: { cedula: c.cedula },
+      update: { estado: c.estado, pin: clienteHashed, debeCambiarPin: true },
+      create: {
+        cedula: c.cedula,
+        nombres: c.nombres,
+        apellidos: c.apellidos,
+        telefono: "3000000000",
+        email: `${c.cedula}@test.com`,
+        sedeId: "sede-1",
+        pin: clienteHashed,
+        estado: c.estado,
+      },
+    });
+  }
+
+  // INC-12: plan nutricional seed (id pn-1)
+  await prisma.planNutricional.upsert({
+    where: { id: "pn-1" },
+    update: {},
+    create: {
+      id: "pn-1",
+      nombre: "Plan Seed",
+      datosBiometricos: { peso: 70, altura: 175 },
+      comidas: [],
+      creadoPorId: admin.id,
+      actualizadoPorId: admin.id,
+    },
+  });
+
+  // INC-12: servicio de nutricion ACTIVO para cliente 1 (vigencia valida)
+  const today = new Date().toISOString().slice(0, 10);
+  const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  await prisma.membresiaGym.create({
+    data: {
+      clienteId: cliente.id,
+      fechaInicio: today,
+      fechaFin: future,
+      tipoServicio: "NUTRICION",
+      creadoPorId: admin.id,
+      actualizadoPorId: admin.id,
+    },
+  }).catch(() => {});
 }
 
 main()

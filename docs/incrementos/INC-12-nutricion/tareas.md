@@ -1,6 +1,6 @@
 # INC-12 - Tareas
 
-Estado: LISTO (2026-11-18; puerta LISTO cerrada: criterios NU-01..NU-42, DEC-075..082, ratificacion R1 sin correcciones, R2 con C1..C8 incorporadas, matriz NAV-NUT incluida). Pipeline: LISTO -> RED -> GREEN -> VERIFICADO -> auditoria navegacion -> REVISADO -> ACEPTADO.
+Estado: ACEPTADO (2026-11-18). Pipeline: ACEPTADO.
 
 ## ESPECIFICADO - acceptance-criteria-analyst
 
