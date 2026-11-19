@@ -581,4 +581,23 @@ export const api = {
   notificaciones: {
     enviar: <T = any>() =>
       fetchApi<T>("/notificaciones/vencimiento/enviar", { method: "POST" }),  },
+  planesNutricionales: {
+    listar: <T = any>() => fetchApi<T>("/planes-nutricionales"),
+    obtener: <T = any>(id: string) => fetchApi<T>(`/planes-nutricionales/${id}`),
+    crear: <T = any>(data: Record<string, unknown>) =>
+      fetchApi<T>("/planes-nutricionales", { method: "POST", body: JSON.stringify(data) }),
+    editar: <T = any>(id: string, data: Record<string, unknown>) =>
+      fetchApi<T>(`/planes-nutricionales/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  },
+  asignacionesNutricion: {
+    asignar: <T = any>(clienteId: string, planId: string) =>
+      fetchApi<T>(`/clientes/${clienteId}/planes-nutricionales/asignacion`, {
+        method: "POST",
+        body: JSON.stringify({ planId }),
+      }),
+    historial: <T = any>(clienteId: string) =>
+      fetchApi<T>(`/clientes/${clienteId}/planes-nutricionales/historial`),
+    activa: <T = any>(clienteId: string) =>
+      fetchApi<T>(`/clientes/${clienteId}/planes-nutricionales/activa`),
+  },
 };

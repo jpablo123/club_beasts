@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
@@ -113,9 +113,9 @@ export default function PortalPage() {
   }
 
   if (!session) {
-    // INC00-AUTH-03 (hallazgo B2): si la recuperación centralizada ya está
-    // manejando la salida no competimos con su navegación (perderíamos el
-    // callbackUrl); si no está en curso, salimos hacia /login-cliente
+    // INC00-AUTH-03 (hallazgo B2): si la recuperaciÃ³n centralizada ya estÃ¡
+    // manejando la salida no competimos con su navegaciÃ³n (perderÃ­amos el
+    // callbackUrl); si no estÃ¡ en curso, salimos hacia /login-cliente
     // conservando esta pantalla como retorno.
     const exit = resolveSessionExit("/login-cliente");
     if (exit) router.push(exit);
@@ -391,7 +391,7 @@ export default function PortalPage() {
               </h3>
               <p className="text-gray-400">Tu rutina activa aparecera aqui.</p>
               {/* INC-10 (C3/C8): el acceso a la rutina es un LINK dentro de la
-                  card "Mi Rutina" (1 único heading "Mi Rutina"; nunca un
+                  card "Mi Rutina" (1 Ãºnico heading "Mi Rutina"; nunca un
                   heading de acceso). Pintado solo con servicio vigente
                   (DEC-060): el aviso `sinMembresiaActiva` reemplaza todo el
                   contenido. */}
@@ -409,14 +409,19 @@ export default function PortalPage() {
               <h3 className="text-xl font-display font-bold text-white uppercase mb-4">
                 Plan Nutricional
               </h3>
-              <p className="text-gray-400">Tu plan nutricional personalizado estara disponible proximamente.</p>
+              <p className="text-gray-400">Tu plan nutricional personalizado.</p>
+              {resumen && !resumen.sinMembresiaActiva ? (
+                <Link href="/portal/plan-nutricional" className="mt-2 inline-block text-royal hover:text-royal-light transition-colors">
+                  Mi plan nutricional
+                </Link>
+              ) : null}
             </Card>
 
             {/* INC-09 (C2 / NAV-AN-01..02): entrada a la anamnesis deportiva,
                 FUERA de <nav> (C3) y solo pintada con servicio vigente: el
                 aviso DEC-051 de `sinMembresiaActiva` reemplaza todo el
                 contenido (DEC-060 / NAV-AN-09) y el cambio de PIN obligatorio
-                también (guarda `debeCambiarPin` intacta). */}
+                tambiÃ©n (guarda `debeCambiarPin` intacta). */}
             <Card padding="lg">
               <h3 className="text-xl font-display font-bold text-white uppercase mb-4">
                 Anamnesis deportiva
@@ -437,3 +442,5 @@ export default function PortalPage() {
     </main>
   );
 }
+
+

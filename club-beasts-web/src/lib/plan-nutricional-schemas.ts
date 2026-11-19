@@ -32,6 +32,8 @@ export interface PlanNutricional {
   suplementacion?: string | null;
 }
 
+export const planNutricionalSchema = { validate: (p: PlanNutricional) => validatePlanNutricional(p) };
+
 export const validatePlanNutricional = (p: PlanNutricional): string[] => {
   const errs: string[] = [];
   if (p.datosBiometricos.pesoKg < 30 || p.datosBiometricos.pesoKg > 300) errs.push("Peso debe estar entre 30 y 300 kg");
