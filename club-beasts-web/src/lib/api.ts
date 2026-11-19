@@ -1,4 +1,4 @@
-import { getSession } from "next-auth/react";
+﻿import { getSession } from "next-auth/react";
 import { recoverSession } from "./session-recovery";
 import type {
   AnamnesisRespuestaPortal,
@@ -204,7 +204,7 @@ export interface HistorialRutinasDTO {
   total: number;
 }
 
-/** Estados del endpoint #7 (DEC-066/DEC-070: ocultación sin borrar). */
+/** Estados del endpoint #7 (DEC-066/DEC-070: ocultaciÃ³n sin borrar). */
 export type EstadoRutinaActiva = "ACTIVA" | "SIN_RUTINA" | "OCULTA_POR_VIGENCIA";
 
 export interface RutinaActivaDTO {
@@ -314,7 +314,7 @@ async function fetchApi<T = Record<string, unknown>>(
     });
   } catch {
     throw createApiError(
-      `Error de red: no se pudo conectar con el servidor (${API_URL}). Verifique que el backend esté ejecutándose.`,
+      `Error de red: no se pudo conectar con el servidor (${API_URL}). Verifique que el backend estÃ© ejecutÃ¡ndose.`,
       { kind: "network" }
     );
   }
@@ -334,10 +334,10 @@ async function fetchApi<T = Record<string, unknown>>(
   if (!res.ok) {
     const error = classifyError(res.status, asErrorBody(data));
 
-    // Recuperación centralizada de sesión (INC00-AUTH-01).
-    // Solo un 401 de sesión vencida/ausente dispara el cierre de sesión;
+    // RecuperaciÃ³n centralizada de sesiÃ³n (INC00-AUTH-01).
+    // Solo un 401 de sesiÃ³n vencida/ausente dispara el cierre de sesiÃ³n;
     // AUTH_INVALID_CREDENTIALS (AUTH-04), 403 (AUTH-05) y errores de red
-    // (AUTH-06) conservan la sesión. La recuperación es single-flight y no
+    // (AUTH-06) conservan la sesiÃ³n. La recuperaciÃ³n es single-flight y no
     // modifica el error que recibe la UI (mensaje aprobado del backend).
     if (res.status === 401 && error.kind === "session_expired") {
       await recoverSession(token);
@@ -407,7 +407,7 @@ export const api = {
       return fetchApi<T>(`/clientes/${id}/historial${qs ? `?${qs}` : ""}`);
     },
     resetPin: (id: string) =>
-      fetchApi(`/clientes/${id}/reset-pin`, { method: "POST" }),
+      fetchApi(`/clientes/${id}/reset-pin`, { method: "POST", body: JSON.stringify({}) }),
   },
   membresias: {
     list: (clienteId: string) =>
@@ -477,7 +477,7 @@ export const api = {
     rutina: <T = RespuestaPortalRutina>() => fetchApi<T>("/portal/rutina"),
     planNutricional: <T = any>() => fetchApi<T>("/portal/plan-nutricional"),
   },
-  // INC-10 (endpoints #1..#4, contrato R1): creación/listado/detalle/edición
+  // INC-10 (endpoints #1..#4, contrato R1): creaciÃ³n/listado/detalle/ediciÃ³n
   // de rutinas. POST separado por familia (DEC-064 vs DEC-018); PATCH unificado
   // por tipo persistido (sin `tipoRutina` en el body: es inmutable).
   rutinas: {
@@ -506,7 +506,7 @@ export const api = {
         body: JSON.stringify(data),
       }),
   },
-  // INC-10 (endpoints #5..#7, C5/C6/C9): asignación, historial y estado activo
+  // INC-10 (endpoints #5..#7, C5/C6/C9): asignaciÃ³n, historial y estado activo
   // en la ficha staff. `/asignacion` (singular) fijado en DEC-070.
   asignaciones: {
     crear: <T = RutinaAsignacionDTO>(
@@ -603,3 +603,4 @@ export const api = {
       fetchApi<T>(`/clientes/${clienteId}/planes-nutricionales/activa`),
   },
 };
+
