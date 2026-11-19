@@ -1,6 +1,7 @@
-import type { NextConfig } from "next";
+﻿import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
   reactStrictMode: true,
   images: {
     remotePatterns: [],
@@ -9,3 +10,5 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+
