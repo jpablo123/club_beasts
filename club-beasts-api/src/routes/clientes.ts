@@ -5,6 +5,7 @@ import {
   getClienteById,
   getUltimoCambioEstado,
   searchClientes,
+  resetPinCliente,
   SEDE_INEXISTENTE,
   TRANSICION_INVALIDA,
 } from "../services/cliente.service.js";
@@ -242,6 +243,32 @@ export default async function clienteRoutes(fastify: FastifyInstance) {
         }
         throw error;
       }
+    }
+  );
+
+  fastify.post(
+    "/clientes/:id/reset-pin",
+    { preHandler: [fastify.authenticateRoles(["DUENO", "RECEPCIONISTA"])] },
+    async (request, reply) => {
+      const paramsResult = clienteParamsSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        const message = paramsResult.error.errors[0].message;
+        return reply.status(400).send({ error: message, code: "VALIDATION_ERROR" });
+      }
+
+      const { id } = paramsResult.data;
+
+      const cliente = await getClienteById(id);
+      if (!cliente) {
+        return reply.status(404).send({ error: "Cliente no encontrado", code: "NOT_FOUND" });
+      }
+
+      const actorId = (request.user as any).id;
+      await resetPinCliente(id, actorId);
+      return reply.status(200).send({
+        ok: true,
+        mensaje: "PIN restablecido a 1234. El cliente debera cambiarlo en su proximo acceso.",
+      });
     }
   );
 }

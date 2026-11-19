@@ -406,6 +406,8 @@ export const api = {
       const qs = query.toString();
       return fetchApi<T>(`/clientes/${id}/historial${qs ? `?${qs}` : ""}`);
     },
+    resetPin: (id: string) =>
+      fetchApi(`/clientes/${id}/reset-pin`, { method: "POST" }),
   },
   membresias: {
     list: (clienteId: string) =>

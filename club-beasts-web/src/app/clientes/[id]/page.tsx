@@ -58,6 +58,7 @@ export default function FichaClientePage() {
   const [form, setForm] = useState<Partial<Cliente> & { motivo?: string }>({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetMsg, setResetMsg] = useState("");
 
   const userRole = (session?.user as { role?: string })?.role;
   const canEdit = userRole === "DUENO" || userRole === "RECEPCIONISTA";
@@ -124,6 +125,22 @@ export default function FichaClientePage() {
         return;
       }
       setError(apiErr.message || "Error al guardar");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPin = async () => {
+    if (!window.confirm("¿Resetear el PIN del cliente?")) return;
+    setLoading(true);
+    setError("");
+    setResetMsg("");
+    try {
+      await api.clientes.resetPin(params.id as string);
+      setResetMsg("PIN reseteado correctamente");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError(apiErr.message || "Error al resetear PIN");
     } finally {
       setLoading(false);
     }
@@ -200,9 +217,14 @@ export default function FichaClientePage() {
                   </Button>
                 </>
               ) : canEdit ? (
-                <Button onClick={() => setEditing(true)}>
-                  Editar
-                </Button>
+                <>
+                  <Button onClick={() => setEditing(true)}>
+                    Editar
+                  </Button>
+                  <Button variant="secondary" onClick={handleResetPin} loading={loading}>
+                    Resetear PIN
+                  </Button>
+                </>
               ) : undefined
             }
           />

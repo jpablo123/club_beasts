@@ -407,6 +407,19 @@ export async function createClienteRapido(
   });
 }
 
+export async function resetPinCliente(id: string, actorId?: string) {
+  const hashedPin = await bcrypt.hash("1234", 10);
+  return prisma.cliente.update({
+    where: { id },
+    data: {
+      pin: hashedPin,
+      debeCambiarPin: true,
+      ...(actorId ? { actualizadoPorId: actorId } : {}),
+    },
+    select: { id: true },
+  });
+}
+
 export async function searchClientes(query: {
   search?: string;
   sedeId?: string;
