@@ -1,5 +1,5 @@
-/**
- * INC-10 (GREEN T8) — `/rutinas/[id]`: detalle de la rutina (NAV-RU-06/NAV-RU-24,
+﻿/**
+ * INC-10 (GREEN T8) â€” `/rutinas/[id]`: detalle de la rutina (NAV-RU-06/NAV-RU-24,
  * C3). Vista `RutinaVista` (solo lectura, whitelist), "Modificar rutina" solo
  * DUENO (DEC-065) y "Volver al listado". URL a rutina inexistente -> 404 con
  * "Rutina no encontrada" + "Volver al listado".
@@ -41,9 +41,9 @@ export default function DetalleRutinaPage() {
   return (
     <main className="min-h-screen bg-near-black">
       {/* INC10-NAV-AUD-06 (DEC-053/INC-08): showAuth habilita el control
-          "Salir" del Navbar (`signOut({ callbackUrl: "/" })`) — unico por
+          "Salir" del Navbar (`signOut({ callbackUrl: "/" })`) â€” unico por
           pantalla y fuera de las regiones de rutinas (C7). */}
-      <Navbar showAuth />
+      <Navbar showAuth links={[{ label: "Rutinas", href: "/rutinas" }, { label: "Clientes", href: "/clientes" }, { label: "Dashboard", href: "/dashboard" }]} />
 
       <div className="pt-24 pb-12">
         <div className="max-w-3xl mx-auto px-5">
@@ -90,3 +90,4 @@ export default function DetalleRutinaPage() {
     </main>
   );
 }
+

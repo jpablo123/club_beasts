@@ -1,10 +1,10 @@
-/**
- * INC-10 (GREEN T8) — `/rutinas/nueva`: selector de tipo (DEC-018/DEC-064) y
- * editor de creación (C4). El selector se pinta sin `tipo` (botones exactos
+﻿/**
+ * INC-10 (GREEN T8) â€” `/rutinas/nueva`: selector de tipo (DEC-018/DEC-064) y
+ * editor de creaciÃ³n (C4). El selector se pinta sin `tipo` (botones exactos
  * "Rutina generica" | "Rutina de induccion" | "Rutina personalizada"); al
  * elegir tipo se navega al editor. NAV-RU-04/09: el selector es un paso
- * transitorio — al volver con el "atrás" del navegador se deriva al listado
- * (un único `router.replace`, sin bucles de redirect).
+ * transitorio â€” al volver con el "atrÃ¡s" del navegador se deriva al listado
+ * (un Ãºnico `router.replace`, sin bucles de redirect).
  */
 "use client";
 
@@ -24,9 +24,9 @@ const SELECTOR_TIPOS: Array<{ etiqueta: string; tipo: TipoRutina }> = [
 
 /**
  * Marca las restauraciones del navegador (back/forward) hacia el selector sin
- * `tipo`: al aterrizar ahí por "atrás", el paso se deriva al listado (C3,
+ * `tipo`: al aterrizar ahÃ­ por "atrÃ¡s", el paso se deriva al listado (C3,
  * NAV-RU-04/09 "vuelve al listado sin bucles de redirect"). Registrado a
- * nivel de módulo para cubrir el popstate que ocurre ANTES del montaje.
+ * nivel de mÃ³dulo para cubrir el popstate que ocurre ANTES del montaje.
  */
 const restauracionSelector = { pendiente: false };
 
@@ -54,12 +54,12 @@ function EditorNuevaRutina() {
     if (rol === "RECEPCIONISTA") router.replace("/rutinas");
   }, [rol, router]);
 
-  // NAV-RU-04/09: "atrás" al selector -> el listado (sin bucles de redirect).
+  // NAV-RU-04/09: "atrÃ¡s" al selector -> el listado (sin bucles de redirect).
   useEffect(() => {
     if (!restauracionSelector.pendiente || tipoRutina) return;
     restauracionSelector.pendiente = false;
     router.replace("/rutinas");
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- derivación por restauración del navegador.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- derivaciÃ³n por restauraciÃ³n del navegador.
   }, [tipoRutina]);
 
   if (rol === "RECEPCIONISTA") {
@@ -148,10 +148,11 @@ export default function NuevaRutinaPage() {
   return (
     <Suspense fallback={<main className="min-h-screen bg-near-black" />}>
       {/* INC10-NAV-AUD-06 (DEC-053/INC-08): showAuth habilita el control
-          "Salir" del Navbar (`signOut({ callbackUrl: "/" })`) — unico por
+          "Salir" del Navbar (`signOut({ callbackUrl: "/" })`) â€” unico por
           pantalla y FUERA de <main> (C7 de NAV-RU-02/07). */}
-      <Navbar showAuth />
+      <Navbar showAuth links={[{ label: "Rutinas", href: "/rutinas" }, { label: "Clientes", href: "/clientes" }, { label: "Dashboard", href: "/dashboard" }]} />
       <EditorNuevaRutina />
     </Suspense>
   );
 }
+

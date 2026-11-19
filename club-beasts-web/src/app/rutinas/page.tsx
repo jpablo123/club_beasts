@@ -1,6 +1,6 @@
-/**
- * INC-10 (GREEN T8) — `/rutinas`: listado staff de rutinas (NAV-RU-01/23/24,
- * C1). Región "Rutinas", filtros `tipo`/`nombre` en searchParams, entrada al
+﻿/**
+ * INC-10 (GREEN T8) â€” `/rutinas`: listado staff de rutinas (NAV-RU-01/23/24,
+ * C1). RegiÃ³n "Rutinas", filtros `tipo`/`nombre` en searchParams, entrada al
  * detalle por link y al formulario con "Crear rutina".
  */
 "use client";
@@ -56,9 +56,9 @@ function ListadoRutinas() {
   return (
     <main className="min-h-screen bg-near-black">
       {/* INC10-NAV-AUD-06 (DEC-053/INC-08): showAuth habilita el control
-          "Salir" del Navbar (`signOut({ callbackUrl: "/" })`) — unico por
+          "Salir" del Navbar (`signOut({ callbackUrl: "/" })`) â€” unico por
           pantalla y fuera de la region "Rutinas" (C7). */}
-      <Navbar showAuth />
+      <Navbar showAuth links={[{ label: "Rutinas", href: "/rutinas" }, { label: "Clientes", href: "/clientes" }, { label: "Dashboard", href: "/dashboard" }]} />
 
       <div className="pt-24 pb-12">
         <div className="max-w-3xl mx-auto px-5">
@@ -100,3 +100,4 @@ export default function RutinasPage() {
     </Suspense>
   );
 }
+
