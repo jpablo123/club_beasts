@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { api } from "@/lib/api";
 import AsignarPlanForm from "./AsignarPlanForm";
+import PlanNutricionalVista from "./PlanNutricionalVista";
 
 export default function PlanNutricionalSection({ clienteId }: { clienteId: string }) {
   const { data: session } = useSession();
@@ -37,10 +38,10 @@ export default function PlanNutricionalSection({ clienteId }: { clienteId: strin
         <p className="mt-3 text-gray-400">Cargando...</p>
       ) : (
         <div className="mt-3 space-y-3">
-          {activo?.asignacion || activo?.plan ? (
-            <p className="text-white">{activo?.asignacion?.plan?.nombre ?? activo?.plan?.nombre ?? "Plan activo"}</p>
+          {activo?.asignacion?.plan || activo?.plan ? (
+            <PlanNutricionalVista datos={activo?.asignacion?.plan ?? activo?.plan} />
           ) : (
-            <p className="text-gray-400">Sin plan asignado</p>
+            <p className="text-gray-400">Sin plan activo</p>
           )}
           {!formAbierto && (rol === "DUENO" || rol === "RECEPCIONISTA") ? (
             <button type="button" onClick={() => setFormAbierto(true)} className="mt-3 px-5 py-2.5 text-sm font-medium text-white bg-royal hover:bg-royal-dark rounded-card transition-colors">

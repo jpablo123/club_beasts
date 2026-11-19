@@ -404,14 +404,11 @@ export default function FichaClientePage() {
               propios `/clientes/:id/rutinas/{activa,historial}`. Montaje bajo
               demanda; solo DUENO edita/asigna (DEC-065). */}          <div className="space-y-6 mt-6">
             {canEdit && <RutinaSection clienteId={cliente.id} />}
-            {canEdit && <HistorialRutinas clienteId={cliente.id} />}
-            {canEdit && <PlanNutricionalSection clienteId={cliente.id} />}
-            {canEdit && <HistorialPlanesNutricionales clienteId={cliente.id} />}
-            {canEdit && <HistorialCliente clienteId={cliente.id} />}
-          </div>
+            {canEdit && <HistorialRutinas clienteId={cliente.id} />}          </div>
         </div>
       </div>
     </main>
   );
 }
+
 

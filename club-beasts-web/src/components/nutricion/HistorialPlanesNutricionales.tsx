@@ -8,6 +8,7 @@ export default function HistorialPlanesNutricionales({ clienteId }: { clienteId:
   const { data: session } = useSession();
   const rol = (session?.user as { role?: string } | undefined)?.role;
   const [planes, setPlanes] = useState<any[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (rol !== "DUENO" && rol !== "RECEPCIONISTA") return;
@@ -16,8 +17,8 @@ export default function HistorialPlanesNutricionales({ clienteId }: { clienteId:
       try {
         const data = await api.asignacionesNutricion.historial(clienteId);
         if (vivo) setPlanes(data?.asignaciones ?? data ?? []);
-      } catch {
-        if (vivo) setPlanes([]);
+      } catch (e: any) {
+        if (vivo) { setPlanes([]); setError(e?.message || "Error al cargar el historial"); }
       }
     })();
     return () => { vivo = false; };
@@ -28,7 +29,9 @@ export default function HistorialPlanesNutricionales({ clienteId }: { clienteId:
   return (
     <section role="region" aria-label="Historial de planes nutricionales" className="mt-6 p-5 bg-dark-surface border border-gray-800 rounded-card">
       <h2 className="text-xl font-display font-bold text-white uppercase">Historial de planes nutricionales</h2>
-      {planes === null ? (
+      {error ? (
+        <p className="mt-3 text-red-400">{error}</p>
+      ) : planes === null ? (
         <p className="mt-3 text-gray-400">Cargando...</p>
       ) : planes.length === 0 ? (
         <p className="mt-3 text-gray-400">Aun no hay planes asignados</p>
