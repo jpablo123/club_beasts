@@ -39,7 +39,7 @@ function aDatos(fila: FilaPlanNutricional): PlanNutricionalDatos {
   return {
     id: fila.id,
     nombre: fila.nombre ?? null,
-    datosBiometricos: deserializar(fila.datosBiometricos, {}) as any,
+    datosBiometricos: deserializar(fila.datosBiometricos, {}) as PlanNutricionalDatos["datosBiometricos"],
     macronutrientes: fila.macronutrientes ? deserializar(fila.macronutrientes, null) : null,
     comidas: deserializar(fila.comidas, []),
     recomendaciones: fila.recomendaciones ?? null,
