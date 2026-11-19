@@ -1,6 +1,6 @@
 # INC-13 - Historial, reportes y notificaciones - Spec
 
-Estado: **ESPECIFICADO** (2026-11-19; PEND-HIS-01..06 resueltos por DEC-083..088, opcion (a)). Abierto tras el cierre de INC-12 (91/100).
+Estado: **LISTO** (2026-11-19; puerta LISTO cerrada: criterios HI-xx, DEC-083..088, ratificacion R1 con R1-R8, R2 con C1-C6, matriz NAV-HIS incluida). Abierto tras el cierre de INC-12 (91/100).
 
 ## Objetivo
 
@@ -24,6 +24,27 @@ Cerrar el bloque 8 del MVP (8 puntos): historial basico del cliente (rutinas + p
 - **PEND-HIS-04** Proveedor de correo: SMTP configurado, o servicio (SendGrid/Resend) — requiere variables de entorno y cuenta.
 - **PEND-HIS-05** Deduplicacion: clave `(clienteId, servicioId, fechaVencimiento, tipoAviso)` para evitar envios duplicados.
 - **PEND-HIS-06** Permisos: solo DUENO ve conteos/historial consolidado; CLIENTE solo su historial.
+
+## Ratificacion de contratos (2026-11-19)
+
+- **Backend (R1)**: RATIFICA CON CORRECCIONES R1-R8. R1: modelo `NotificacionEnvio` con clave unica (migracion). R2: `servicioId` = `MembresiaGym.id`. R3: path canonico `POST /notificaciones/vencimiento/enviar` (dryRun opcional). R4: proveedor configurable por env (`NOTIF_PROVIDER=stub|smtp|resend`), stub por defecto. R5: conteos con `fecha` query opcional (default hoy Bogota), validar `sedeId`. R6: historial con `tipo` enum, `limit` 1-100 default 20, `offset` >=0, respuesta `{ items, total }`. R7: orden de guardas 401->403->400->404->200; CLIENTE solo su propio historial sin actor. R8: actor nunca expuesto a CLIENTE. Riesgos: infraestructura de correo (stub permite tests), sin cron (on-demand solo).
+- **Frontend (R2)**: RATIFICA CON CORRECCIONES C1-C6. C1: ruta dedicada `/reportes` (solo DUENO) con conteos + boton de disparo; dashboard solo card "Reportes". C2: componente `HistorialCliente` consolidado (rutinas+planes+ingresos) con tabs/filtros; CLIENTE ve su historial en portal sin actor (ruta `/portal/historial` o seccion). C3: CLIENTE no ve actor ni conteos; portal usa id propio de sesion. C4: `api.ts` metodos `historial`, `conteos`, `notificaciones.enviar`. C5: NAV-HIS matriz por rol. C6: POST on-demand solo DUENO; UI muestra resultado (enviados/deduplicados/errores), boton deshabilitado durante request.
+
+## Matriz de navegacion (NAV-HIS) — por rol, estado NO VERIFICADO hasta E2E
+
+| ID | Pantalla/estado | Rol | Entrada | Salida esperada | Prueba |
+|---|---|---|---|---|---|
+| NAV-HIS-01 | `/reportes` conteos por sede | DUENO | dashboard card "Reportes" | conteos activos/vencidos/congelados + ingresos del dia; disparo notificaciones | E2E |
+| NAV-HIS-02 | disparo notificaciones | DUENO | boton "Enviar avisos" en /reportes | resultado (enviados/dedup/errores), boton deshabilitado durante request | E2E |
+| NAV-HIS-03 | historial en ficha cliente | DUENO/RECEPCIONISTA | ficha cliente -> historial | solo lectura (RECEPCIONISTA), tabs por tipo, fechas+actor (staff) | E2E |
+| NAV-HIS-04 | `/portal/historial` | CLIENTE | portal "Mi historial" | historial propio sin actor | E2E |
+| NAV-HIS-05 | permisos conteos | RECEPCIONISTA/CLIENTE | intento /reportes | 403 | integracion |
+| NAV-HIS-06 | permisos historial ajeno | CLIENTE | URL directa a otro cliente | 403/404 sin datos | integracion |
+| NAV-HIS-07 | URL directa/reload/back | todos | URL directa, F5, atras | sin bucles, destino correcto | E2E |
+| NAV-HIS-08 | movil/desktop/teclado | todos | viewport + tab | foco visible, operable | E2E |
+| NAV-HIS-09 | sesion expirada | todos | token expirado | redirect a login sin fuga | E2E |
+
+Todas las filas en estado **NO VERIFICADO** hasta evidencia ejecutada.
 
 ## Cierre de HU-07 b5/b6 (+1 punto)
 

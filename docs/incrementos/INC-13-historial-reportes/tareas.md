@@ -1,6 +1,6 @@
 # INC-13 - Tareas
 
-Estado: ESPECIFICADO (2026-11-19). Pipeline: ESPECIFICADO -> LISTO -> RED -> GREEN -> VERIFICADO -> auditoria navegacion -> REVISADO -> ACEPTADO.
+Estado: LISTO (2026-11-19; puerta LISTO cerrada: criterios HI-xx, DEC-083..088, ratificacion R1 con R1-R8, R2 con C1-C6, matriz NAV-HIS incluida). Pipeline: LISTO -> RED -> GREEN -> VERIFICADO -> auditoria navegacion -> REVISADO -> ACEPTADO.
 
 ## ESPECIFICADO - acceptance-criteria-analyst
 
