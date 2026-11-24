@@ -1,0 +1,374 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Sede {
+  id        String    @id @default(cuid())
+  nombre    String
+  direccion String?
+  clientes  Cliente[]
+  ingresos  Ingreso[] // back-relation INC-03 (obligatoria para Ingreso.sede)
+  usuarios  User[]    // back-relation INC-03 (obligatoria para User.sede, DEC-031)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model User {
+  id                   String               @id @default(cuid())
+  email                String               @unique
+  contrasena           String
+  nombre               String
+  rol                  String               // DUENO | RECEPCIONISTA
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  membresiasCreadas    MembresiaGym[]       @relation("MembresiaCreadaPor")
+  membresiasActualizadas MembresiaGym[]     @relation("MembresiaActualizadaPor")
+  cambiosActor         MembresiaGymCambio[] @relation("MembresiaCambioActor")
+  clientesCreados      Cliente[]            @relation("ClienteCreadoPor")
+  clientesActualizados Cliente[]            @relation("ClienteActualizadoPor")
+  clientesPinReset     Cliente[]            @relation("ClientePinResetPor")
+  ingresosRegistrados  Ingreso[]            // back-relation INC-03 (registradoPor)
+  estadosClienteCambiados ClienteEstadoCambio[] // back-relation INC-04/DEC-036 (actor; obligatoria)
+  anamnesisActualizadas Anamnesis[] @relation("AnamnesisActualizadaPor") // back-relation INC-09/DEC-057 (actor; obligatoria)
+  rutinasActualizadas  Rutina[] @relation("RutinaActualizadaPor") // back-relation INC-10/RU-16 (actualizadoPor; obligatoria)
+  rutinaAsignacionesComoActor RutinaAsignacion[] @relation("RutinaAsignacionActor") // back-relation INC-10 (actor de asignacion)
+  planNutricionalesCreados PlanNutricional[] @relation("PlanNutricionalCreadoPor")
+  planNutricionalesActualizados PlanNutricional[] @relation("PlanNutricionalActualizadoPor")
+  planNutricionalAsignacionesComoActor PlanNutricionalAsignacion[] @relation("PlanNutricionalAsignacionActor")
+  // INC-03 (DEC-031): sede del staff de recepcion; al final del modelo para que
+  // la migracion SQLite sea un ADD COLUMN simple (portable), como perfilPendiente.
+  // Nullable: DUENO puede no tener sede; en #5, si el token no trae sede -> 400.
+  sedeId               String?
+  sede                 Sede?                @relation(fields: [sedeId], references: [id])
+}
+
+model Cliente {
+  id              String           @id @default(cuid())
+  cedula          String           @unique
+  nombres         String
+  apellidos       String
+  telefono        String
+  email           String?
+  sedeId          String
+  sede            Sede             @relation(fields: [sedeId], references: [id])
+  pin             String
+  debeCambiarPin  Boolean          @default(true)
+  estado          String           @default("NUEVO") // NUEVO | ACTIVO | SUSPENDIDO | RETIRADO | INACTIVO
+  observaciones   String?
+  creadoPorId     String?
+  creadoPor       User?            @relation("ClienteCreadoPor", fields: [creadoPorId], references: [id])
+  actualizadoPorId String?
+  actualizadoPor  User?            @relation("ClienteActualizadoPor", fields: [actualizadoPorId], references: [id])
+  pinResetPorId   String?
+  pinResetPor     User?            @relation("ClientePinResetPor", fields: [pinResetPorId], references: [id])
+  pinResetAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  // DEC-032 (INC-03): marca de perfil rapido por completar; se limpia con email (DEC-033).
+  // Al final del modelo para que la migracion SQLite sea un ADD COLUMN simple (portable).
+  // NOTA: sin `foto` — DEC-029: esa columna NO se crea en INC-03.
+  perfilPendiente Boolean          @default(false)
+  membresias      MembresiaGym[]
+  ingresos        Ingreso[]        // back-relation INC-03 (obligatoria para Ingreso.cliente)
+  estadoCambios   ClienteEstadoCambio[] // back-relation INC-04/DEC-036 (obligatoria)
+  anamnesis       Anamnesis? // back-relation INC-09/DEC-057 (1:1 opcional)
+  rutinaAsignaciones RutinaAsignacion[] // back-relation INC-10/RU-16 (obligatoria)
+  planNutricionalAsignaciones PlanNutricionalAsignacion[]
+  notificacionEnvios          NotificacionEnvio[]
+}
+
+model MembresiaGym {
+  id              String             @id @default(cuid())
+  clienteId       String
+  cliente         Cliente            @relation(fields: [clienteId], references: [id])
+  fechaInicio     String             // YYYY-MM-DD
+  fechaFin        String             // YYYY-MM-DD (inclusivo)
+  tipoServicio    String             @default("GYM") // GYM | PERSONALIZADO | NUTRICION (DEC-004)
+  creadoPorId     String
+  creadoPor       User               @relation("MembresiaCreadaPor", fields: [creadoPorId], references: [id])
+  actualizadoPorId String
+  actualizadoPor  User               @relation("MembresiaActualizadaPor", fields: [actualizadoPorId], references: [id])
+  version         Int                @default(1)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  cambios         MembresiaGymCambio[]
+  notificacionEnvios NotificacionEnvio[]
+
+  @@index([clienteId, fechaInicio])
+}
+
+model MembresiaGymCambio {
+  id                  String         @id @default(cuid())
+  membresiaId         String
+  membresia           MembresiaGym   @relation(fields: [membresiaId], references: [id])
+  actorId             String
+  actor               User           @relation("MembresiaCambioActor", fields: [actorId], references: [id])
+  accion              String         // CREACION | EDICION | CONGELACION | DESCONGELACION | EDICION_CONGELACION
+  motivo              String?        // CONGELACION y EDICION_CONGELACION: 1-500, requerido (HU-15 b2);
+                                     // DESCONGELACION: opcional, puede quedar null (DEC-024);
+                                     // CREACION | EDICION: null
+  congelacionInicio   String?        // YYYY-MM-DD, rango de la pausa: CONGELACION (creado),
+                                     // EDICION_CONGELACION (rango nuevo), DESCONGELACION (rango revertido)
+  congelacionFin      String?        // YYYY-MM-DD, idem congelacionInicio
+  version             Int
+  fechaInicioAnterior String?
+  fechaFinAnterior    String?
+  fechaInicioNueva    String
+  fechaFinNueva       String
+  createdAt           DateTime       @default(now())
+
+  @@unique([membresiaId, version])
+}
+
+// INC-03 (HU-30): registro de ingreso en recepcion.
+// fechas como String para migracion portable SQLite + PostgreSQL (DEC-012),
+// consistente con MembresiaGym.fechaInicio/fechaFin.
+// Sin constraint de unicidad en (clienteId, fecha): multiples ingresos por dia
+// son criterio INC03-ING-02 (CONF-03 tambien entre sedes).
+model Ingreso {
+  id              String   @id @default(cuid())
+  clienteId       String
+  sedeId          String
+  registradoPorId String
+  fecha           String   // YYYY-MM-DD America/Bogota (DEC-005)
+  hora            String   // HH:mm:ss America/Bogota (CONF-06)
+  createdAt       DateTime @default(now())
+  cliente         Cliente  @relation(fields: [clienteId], references: [id])
+  sede            Sede     @relation(fields: [sedeId], references: [id])
+  registradoPor   User     @relation(fields: [registradoPorId], references: [id])
+
+  @@index([clienteId, fecha]) // ultimoIngreso (#2) e historial (#4)
+}
+
+// INC-04 (HU-08 b2/b3, HU-17 b2/b3; DEC-036 opcion (a)): historial acumulable de
+// cambios de estado del cliente. Patron `MembresiaGymCambio` (spec INC-04,
+// seccion "Modelo de datos").
+// - Columna de actor ratificada `actorId`/`actor` (incompatibilidad #15: DEC-036
+//   la describe como "creadoPorId" pero el G14 y el patron usan actorId; delegacion
+//   del G14 resuelta por este spec).
+// - `estadoAnterior` nullable: null solo si no hubo estado previo conocido.
+// - `motivo` String NO nullable: 3-200, obligatorio en todo cambio (DEC-035 opcion a).
+// - Sin nombre de relation: cada par (Cliente, User) tiene una sola fila de relation
+//   con ClienteEstadoCambio (a diferencia de MembresiaGymCambio, que si los necesita).
+// - FKs sin onDelete explicito = patron existente (RESTRICT / UPDATE CASCADE, igual
+//   que MembresiaGymCambio e Ingreso): la limpieza de fixtures borra
+//   ClienteEstadoCambio antes que Cliente (precedente world.ts INC-03).
+// - `@@index([clienteId, createdAt])` de lectura (orden del historial); SIN unique
+//   sobre (clienteId, estadoNuevo): repetir un estado en momentos distintos es valido.
+// - Migracion portable SQLite/PostgreSQL (DEC-012): solo CREATE TABLE + CREATE INDEX,
+//   sin ALTER de tablas existentes (las back-relations no generan columna).
+model ClienteEstadoCambio {
+  id             String   @id @default(cuid())
+  clienteId      String
+  cliente        Cliente  @relation(fields: [clienteId], references: [id])
+  estadoAnterior String?  // null solo si no hubo estado previo conocido
+  estadoNuevo    String   // NUEVO | ACTIVO | SUSPENDIDO | RETIRADO | INACTIVO
+  motivo         String   // 3-200, requerido (HU-17 b2 / HU-08 b3)
+  actorId        String
+  actor          User     @relation(fields: [actorId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([clienteId, createdAt])
+}
+
+// INC-09 (AN-01..AN-12 registro 23 campos, AN-22/AN-25 estado derivado, DEC-057):
+// anamnesis deportiva del cliente. Patron `ClienteEstadoCambio` (spec INC-09,
+// seccion "Contrato API", punto "Modelo Prisma (R6)", ratificado por backend R6).
+// - 1:1 con Cliente (DEC-057): `clienteId @unique` -> maximo una anamnesis por cliente.
+// - SIN columna `estado`: R5 — el estado (INCOMPLETA/COMPLETA) se deriva en servicio
+//   (`derivarEstadoAnamnesis`/`cumpleCompletitud`); no se persiste (sin drift).
+// - S1 identificacion personal = snapshot (DEC-056/056a): copia al momento del
+//   diligenciamiento, no se recalcula contra Cliente.
+// - Campos SENSIBLES (DEC-055): rh, antecedentesMedicos, antecedentesFamiliares,
+//   enfermedadRelevante, cualEnfermedad — manejo restringido en servicio, sin loguear.
+// - Tipos: todo String?/Int? opcional (registro parcial 23 campos, AN-01..AN-12);
+//   literales exactos en comentario (sexo FEMENINO|MASCULINO, practicaDeporte/enfermedadRelevante
+//   SI|NO, nivelActividad 4 literales del Anexo DEC-052) validados en Zod, no en BD.
+// - rh ^(A|B|AB|O)[+-]$ (DEC-059); edad 13..100 y comidasPorDia 1..12 (DEC-059);
+//   fechaNacimiento YYYY-MM-DD y horaAcostarse HH:MM 24h como String (DEC-012 portabilidad).
+// - Multi-selects (antecedentesMedicos=21, diasNoEntrenamiento=16): String con JSON de
+//   string[] (SQLite no soporta scalar lists; (de)serializacion solo en servicio,
+//   INC09-R09; sin tipo `Json` por DEC-012 portabilidad SQLite/PostgreSQL).
+// - Trazabilidad (DEC-057): actualizadoPorId obligatorio -> User; fechaActualizacion
+//   @updatedAt (exposicion ISO-8601); createdAt.
+// - FKs sin onDelete explicito = patron del repo (ClienteEstadoCambio, MembresiaGymCambio):
+//   la limpieza de fixtures debe borrar Anamnesis antes que Cliente/User.
+// - Back-relations minimas (sin columna): Cliente.anamnesis Anamnesis?,
+//   User.anamnesisActualizadas Anamnesis[] @relation("AnamnesisActualizadaPor").
+model Anamnesis {
+  id         String  @id @default(cuid())
+  clienteId  String  @unique // DEC-057: 1:1
+  cliente    Cliente @relation(fields: [clienteId], references: [id])
+
+  // S1 — Identificacion personal (snapshot, DEC-056/056a)
+  nombreCompleto     String?
+  numeroDocumento    String?
+  sexo               String? // FEMENINO | MASCULINO
+  rh                 String? // ^(A|B|AB|O)[+-]$ (DEC-059) — SENSIBLE (DEC-055)
+  edad               Int?    // 13..100 (DEC-059)
+  fechaNacimiento    String? // YYYY-MM-DD (DEC-012)
+  lugarNacimiento    String?
+  estadoCivil        String?
+  direccionResidencia String?
+  numeroContacto     String?
+  correoElectronico  String?
+
+  // S2 — Deporte
+  practicaDeporte    String? // SI | NO
+  cualDeporte        String? // condicional si practicaDeporte = SI
+  tiempoQuePractica  String?
+
+  // S3 — Emergencia y salud
+  contactoEmergencia   String?
+  eps                  String?
+  antecedentesMedicos  String? // JSON string[] de ANTECEDENTES_MEDICOS — SENSIBLE (DEC-055)
+  antecedentesFamiliares String? // SENSIBLE (DEC-055)
+  enfermedadRelevante  String? // SI | NO — SENSIBLE (DEC-055)
+  cualEnfermedad       String? // condicional si enfermedadRelevante = SI — SENSIBLE (DEC-055)
+
+  // S4 — Objetivos y estilo de vida
+  objetivosEntrenamiento String?
+  nivelActividad         String? // 4 literales exactos del Anexo DEC-052
+  diasNoEntrenamiento    String? // JSON string[] de DIAS_NO_ENTRENAMIENTO
+  horaAcostarse          String? // HH:MM 24h
+  comidasPorDia          Int?    // 1..12 (DEC-059)
+
+  // Trazabilidad (DEC-057)
+  actualizadoPorId   String
+  actualizadoPor     User     @relation("AnamnesisActualizadaPor", fields: [actualizadoPorId], references: [id])
+  fechaActualizacion DateTime @updatedAt // exposicion ISO-8601
+  createdAt          DateTime @default(now())
+}
+
+// Bloque 6 (INC-10). DEC-012: fechas YYYY-MM-DD y contenido JSON como String
+// (portabilidad SQLite/PostgreSQL; sin tipo Json — patron Anamnesis).
+// Modelo ratificado (R3, spec INC-10 "Contrato API"): 1 columna por seccion —
+// el PATCH "presente = reemplaza seccion" (R3/C3a) es un UPDATE de columna.
+// - tipoRutina: GENERICA | INDUCCION | PERSONALIZADA (inmutable tras crear, R1#4).
+// - Base GENERICA/INDUCCION (DEC-064): objetivo/nivelExperiencia/sesiones; null en PERSONALIZADA.
+// - Personalizada (DEC-018/062/063): informacionGeneral/diagnostico/macrociclos/tests/
+//   antropometria/analisisBiomecanico; null en base. Limites exactos (C4): macrociclos 20,
+//   evaluaciones 50 por seccion, antropometria 0..50 (enum 13 medidas), analisisBiomecanico
+//   0..50 (enum 10 zonas) — validados en Zod, no en BD.
+// - Sin DELETE en MVP (patron Anamnesis/DEC-057).
+// - Trazabilidad (RU-16, patron Anamnesis/DEC-057): actualizadoPorId obligatorio -> User.
+// - FKs sin onDelete explicito = patron del repo (Restrict): la limpieza de fixtures debe
+//   borrar RutinaAsignacion antes que Rutina/Cliente/User.
+model Rutina {
+  id                  String   @id @default(cuid())
+  tipoRutina          String   // GENERICA | INDUCCION | PERSONALIZADA (inmutable tras crear)
+  nombre              String   // 3..100 (Zod)
+  descripcion         String?  // 1..500
+  // Base GENERICA/INDUCCION (DEC-064) — null en PERSONALIZADA
+  objetivo            String?
+  nivelExperiencia    String?  // PRINCIPIANTE | INTERMEDIO | AVANZADO
+  sesiones            String?  // JSON string de Sesion[] (1..30)
+  // Personalizada (DEC-018/062/063) — null en base
+  informacionGeneral  String?  // JSON string {objetivoGeneral, nivelExperiencia, fechaEvaluacion}
+  diagnostico         String?  // JSON string {diagnostico, restriccionesMedicas, lesionesPrevias, observacionesGenerales}
+  macrociclos         String?  // JSON string de Macrociclo[] (20; macro->meso->micro->sesion)
+  tests               String?  // JSON string de Test[] (0..50)
+  antropometria       String?  // JSON string de AntropometriaItem[] (0..50, enum 13 medidas)
+  analisisBiomecanico String?  // JSON string de AnalisisBiomecanicoItem[] (0..50, enum 10 zonas)
+  // Trazabilidad (RU-16, patron Anamnesis/DEC-057)
+  actualizadoPorId    String
+  actualizadoPor      User     @relation("RutinaActualizadaPor", fields: [actualizadoPorId], references: [id])
+  fechaActualizacion  DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  asignaciones        RutinaAsignacion[]
+  // 1 columna por seccion: el PATCH "presente = reemplaza seccion" = UPDATE de columna.
+}
+
+// INC-10 (RU-16 historial, DEC-067 snapshot, DEC-005/006 fechas America/Bogota):
+// asignacion de rutina a cliente. Patron MembresiaGym (fechas YYYY-MM-DD String,
+// DEC-012 portabilidad). Sin columna `estado`: ACTIVA/CERRADA se deriva de
+// fechaFin (null = ACTIVA, patron HU-11 estado derivado; sin drift).
+// - contenidoSnapshot (DEC-067): JSON string del contenido al asignar; capturado en la
+//   misma transaccion de la asignacion (R6); las lecturas leen desde snapshot, por lo que
+//   un PATCH de la rutina solo afecta asignaciones futuras (R1#4).
+// - activaClave String? @unique = ARBITRO portable de 0-1 activas (INC00-MEM-03):
+//   guarda clienteId mientras fechaFin IS NULL; se pone null al cerrar. Dos "activas"
+//   del mismo cliente colisionan en P2002 -> 409 ASIGNACION_CONFLICTO. NO usar
+//   @@unique([clienteId, fechaFin]) (NULLs distintos) ni indices parciales raw-SQL
+//   (drift con `migrate dev`).
+// - FKs sin onDelete explicito = Restrict (patron repo); fixtures borran RutinaAsignacion
+//   antes que Rutina/Cliente/User.
+// - @@index([clienteId, fechaInicio]): historial ORDER BY fechaInicio DESC (RU-16).
+model RutinaAsignacion {
+  id                String   @id @default(cuid())
+  clienteId         String
+  cliente           Cliente  @relation(fields: [clienteId], references: [id]) // onDelete Restrict (default)
+  rutinaId          String
+  rutina            Rutina   @relation(fields: [rutinaId], references: [id])  // onDelete Restrict (default)
+  fechaInicio       String   // YYYY-MM-DD (America/Bogota, DEC-005/006)
+  fechaFin          String?  // null = ACTIVA (estado derivado, sin columna — patron HU-11)
+  actorId           String
+  actor             User     @relation("RutinaAsignacionActor", fields: [actorId], references: [id])
+  contenidoSnapshot String   // JSON string del contenido al asignar (DEC-067)
+  activaClave       String?  @unique // ARBITRO 0-1 activas (INC00-MEM-03): = clienteId si fechaFin IS NULL; null al cerrar
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([clienteId, fechaInicio]) // historial ORDER BY fechaInicio DESC
+  @@index([rutinaId])
+}
+
+// INC-12 (NU). Plan nutricional + asignacion, analogo a Rutina/RutinaAsignacion.
+model PlanNutricional {
+  id                   String   @id @default(cuid())
+  nombre               String
+  datosBiometricos     Json
+  macronutrientes      Json?
+  comidas              Json
+  recomendaciones      String?
+  suplementacion       String?
+  observacionesGenerales String?
+  creadoPorId          String?
+  creadoPor            User?    @relation("PlanNutricionalCreadoPor", fields: [creadoPorId], references: [id])
+  actualizadoPorId     String?
+  actualizadoPor       User?    @relation("PlanNutricionalActualizadoPor", fields: [actualizadoPorId], references: [id])
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  asignaciones         PlanNutricionalAsignacion[]
+}
+
+model PlanNutricionalAsignacion {
+  id                String   @id @default(cuid())
+  clienteId         String
+  cliente           Cliente  @relation(fields: [clienteId], references: [id])
+  planId            String
+  plan              PlanNutricional @relation(fields: [planId], references: [id])
+  fechaInicio       String
+  fechaFin          String?
+  actorId           String
+  actor             User     @relation("PlanNutricionalAsignacionActor", fields: [actorId], references: [id])
+  snapshot          Json
+  activaClave       String?  @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([clienteId, fechaInicio])
+  @@index([planId])
+}
+
+// INC-13 (HU34-C04): registro de envio de notificaciones para evitar duplicados.
+model NotificacionEnvio {
+  id                String       @id @default(cuid())
+  clienteId         String
+  cliente           Cliente      @relation(fields: [clienteId], references: [id])
+  servicioId        String
+  servicio          MembresiaGym @relation(fields: [servicioId], references: [id])
+  fechaVencimiento  String
+  tipoAviso         String
+  enviadoEn         DateTime
+  canal             String
+  estado            String
+
+  @@unique([clienteId, servicioId, fechaVencimiento, tipoAviso])
+}
