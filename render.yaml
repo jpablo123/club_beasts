@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: club-beasts-api
+    runtime: docker
+    dockerfilePath: ./club-beasts-api/Dockerfile
+    dockerContext: ./club-beasts-api
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3001"
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: EMAIL_PROVIDER
+        value: stub
