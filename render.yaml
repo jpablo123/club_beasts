@@ -6,6 +6,7 @@ services:
     dockerContext: ./club-beasts-api
     plan: starter
     healthCheckPath: /health
+    releaseCommand: npx prisma db push --schema=prisma/schema.postgres.prisma --accept-data-loss
     envVars:
       - key: NODE_ENV
         value: production
