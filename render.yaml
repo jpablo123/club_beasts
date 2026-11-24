@@ -2,7 +2,7 @@ services:
   - type: web
     name: club-beasts-api
     runtime: docker
-    dockerfilePath: ./club-beasts-api/Dockerfile
+    dockerfilePath: Dockerfile
     dockerContext: ./club-beasts-api
     plan: starter
     healthCheckPath: /health
